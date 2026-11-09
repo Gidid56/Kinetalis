@@ -1,0 +1,64 @@
+#pragma once
+
+class kmc::Observer
+{
+public:
+    struct Resolution
+    {
+        kmc::Step min_snapshot_step{ 100 };
+        double snapshot_scale_factor{ 1.05 };
+    };
+
+    struct Snapshot
+    {
+        kmc::Step step{};
+        kmc::Time time{};
+
+        friend bool operator==(Snapshot const&, Snapshot const&) = default;
+    };
+
+    Observer() = default;
+
+    explicit Observer(Resolution const& resolution) : resolution_{ resolution }
+    {
+        validate(resolution);
+    }
+
+    static void validate(Resolution const& resolution);
+
+    virtual ~Observer() = default;
+
+    auto& set_resolution(this auto& self, Resolution const& resolution)
+    {
+        validate(resolution);
+        self.resolution_ = resolution;
+        return self;
+    }
+
+    virtual void observe_started(Simulation const&) { }
+
+    virtual void observe_step(Simulation const&) final;
+
+    virtual void observe_completed(Simulation const&) { }
+
+    virtual void observe_selected(process::Record const&) { }
+
+    virtual void observe_processed(process::Record const&) { }
+
+    virtual bool stop_requested() const { return false; }
+
+protected:
+    virtual void take_snapshot(Simulation const&) { }
+
+    Resolution resolution_{};
+
+private:
+    Step next_snapshot_step_{};
+};
+
+template <>
+struct std::formatter<kmc::Observer::Resolution> : public std::formatter<std::string_view>
+{
+    std::format_context::iterator
+    format(kmc::Observer::Resolution const&, std::format_context&) const;
+};

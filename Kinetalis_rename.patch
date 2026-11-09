@@ -1,0 +1,945 @@
+diff --git a/.clang-format b/.clang-format
+index 490d505..f6b2d73 100644
+--- a/.clang-format
++++ b/.clang-format
+@@ -1,4 +1,4 @@
+-# Tartarus C++ formatting
++# Kinetalis C++ formatting
+ # Target: clang-format 22.1.x or newer
+ #
+ # Place this file at the repository root as:
+diff --git a/CITATION.cff b/CITATION.cff
+index 0c09038..6793d63 100644
+--- a/CITATION.cff
++++ b/CITATION.cff
+@@ -1,12 +1,12 @@
+ cff-version: 1.2.0
+ message: >-
+-  If you use Tartarus in scientific work, please cite this software
++  If you use Kinetalis in scientific work, please cite this software
+   and the relevant associated publication(s) listed in the README.
+-title: "Tartarus: A kinetic Monte Carlo framework for atomistic lattice simulations"
++title: "Kinetalis: A kinetic Monte Carlo framework for atomistic lattice simulations"
+ type: software
+ authors:
+   - family-names: "Henkelmann"
+     given-names: "Gideon"
+     orcid: "https://orcid.org/0000-0001-5056-4590"
+-repository-code: "https://github.com/Gidid56/Tartarus"
++repository-code: "https://github.com/Gidid56/Kinetalis"
+ license: MIT
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index acea7ed..ceb376b 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -1,18 +1,18 @@
+ cmake_minimum_required(VERSION 3.22)
+ 
+ project(
+-    Tartarus
++    Kinetalis
+     VERSION 0.5.1
+     DESCRIPTION "Kinetic Monte Carlo simulation framework"
+     LANGUAGES C CXX
+ )
+ 
+-option(TARTARUS_BUILD_BATCH "Build the batch application" ON)
+-option(TARTARUS_BUILD_VIEWER "Build the interactive Magnum viewer" OFF)
+-option(TARTARUS_BUILD_TESTS "Build the Tartarus test executable" ON)
+-option(TARTARUS_ENABLE_PCH "Use precompiled headers" ON)
+-option(TARTARUS_ENABLE_CLANG_TIDY "Run clang-tidy on Tartarus sources" OFF)
+-option(TARTARUS_WARNINGS_AS_ERRORS "Treat compiler warnings as errors" OFF)
++option(KINETALIS_BUILD_BATCH "Build the batch application" ON)
++option(KINETALIS_BUILD_VIEWER "Build the interactive Magnum viewer" OFF)
++option(KINETALIS_BUILD_TESTS "Build the Kinetalis test executable" ON)
++option(KINETALIS_ENABLE_PCH "Use precompiled headers" ON)
++option(KINETALIS_ENABLE_CLANG_TIDY "Run clang-tidy on Kinetalis sources" OFF)
++option(KINETALIS_WARNINGS_AS_ERRORS "Treat compiler warnings as errors" OFF)
+ 
+ set(CMAKE_CXX_EXTENSIONS OFF)
+ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${PROJECT_BINARY_DIR}/$<CONFIG>/bin")
+@@ -20,27 +20,27 @@ set(CMAKE_LIBRARY_OUTPUT_DIRECTORY "${PROJECT_BINARY_DIR}/$<CONFIG>/lib")
+ set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY "${PROJECT_BINARY_DIR}/$<CONFIG>/lib")
+ 
+ list(APPEND CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/cmake")
+-include(TartarusExternalDependencies)
+-include(TartarusTargetDefaults)
++include(KinetalisExternalDependencies)
++include(KinetalisTargetDefaults)
+ 
+-if(TARTARUS_ENABLE_CLANG_TIDY)
++if(KINETALIS_ENABLE_CLANG_TIDY)
+     find_program(
+-        TARTARUS_CLANG_TIDY
++        KINETALIS_CLANG_TIDY
+         NAMES clang-tidy
+         REQUIRED
+     )
+ 
+-    message(STATUS "Using clang-tidy: ${TARTARUS_CLANG_TIDY}")
++    message(STATUS "Using clang-tidy: ${KINETALIS_CLANG_TIDY}")
+ endif()
+ 
+-tartarus_add_external_dependencies()
++kinetalis_add_external_dependencies()
+ 
+ add_subdirectory(apps)
+ add_subdirectory(source)
+ add_subdirectory(studies)
+ add_subdirectory(tools)
+ 
+-if(TARGET tartarus_batch)
++if(TARGET kinetalis_batch)
+     find_program(SBATCH_EXECUTABLE sbatch)
+ 
+     if(SBATCH_EXECUTABLE)
+@@ -51,14 +51,14 @@ if(TARGET tartarus_batch)
+                 ${SBATCH_EXECUTABLE}
+                 --chdir=$ENV{HOME}
+                 ${CMAKE_SOURCE_DIR}/cmake/slurm_batch.sh
+-                $<TARGET_FILE:tartarus_batch>
++                $<TARGET_FILE:kinetalis_batch>
+             COMMENT "Submitting batch job to Slurm"
+             VERBATIM
+         )
+     endif()
+ endif()
+ 
+-if(TARTARUS_BUILD_TESTS)
++if(KINETALIS_BUILD_TESTS)
+     enable_testing()
+     add_subdirectory(tests)
+ endif()
+diff --git a/CMakePresets.json b/CMakePresets.json
+index 508dfad..46475f7 100644
+--- a/CMakePresets.json
++++ b/CMakePresets.json
+@@ -13,7 +13,7 @@
+       "binaryDir": "${sourceDir}/build/${presetName}",
+       "cacheVariables": {
+         "CMAKE_EXPORT_COMPILE_COMMANDS": "ON",
+-        "TARTARUS_ENABLE_PCH": "ON"
++        "KINETALIS_ENABLE_PCH": "ON"
+       }
+     },
+     {
+@@ -50,9 +50,9 @@
+       "inherits": "base",
+       "cacheVariables": {
+         "CMAKE_BUILD_TYPE": "Release",
+-        "TARTARUS_BUILD_BATCH": "ON",
+-        "TARTARUS_BUILD_VIEWER": "OFF",
+-        "TARTARUS_BUILD_TESTS": "OFF"
++        "KINETALIS_BUILD_BATCH": "ON",
++        "KINETALIS_BUILD_VIEWER": "OFF",
++        "KINETALIS_BUILD_TESTS": "OFF"
+       }
+     },
+     {
+@@ -61,9 +61,9 @@
+       "inherits": "base",
+       "cacheVariables": {
+         "CMAKE_BUILD_TYPE": "Release",
+-        "TARTARUS_BUILD_BATCH": "OFF",
+-        "TARTARUS_BUILD_VIEWER": "ON",
+-        "TARTARUS_BUILD_TESTS": "OFF"
++        "KINETALIS_BUILD_BATCH": "OFF",
++        "KINETALIS_BUILD_VIEWER": "ON",
++        "KINETALIS_BUILD_TESTS": "OFF"
+       }
+     },
+     {
+@@ -72,10 +72,10 @@
+       "inherits": "base",
+       "cacheVariables": {
+         "CMAKE_BUILD_TYPE": "Debug",
+-        "TARTARUS_BUILD_BATCH": "OFF",
+-        "TARTARUS_BUILD_VIEWER": "ON",
+-        "TARTARUS_BUILD_TESTS": "OFF",
+-        "TARTARUS_ENABLE_CLANG_TIDY": "ON"
++        "KINETALIS_BUILD_BATCH": "OFF",
++        "KINETALIS_BUILD_VIEWER": "ON",
++        "KINETALIS_BUILD_TESTS": "OFF",
++        "KINETALIS_ENABLE_CLANG_TIDY": "ON"
+       }
+     },
+     {
+@@ -84,10 +84,10 @@
+       "inherits": "base",
+       "cacheVariables": {
+         "CMAKE_BUILD_TYPE": "Debug",
+-        "TARTARUS_BUILD_BATCH": "OFF",
+-        "TARTARUS_BUILD_VIEWER": "OFF",
+-        "TARTARUS_BUILD_TESTS": "ON",
+-        "TARTARUS_ENABLE_CLANG_TIDY": "ON"
++        "KINETALIS_BUILD_BATCH": "OFF",
++        "KINETALIS_BUILD_VIEWER": "OFF",
++        "KINETALIS_BUILD_TESTS": "ON",
++        "KINETALIS_ENABLE_CLANG_TIDY": "ON"
+       }
+     },
+     {
+@@ -113,7 +113,7 @@
+       "displayName": "Windows | Batch | Release",
+       "configurePreset": "batch-release",
+       "targets": [
+-        "tartarus_batch"
++        "kinetalis_batch"
+       ]
+     },
+     {
+@@ -121,7 +121,7 @@
+       "displayName": "Windows | Viewer | Release",
+       "configurePreset": "viewer-release",
+       "targets": [
+-        "tartarus_viewer"
++        "kinetalis_viewer"
+       ]
+     },
+     {
+@@ -129,7 +129,7 @@
+       "displayName": "Windows | Viewer | Debug",
+       "configurePreset": "viewer-debug",
+       "targets": [
+-        "tartarus_viewer"
++        "kinetalis_viewer"
+       ]
+     },
+     {
+@@ -137,7 +137,7 @@
+       "displayName": "Windows | Tests | Debug",
+       "configurePreset": "tests-debug",
+       "targets": [
+-        "tartarus_tests"
++        "kinetalis_tests"
+       ]
+     }
+   ],
+diff --git a/README.md b/README.md
+index 9a46889..576fa7c 100644
+--- a/README.md
++++ b/README.md
+@@ -1,13 +1,13 @@
+-# Tartarus
++# Kinetalis
+ 
+-**Tartarus** is a C++23 framework for lattice-based kinetic Monte Carlo (KMC) simulations. It combines a configurable crystal-lattice representation, continuous-time stochastic event dynamics, physical rate models, and a flexible system for measurements and automated studies.
++**Kinetalis** is a C++23 framework for lattice-based kinetic Monte Carlo (KMC) simulations. It combines a configurable crystal-lattice representation, continuous-time stochastic event dynamics, physical rate models, and a flexible system for measurements and automated studies.
+ 
+ The framework was developed for atomistic studies of electrochemical dealloying, but its lattice construction, numerical and physical utilities, KMC machinery, and batch processing can be used independently of that application. The dealloying study provides a complete example of how to assemble these components into a research workflow.
+ 
+ Two applications use the same simulation core:
+ 
+-- **`tartarus_batch`** runs parameter studies and independent replicates, writes numerical results, and performs campaign-level postprocessing.
+-- **`tartarus_viewer`** runs and displays simulations interactively, with camera controls and live inspection of the atomic configuration.
++- **`kinetalis_batch`** runs parameter studies and independent replicates, writes numerical results, and performs campaign-level postprocessing.
++- **`kinetalis_viewer`** runs and displays simulations interactively, with camera controls and live inspection of the atomic configuration.
+ 
+ The **core library and batch runner have no third-party build dependencies**: supporting code, including `magic_enum`, is included in the repository. The viewer is optional and uses graphical libraries supplied as Git submodules.
+ 
+@@ -27,8 +27,8 @@ The repository provides ready-to-use presets for MSVC, GCC 14, and the TUHH HPC
+ For the batch runner, a normal clone is sufficient. Graphical submodules are only needed when building the viewer.
+ 
+ ```sh
+-git clone https://github.com/Gidid56/Tartarus.git
+-cd Tartarus
++git clone https://github.com/Gidid56/Kinetalis.git
++cd Kinetalis
+ ```
+ 
+ ### A. Windows: Visual Studio 2026
+@@ -36,43 +36,43 @@ cd Tartarus
+ 1. Install Visual Studio with **Desktop development with C++**, including MSVC, CMake, and Ninja.
+ 2. Open the repository with **File → Open → Folder**, selecting the folder containing the root `CMakeLists.txt`.
+ 3. Select the **`batch-release`** CMake configure preset.
+-4. Build the **`tartarus_batch`** target, then run it from Visual Studio or a Developer PowerShell.
++4. Build the **`kinetalis_batch`** target, then run it from Visual Studio or a Developer PowerShell.
+ 
+ Equivalent commands from an **MSVC Developer PowerShell**:
+ 
+ ```powershell
+ cmake --preset batch-release
+ cmake --build --preset build-batch-release
+-.\build\batch-release\Release\bin\tartarus_batch.exe --help
++.\build\batch-release\Release\bin\kinetalis_batch.exe --help
+ ```
+ 
+-Visual Studio opens Tartarus as a CMake folder; no Visual Studio solution file is required. To work with the graphical application, initialize the submodules and switch to `viewer-release` (see [Interactive viewer](#interactive-viewer)).
++Visual Studio opens Kinetalis as a CMake folder; no Visual Studio solution file is required. To work with the graphical application, initialize the submodules and switch to `viewer-release` (see [Interactive viewer](#interactive-viewer)).
+ 
+ ### B. General CMake project
+ 
+-Tartarus can also be configured without an IDE or a named preset. The following builds only the batch application:
++Kinetalis can also be configured without an IDE or a named preset. The following builds only the batch application:
+ 
+ ```sh
+ cmake -S . -B build/local-batch -G Ninja \
+   -DCMAKE_BUILD_TYPE=Release \
+-  -DTARTARUS_BUILD_BATCH=ON \
+-  -DTARTARUS_BUILD_VIEWER=OFF \
+-  -DTARTARUS_BUILD_TESTS=OFF
+-cmake --build build/local-batch --target tartarus_batch --parallel
++  -DKINETALIS_BUILD_BATCH=ON \
++  -DKINETALIS_BUILD_VIEWER=OFF \
++  -DKINETALIS_BUILD_TESTS=OFF
++cmake --build build/local-batch --target kinetalis_batch --parallel
+ ```
+ 
+-Run this in an MSVC Developer shell on Windows, or in a shell with GCC 14 on Linux. With these settings, the executable is located at `build/local-batch/Release/bin/tartarus_batch` (or `.exe` on Windows).
++Run this in an MSVC Developer shell on Windows, or in a shell with GCC 14 on Linux. With these settings, the executable is located at `build/local-batch/Release/bin/kinetalis_batch` (or `.exe` on Windows).
+ 
+ The main CMake switches are:
+ 
+ | Option | Default | Purpose |
+ | --- | --- | --- |
+-| `TARTARUS_BUILD_BATCH` | `ON` | Batch application |
+-| `TARTARUS_BUILD_VIEWER` | `OFF` | Interactive graphical application |
+-| `TARTARUS_BUILD_TESTS` | `ON` | Unit-test target |
+-| `TARTARUS_ENABLE_PCH` | `ON` | Precompiled headers |
+-| `TARTARUS_ENABLE_CLANG_TIDY` | `OFF` | Run clang-tidy during compilation |
+-| `TARTARUS_WARNINGS_AS_ERRORS` | `OFF` | Treat warnings as errors |
++| `KINETALIS_BUILD_BATCH` | `ON` | Batch application |
++| `KINETALIS_BUILD_VIEWER` | `OFF` | Interactive graphical application |
++| `KINETALIS_BUILD_TESTS` | `ON` | Unit-test target |
++| `KINETALIS_ENABLE_PCH` | `ON` | Precompiled headers |
++| `KINETALIS_ENABLE_CLANG_TIDY` | `OFF` | Run clang-tidy during compilation |
++| `KINETALIS_WARNINGS_AS_ERRORS` | `OFF` | Treat warnings as errors |
+ 
+ ### C. Linux: local builds and servers
+ 
+@@ -80,8 +80,8 @@ Install GCC 14, CMake, Ninja, and Git. On systems providing GCC 14 at `/usr/bin/
+ 
+ ```sh
+ cmake --preset ubuntu-batch-release
+-cmake --build build/ubuntu-batch-release --target tartarus_batch --parallel 8
+-./build/ubuntu-batch-release/Release/bin/tartarus_batch --concurrency 8
++cmake --build build/ubuntu-batch-release --target kinetalis_batch --parallel 8
++./build/ubuntu-batch-release/Release/bin/kinetalis_batch --concurrency 8
+ ```
+ 
+ For a different GCC installation, specify the toolchain explicitly:
+@@ -90,11 +90,11 @@ For a different GCC installation, specify the toolchain explicitly:
+ cmake -S . -B build/gcc14-batch -G Ninja \
+   -DCMAKE_C_COMPILER=gcc-14 -DCMAKE_CXX_COMPILER=g++-14 \
+   -DCMAKE_BUILD_TYPE=Release \
+-  -DTARTARUS_BUILD_VIEWER=OFF -DTARTARUS_BUILD_TESTS=OFF
+-cmake --build build/gcc14-batch --target tartarus_batch --parallel 8
++  -DKINETALIS_BUILD_VIEWER=OFF -DKINETALIS_BUILD_TESTS=OFF
++cmake --build build/gcc14-batch --target kinetalis_batch --parallel 8
+ ```
+ 
+-On a compute server, launch `tartarus_batch` directly or through a scheduler. The number supplied to `--concurrency` controls how many **independent simulations** run simultaneously.
++On a compute server, launch `kinetalis_batch` directly or through a scheduler. The number supplied to `--concurrency` controls how many **independent simulations** run simultaneously.
+ 
+ #### Slurm
+ 
+@@ -102,9 +102,9 @@ The TUHH HPC build preset and example submission script are provided in [`CMakeP
+ 
+ ```sh
+ cmake --preset tuhh-hpc-batch-release
+-cmake --build build/tuhh-hpc-batch-release --target tartarus_batch --parallel 8
++cmake --build build/tuhh-hpc-batch-release --target kinetalis_batch --parallel 8
+ mkdir -p "$HOME/slurm"
+-sbatch cmake/slurm_batch.sh "$PWD/build/tuhh-hpc-batch-release/Release/bin/tartarus_batch"
++sbatch cmake/slurm_batch.sh "$PWD/build/tuhh-hpc-batch-release/Release/bin/kinetalis_batch"
+ ```
+ 
+ Before submission on another cluster, edit the script's compiler module, allocation, paths, and job settings. It passes the allocated CPU count to the batch executable as its concurrency limit. When using a non-system compiler, ensure its runtime `libstdc++` is available on the compute nodes.
+@@ -140,13 +140,13 @@ Rebuild and run a single worker:
+ ```powershell
+ # Windows: MSVC Developer PowerShell
+ cmake --build --preset build-batch-release
+-.\build\batch-release\Release\bin\tartarus_batch.exe --concurrency 1
++.\build\batch-release\Release\bin\kinetalis_batch.exe --concurrency 1
+ ```
+ 
+ ```sh
+ # Linux: GCC 14 build from section C
+-cmake --build build/gcc14-batch --target tartarus_batch --parallel
+-./build/gcc14-batch/Release/bin/tartarus_batch --concurrency 1
++cmake --build build/gcc14-batch --target kinetalis_batch --parallel
++./build/gcc14-batch/Release/bin/kinetalis_batch --concurrency 1
+ ```
+ 
+ The run creates a new directory under `results/`. Inspect `campaign.txt` for the campaign seed, `setups.csv` for the setup description, `samples.csv` for the individual simulation seed, and `setups/` for the output from the run. The sample stops after 100 accepted steps or when no KMC events remain.
+@@ -179,7 +179,7 @@ After rebuilding, start the executable from its output directory so the bundled
+ 
+ ```powershell
+ Push-Location .\build\viewer-release\Release\bin
+-.\tartarus_viewer.exe
++.\kinetalis_viewer.exe
+ Pop-Location
+ ```
+ 
+@@ -195,10 +195,10 @@ To run a campaign, choose its factory in [`apps/batch/main.cpp`](apps/batch/main
+ auto const successful = batch.run(dealloying::campaigns::critical_potential_composition);
+ ```
+ 
+-Rebuild `tartarus_batch` after making the selection, then launch it. Common options are:
++Rebuild `kinetalis_batch` after making the selection, then launch it. Common options are:
+ 
+ ```text
+-tartarus_batch [--concurrency N] [--results-dir PATH] [--help]
++kinetalis_batch [--concurrency N] [--results-dir PATH] [--help]
+ ```
+ 
+ `--concurrency` sets the number of simultaneous samples (default: 16). `--results-dir` selects the output directory (default: `results/` relative to the working directory). For an explicit `--results-dir` value, the current command-line parser uses `HOME` to resolve relative paths; on Windows, use the default directory or configure `HOME`.
+@@ -222,7 +222,7 @@ For reproducibility across later code changes, use the source revision or releas
+ 
+ ## Architecture
+ 
+-Tartarus separates the specification of a simulation from the numerical machinery that executes it. A study chooses the lattice, the rate model, and the measurements; the KMC engine handles event scheduling and state updates; the batch runner or viewer determines how the simulation is used.
++Kinetalis separates the specification of a simulation from the numerical machinery that executes it. A study chooses the lattice, the rate model, and the measurements; the KMC engine handles event scheduling and state updates; the batch runner or viewer determines how the simulation is used.
+ 
+ ```text
+ studies/dealloying/          Study definitions and campaign factories
+@@ -311,7 +311,7 @@ The `--concurrency` argument controls throughput without modifying the physical
+ | [`apps/viewer/`](apps/viewer/), [`source/viewer/`](source/viewer/) | Graphical application and interactive simulation bridge |
+ | [`tests/`](tests/), [`tools/`](tools/) | Tests and auxiliary data-processing tools |
+ 
+-## Extending Tartarus
++## Extending Kinetalis
+ 
+ Most new research tasks can be implemented in the study layer while reusing the simulation core. A typical development path is:
+ 
+@@ -327,7 +327,7 @@ For a new physical event family (rather than a different rate for an existing ev
+ 
+ ## Interactive viewer
+ 
+-The graphical viewer uses Corrade, Magnum, Magnum Integration, SDL2, Dear ImGui, and ImPlot. The dependencies are tracked as Git submodules and are built only when `TARTARUS_BUILD_VIEWER=ON`.
++The graphical viewer uses Corrade, Magnum, Magnum Integration, SDL2, Dear ImGui, and ImPlot. The dependencies are tracked as Git submodules and are built only when `KINETALIS_BUILD_VIEWER=ON`.
+ 
+ ```powershell
+ git submodule update --init --recursive
+@@ -341,23 +341,23 @@ Offline rendering and other analysis tools in [`tools/`](tools/) are separate fr
+ 
+ ## Tests and development tools
+ 
+-The repository includes a `tartarus_tests` target, formatting rules in `.clang-format`, and static-analysis settings in `.clang-tidy`. The tests use Boost.UT headers; make these available to the compiler when building that target. Unit tests are independent of the graphical viewer.
++The repository includes a `kinetalis_tests` target, formatting rules in `.clang-format`, and static-analysis settings in `.clang-tidy`. The tests use Boost.UT headers; make these available to the compiler when building that target. Unit tests are independent of the graphical viewer.
+ 
+ A test build can be configured with:
+ 
+ ```sh
+ cmake -S . -B build/tests -G Ninja \
+   -DCMAKE_BUILD_TYPE=Debug \
+-  -DTARTARUS_BUILD_BATCH=OFF \
+-  -DTARTARUS_BUILD_VIEWER=OFF \
+-  -DTARTARUS_BUILD_TESTS=ON
+-cmake --build build/tests --target tartarus_tests --parallel
++  -DKINETALIS_BUILD_BATCH=OFF \
++  -DKINETALIS_BUILD_VIEWER=OFF \
++  -DKINETALIS_BUILD_TESTS=ON
++cmake --build build/tests --target kinetalis_tests --parallel
+ ctest --test-dir build/tests --output-on-failure
+ ```
+ 
+ ## Citation
+ 
+-Tartarus is available under the MIT License. For scientific work based on the software, please cite the repository and the relevant associated publication(s):
++Kinetalis is available under the MIT License. For scientific work based on the software, please cite the repository and the relevant associated publication(s):
+ 
+ - **G. Henkelmann, D. Waldow, M. Liu, L. Lührs, Y. Li, and J. Weissmüller**, “Self-Detachment and Subsurface Densification of Dealloyed Nanoporous Thin Films,” *Nano Letters* **22**(16), 6787–6793 (2022). https://doi.org/10.1021/acs.nanolett.2c02666
+ - **G. Henkelmann, X. Wu, and J. Weissmüller**, “Mitigating the Film–Substrate Decohesion in Nanoporous Metals,” *APL Materials* **13**, 091116 (2025). https://doi.org/10.1063/5.0287477
+@@ -366,4 +366,4 @@ The publication on pore growth, passivation, and bifurcation will be added after
+ 
+ ## License
+ 
+-Tartarus is released under the [MIT License](LICENSE). Third-party components retain their respective licenses.
++Kinetalis is released under the [MIT License](LICENSE). Third-party components retain their respective licenses.
+diff --git a/apps/CMakeLists.txt b/apps/CMakeLists.txt
+index a3315f7..792ee6f 100644
+--- a/apps/CMakeLists.txt
++++ b/apps/CMakeLists.txt
+@@ -1,7 +1,7 @@
+-if(TARTARUS_BUILD_BATCH)
++if(KINETALIS_BUILD_BATCH)
+     add_subdirectory(batch)
+ endif()
+ 
+-if(TARTARUS_BUILD_VIEWER)
++if(KINETALIS_BUILD_VIEWER)
+     add_subdirectory(viewer)
+ endif()
+diff --git a/apps/batch/CMakeLists.txt b/apps/batch/CMakeLists.txt
+index 8cb7894..700a7c8 100644
+--- a/apps/batch/CMakeLists.txt
++++ b/apps/batch/CMakeLists.txt
+@@ -1,10 +1,10 @@
+-add_executable(tartarus_batch main.cpp)
++add_executable(kinetalis_batch main.cpp)
+ 
+ target_link_libraries(
+-    tartarus_batch
++    kinetalis_batch
+     PRIVATE
+-        Tartarus::batch
+-        Tartarus::dealloying
++        Kinetalis::batch
++        Kinetalis::dealloying
+ )
+ 
+-tartarus_target_defaults(tartarus_batch)
++kinetalis_target_defaults(kinetalis_batch)
+diff --git a/apps/batch/options.h b/apps/batch/options.h
+index 56e9b36..bdada1b 100644
+--- a/apps/batch/options.h
++++ b/apps/batch/options.h
+@@ -79,7 +79,7 @@ namespace batch::options
+     }
+ 
+     inline constexpr auto help_text{
+-        "Usage: tartarus_batch [options]\n"
++        "Usage: kinetalis_batch [options]\n"
+         "\n"
+         "Options:\n"
+         "  --results-dir <path>   Results directory; default: {}\n"
+diff --git a/apps/viewer/CMakeLists.txt b/apps/viewer/CMakeLists.txt
+index 9a21f60..c5c05fd 100644
+--- a/apps/viewer/CMakeLists.txt
++++ b/apps/viewer/CMakeLists.txt
+@@ -1,34 +1,34 @@
+-add_executable(tartarus_viewer main.cpp)
++add_executable(kinetalis_viewer main.cpp)
+ 
+ target_link_libraries(
+-    tartarus_viewer
++    kinetalis_viewer
+     PRIVATE
+-        Tartarus::viewer
+-        Tartarus::dealloying
++        Kinetalis::viewer
++        Kinetalis::dealloying
+ )
+ 
+-tartarus_target_defaults(tartarus_viewer)
++kinetalis_target_defaults(kinetalis_viewer)
+ 
+ set_target_properties(
+-    tartarus_viewer
++    kinetalis_viewer
+     PROPERTIES
+-        VS_DEBUGGER_WORKING_DIRECTORY "$<TARGET_FILE_DIR:tartarus_viewer>"
++        VS_DEBUGGER_WORKING_DIRECTORY "$<TARGET_FILE_DIR:kinetalis_viewer>"
+ )
+ 
+ add_custom_command(
+-    TARGET tartarus_viewer
++    TARGET kinetalis_viewer
+     POST_BUILD
+     COMMAND "${CMAKE_COMMAND}" -E make_directory
+-        "$<TARGET_FILE_DIR:tartarus_viewer>/resources/shaders"
++        "$<TARGET_FILE_DIR:kinetalis_viewer>/resources/shaders"
+     COMMAND "${CMAKE_COMMAND}" -E make_directory
+-        "$<TARGET_FILE_DIR:tartarus_viewer>/resources/fonts"
++        "$<TARGET_FILE_DIR:kinetalis_viewer>/resources/fonts"
+     COMMAND "${CMAKE_COMMAND}" -E copy_if_different
+         "${PROJECT_SOURCE_DIR}/resources/shaders/shader.vert"
+         "${PROJECT_SOURCE_DIR}/resources/shaders/shader.frag"
+-        "$<TARGET_FILE_DIR:tartarus_viewer>/resources/shaders"
++        "$<TARGET_FILE_DIR:kinetalis_viewer>/resources/shaders"
+     COMMAND "${CMAKE_COMMAND}" -E copy_if_different
+         "${PROJECT_SOURCE_DIR}/resources/fonts/Inter Regular.ttf"
+         "${PROJECT_SOURCE_DIR}/resources/fonts/IBM Plex Sans Regular.ttf"
+-        "$<TARGET_FILE_DIR:tartarus_viewer>/resources/fonts/"
++        "$<TARGET_FILE_DIR:kinetalis_viewer>/resources/fonts/"
+     VERBATIM
+ )
+diff --git a/cmake/TartarusExternalDependencies.cmake b/cmake/KinetalisExternalDependencies.cmake
+similarity index 84%
+rename from cmake/TartarusExternalDependencies.cmake
+rename to cmake/KinetalisExternalDependencies.cmake
+index e1ccc6a..7423d71 100644
+--- a/cmake/TartarusExternalDependencies.cmake
++++ b/cmake/KinetalisExternalDependencies.cmake
+@@ -1,6 +1,6 @@
+ include_guard(GLOBAL)
+ 
+-function(tartarus_require_submodule name path marker)
++function(kinetalis_require_submodule name path marker)
+     if(NOT EXISTS "${PROJECT_SOURCE_DIR}/${path}/${marker}")
+         message(
+             FATAL_ERROR
+@@ -14,31 +14,31 @@ function(tartarus_require_submodule name path marker)
+     endif()
+ endfunction()
+ 
+-macro(tartarus_add_external_dependencies)
++macro(kinetalis_add_external_dependencies)
+     if(NOT EXISTS "${PROJECT_SOURCE_DIR}/external/magic_enum/magic_enum.hpp")
+         message(FATAL_ERROR "Missing vendored magic_enum headers at external/magic_enum.")
+     endif()
+ 
+-    add_library(tartarus_magic_enum INTERFACE)
+-    add_library(Tartarus::magic_enum ALIAS tartarus_magic_enum)
++    add_library(kinetalis_magic_enum INTERFACE)
++    add_library(Kinetalis::magic_enum ALIAS kinetalis_magic_enum)
+ 
+     target_include_directories(
+-        tartarus_magic_enum
++        kinetalis_magic_enum
+         SYSTEM INTERFACE
+             "${PROJECT_SOURCE_DIR}/external"
+     )
+ 
+-    if(TARTARUS_BUILD_VIEWER)
+-        tartarus_require_submodule(Corrade external/corrade CMakeLists.txt)
+-        tartarus_require_submodule(Magnum external/magnum CMakeLists.txt)
+-        tartarus_require_submodule(
++    if(KINETALIS_BUILD_VIEWER)
++        kinetalis_require_submodule(Corrade external/corrade CMakeLists.txt)
++        kinetalis_require_submodule(Magnum external/magnum CMakeLists.txt)
++        kinetalis_require_submodule(
+             "Magnum Integration"
+             external/magnum-integration
+             CMakeLists.txt
+         )
+-        tartarus_require_submodule(SDL2 external/SDL CMakeLists.txt)
+-        tartarus_require_submodule(Dear-ImGui external/imgui imgui.h)
+-        tartarus_require_submodule(ImPlot external/implot implot.h)
++        kinetalis_require_submodule(SDL2 external/SDL CMakeLists.txt)
++        kinetalis_require_submodule(Dear-ImGui external/imgui imgui.h)
++        kinetalis_require_submodule(ImPlot external/implot implot.h)
+ 
+         list(
+             PREPEND CMAKE_MODULE_PATH
+diff --git a/cmake/TartarusTargetDefaults.cmake b/cmake/KinetalisTargetDefaults.cmake
+similarity index 75%
+rename from cmake/TartarusTargetDefaults.cmake
+rename to cmake/KinetalisTargetDefaults.cmake
+index 805312c..570d595 100644
+--- a/cmake/TartarusTargetDefaults.cmake
++++ b/cmake/KinetalisTargetDefaults.cmake
+@@ -1,23 +1,23 @@
+ include_guard(GLOBAL)
+ 
+-function(tartarus_target_defaults target)
++function(kinetalis_target_defaults target)
+     target_compile_features(${target} PUBLIC cxx_std_23)
+ 
+     if(MSVC)
+         target_compile_options(${target} PRIVATE /W4 /permissive- /utf-8)
+ 
+-        if(TARTARUS_WARNINGS_AS_ERRORS)
++        if(KINETALIS_WARNINGS_AS_ERRORS)
+             target_compile_options(${target} PRIVATE /WX)
+         endif()
+     else()
+         target_compile_options(${target} PRIVATE -Wall -Wextra -Wpedantic)
+ 
+-        if(TARTARUS_WARNINGS_AS_ERRORS)
++        if(KINETALIS_WARNINGS_AS_ERRORS)
+             target_compile_options(${target} PRIVATE -Werror)
+         endif()
+     endif()
+ 
+-    if(TARTARUS_ENABLE_PCH)
++    if(KINETALIS_ENABLE_PCH)
+         target_precompile_headers(
+             ${target}
+             PRIVATE
+@@ -25,11 +25,11 @@ function(tartarus_target_defaults target)
+         )
+     endif()
+ 
+-    if(TARTARUS_ENABLE_CLANG_TIDY)
++    if(KINETALIS_ENABLE_CLANG_TIDY)
+         set_property(
+             TARGET ${target}
+             PROPERTY CXX_CLANG_TIDY
+-                "${TARTARUS_CLANG_TIDY}"
++                "${KINETALIS_CLANG_TIDY}"
+                 "--extra-arg=/EHsc"
+         )
+     endif()
+diff --git a/cmake/slurm_batch.sh b/cmake/slurm_batch.sh
+index 48ac2b6..3ae2331 100644
+--- a/cmake/slurm_batch.sh
++++ b/cmake/slurm_batch.sh
+@@ -1,5 +1,5 @@
+ #!/bin/bash
+-#SBATCH --job-name=tartarus
++#SBATCH --job-name=kinetalis
+ #SBATCH --ntasks=1
+ #SBATCH --mem=128G
+ #SBATCH --cpus-per-task=64
+@@ -16,4 +16,4 @@ module load gcc/14.2.0
+ 
+ export LD_LIBRARY_PATH="$(dirname "$(g++ -print-file-name=libstdc++.so.6)"):${LD_LIBRARY_PATH:-}"
+ 
+-srun "$1" --concurrency "$SLURM_CPUS_PER_TASK" --results-dir "$WORK/tartarus/"
++srun "$1" --concurrency "$SLURM_CPUS_PER_TASK" --results-dir "$WORK/kinetalis/"
+diff --git a/source/CMakeLists.txt b/source/CMakeLists.txt
+index 4c6bb45..79e3491 100644
+--- a/source/CMakeLists.txt
++++ b/source/CMakeLists.txt
+@@ -1,10 +1,10 @@
+ find_package(Threads REQUIRED)
+ 
+-add_library(tartarus_core STATIC)
+-add_library(Tartarus::core ALIAS tartarus_core)
++add_library(kinetalis_core STATIC)
++add_library(Kinetalis::core ALIAS kinetalis_core)
+ 
+ target_sources(
+-    tartarus_core
++    kinetalis_core
+     PRIVATE
+         lattice/lattice.cpp
+         lattice/path.cpp
+@@ -35,25 +35,25 @@ target_sources(
+ )
+ 
+ target_include_directories(
+-    tartarus_core
++    kinetalis_core
+     PUBLIC
+         "$<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/source>"
+ )
+ 
+ target_link_libraries(
+-    tartarus_core
++    kinetalis_core
+     PUBLIC
+-        Tartarus::magic_enum
++        Kinetalis::magic_enum
+         Threads::Threads
+ )
+ 
+-tartarus_target_defaults(tartarus_core)
++kinetalis_target_defaults(kinetalis_core)
+ 
+-add_library(tartarus_batch_runtime STATIC)
+-add_library(Tartarus::batch ALIAS tartarus_batch_runtime)
++add_library(kinetalis_batch_runtime STATIC)
++add_library(Kinetalis::batch ALIAS kinetalis_batch_runtime)
+ 
+ target_sources(
+-    tartarus_batch_runtime
++    kinetalis_batch_runtime
+     PRIVATE
+         batch/statistics/aggregate.cpp
+         batch/statistics/merge.cpp
+@@ -62,14 +62,14 @@ target_sources(
+ )
+ 
+ target_link_libraries(
+-    tartarus_batch_runtime
++    kinetalis_batch_runtime
+     PUBLIC
+-        Tartarus::core
++        Kinetalis::core
+ )
+ 
+-tartarus_target_defaults(tartarus_batch_runtime)
++kinetalis_target_defaults(kinetalis_batch_runtime)
+ 
+-if(TARTARUS_BUILD_VIEWER)
++if(KINETALIS_BUILD_VIEWER)
+     find_package(Corrade REQUIRED Main PluginManager)
+ 
+     find_package(
+@@ -87,29 +87,29 @@ if(TARTARUS_BUILD_VIEWER)
+     find_package(MagnumIntegration REQUIRED ImGui)
+ 
+     add_library(
+-        tartarus_implot STATIC
++        kinetalis_implot STATIC
+         "${PROJECT_SOURCE_DIR}/external/implot/implot.cpp"
+         "${PROJECT_SOURCE_DIR}/external/implot/implot_items.cpp"
+     )
+-    add_library(Tartarus::implot ALIAS tartarus_implot)
++    add_library(Kinetalis::implot ALIAS kinetalis_implot)
+ 
+     target_include_directories(
+-        tartarus_implot
++        kinetalis_implot
+         SYSTEM PUBLIC
+             "${PROJECT_SOURCE_DIR}/external/implot"
+     )
+ 
+     target_link_libraries(
+-        tartarus_implot
++        kinetalis_implot
+         PUBLIC
+             MagnumIntegration::ImGui
+     )
+ 
+-    add_library(tartarus_viewer_runtime STATIC)
+-    add_library(Tartarus::viewer ALIAS tartarus_viewer_runtime)
++    add_library(kinetalis_viewer_runtime STATIC)
++    add_library(Kinetalis::viewer ALIAS kinetalis_viewer_runtime)
+ 
+     target_sources(
+-        tartarus_viewer_runtime
++        kinetalis_viewer_runtime
+         PRIVATE
+             viewer/bridge.cpp
+             viewer/gui.cpp
+@@ -130,7 +130,7 @@ if(TARTARUS_BUILD_VIEWER)
+ 
+     if(WIN32)
+         target_sources(
+-            tartarus_viewer_runtime
++            kinetalis_viewer_runtime
+             PRIVATE
+                 viewer/dialog/windows.cpp
+         )
+@@ -143,10 +143,10 @@ if(TARTARUS_BUILD_VIEWER)
+     )
+ 
+     target_link_libraries(
+-        tartarus_viewer_runtime
++        kinetalis_viewer_runtime
+         PUBLIC
+-            Tartarus::core
+-            Tartarus::implot
++            Kinetalis::core
++            Kinetalis::implot
+             Corrade::Main
+             Corrade::PluginManager
+             Magnum::Magnum
+@@ -161,5 +161,5 @@ if(TARTARUS_BUILD_VIEWER)
+             MagnumIntegration::ImGui
+     )
+ 
+-    tartarus_target_defaults(tartarus_viewer_runtime)
++    kinetalis_target_defaults(kinetalis_viewer_runtime)
+ endif()
+diff --git a/source/viewer/gui.cpp b/source/viewer/gui.cpp
+index dd88082..b81b27d 100644
+--- a/source/viewer/gui.cpp
++++ b/source/viewer/gui.cpp
+@@ -70,7 +70,7 @@ void GUI::draw()
+     newFrame();
+ 
+     ImGui::SetNextWindowPos(ImVec2{ 4, 8 });
+-    ImGui::Begin("Tartarus", nullptr, ImGuiWindowFlags_AlwaysAutoResize);
++    ImGui::Begin("Kinetalis", nullptr, ImGuiWindowFlags_AlwaysAutoResize);
+ 
+     showSimulationControls();
+     showSimulationStatus();
+diff --git a/source/viewer/viewer.cpp b/source/viewer/viewer.cpp
+index 0032df0..ed41524 100644
+--- a/source/viewer/viewer.cpp
++++ b/source/viewer/viewer.cpp
+@@ -26,7 +26,7 @@ Viewer::Viewer(const Arguments& arguments)
+           arguments,
+           Configuration{}
+               .setWindowFlags(Configuration::WindowFlag::Resizable)
+-              .setTitle("Tartarus")
++              .setTitle("Kinetalis")
+               .setSize({ 1440, 1080 }),
+           GLConfiguration{}.addFlags(GLConfiguration::Flag::QuietLog)
+           //.setSampleCount(16)
+diff --git a/studies/CMakeLists.txt b/studies/CMakeLists.txt
+index 412c467..dbe8345 100644
+--- a/studies/CMakeLists.txt
++++ b/studies/CMakeLists.txt
+@@ -1,23 +1,23 @@
+-add_library(tartarus_dealloying STATIC)
+-add_library(Tartarus::dealloying ALIAS tartarus_dealloying)
++add_library(kinetalis_dealloying STATIC)
++add_library(Kinetalis::dealloying ALIAS kinetalis_dealloying)
+ 
+ target_sources(
+-    tartarus_dealloying
++    kinetalis_dealloying
+     PRIVATE        
+         dealloying/analysis/electrochemistry.cpp
+         dealloying/analysis/regime.cpp
+ )
+ 
+ target_include_directories(
+-    tartarus_dealloying
++    kinetalis_dealloying
+     PUBLIC
+         "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>"
+ )
+ 
+ target_link_libraries(
+-    tartarus_dealloying
++    kinetalis_dealloying
+     PUBLIC
+-        Tartarus::core
++        Kinetalis::core
+ )
+ 
+-tartarus_target_defaults(tartarus_dealloying)
++kinetalis_target_defaults(kinetalis_dealloying)
+diff --git a/tests/CMakeLists.txt b/tests/CMakeLists.txt
+index 1303a10..bb70790 100644
+--- a/tests/CMakeLists.txt
++++ b/tests/CMakeLists.txt
+@@ -1,5 +1,5 @@
+ add_executable(
+-    tartarus_tests
++    kinetalis_tests
+     main.cpp
+     kmc.cpp
+     lattice.cpp
+@@ -10,11 +10,11 @@ add_subdirectory(math)
+ add_subdirectory(physics)
+ 
+ target_link_libraries(
+-    tartarus_tests
++    kinetalis_tests
+     PRIVATE
+-        Tartarus::core
++        Kinetalis::core
+ )
+ 
+-tartarus_target_defaults(tartarus_tests)
++kinetalis_target_defaults(kinetalis_tests)
+ 
+-add_test(NAME tartarus_tests COMMAND tartarus_tests)
++add_test(NAME kinetalis_tests COMMAND kinetalis_tests)
+diff --git a/tests/chemistry/CMakeLists.txt b/tests/chemistry/CMakeLists.txt
+index 1439bb4..016e702 100644
+--- a/tests/chemistry/CMakeLists.txt
++++ b/tests/chemistry/CMakeLists.txt
+@@ -1,4 +1,4 @@
+-target_sources(tartarus_tests PRIVATE
++target_sources(kinetalis_tests PRIVATE
+     atom.cpp
+     composition.cpp
+     element.cpp
+diff --git a/tests/math/CMakeLists.txt b/tests/math/CMakeLists.txt
+index 8cdac0a..9640879 100644
+--- a/tests/math/CMakeLists.txt
++++ b/tests/math/CMakeLists.txt
+@@ -1,4 +1,4 @@
+-target_sources(tartarus_tests PRIVATE
++target_sources(kinetalis_tests PRIVATE
+     format.cpp
+     functions.cpp
+     interop_physics.cpp
+diff --git a/tests/physics/CMakeLists.txt b/tests/physics/CMakeLists.txt
+index afd2451..d911005 100644
+--- a/tests/physics/CMakeLists.txt
++++ b/tests/physics/CMakeLists.txt
+@@ -1,4 +1,4 @@
+-target_sources(tartarus_tests PRIVATE
++target_sources(kinetalis_tests PRIVATE
+     arithmetic.cpp
+     catalogue.cpp
+     constants.cpp
+diff --git a/tools/CMakeLists.txt b/tools/CMakeLists.txt
+index cbe8d76..6311e3f 100644
+--- a/tools/CMakeLists.txt
++++ b/tools/CMakeLists.txt
+@@ -1,4 +1,4 @@
+-if(TARTARUS_BUILD_TESTS)
++if(KINETALIS_BUILD_TESTS)
+     add_executable(
+         physics_literals_generator
+         EXCLUDE_FROM_ALL
+@@ -11,7 +11,7 @@ if(TARTARUS_BUILD_TESTS)
+             "${PROJECT_SOURCE_DIR}/source"
+     )
+ 
+-    tartarus_target_defaults(physics_literals_generator)
++    kinetalis_target_defaults(physics_literals_generator)
+ 
+     set_target_properties(
+         physics_literals_generator

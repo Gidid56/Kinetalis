@@ -1,0 +1,154 @@
+{
+  "version": 6,
+  "cmakeMinimumRequired": {
+    "major": 3,
+    "minor": 25,
+    "patch": 0
+  },
+  "configurePresets": [
+    {
+      "name": "base",
+      "hidden": true,
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build/${presetName}",
+      "cacheVariables": {
+        "CMAKE_EXPORT_COMPILE_COMMANDS": "ON",
+        "KINETALIS_ENABLE_PCH": "ON"
+      }
+    },
+    {
+      "name": "ubuntu",
+      "hidden": true,
+      "inherits": "base",
+      "cacheVariables": {
+        "CMAKE_C_COMPILER": "/usr/bin/gcc-14",
+        "CMAKE_CXX_COMPILER": "/usr/bin/g++-14"
+      }
+    },
+    {
+      "name": "tuhh-hpc",
+      "hidden": true,
+      "inherits": "base",
+      "environment": {
+        "GCC_ROOT": "/nfs/rzpool/gcc/gcc-14.2.0",
+        "PATH": "$env{GCC_ROOT}/bin:$penv{PATH}",
+        "LD_LIBRARY_PATH": "$env{GCC_ROOT}/lib64:$penv{LD_LIBRARY_PATH}"
+      },
+      "cacheVariables": {
+        "CMAKE_C_COMPILER": "$env{GCC_ROOT}/bin/gcc",
+        "CMAKE_CXX_COMPILER": "$env{GCC_ROOT}/bin/g++"
+      },
+      "vendor": {
+        "microsoft.com/VisualStudioRemoteSettings/CMake/1.0": {
+          "sourceDir": "$env{HOME}/.vs/$ms{projectDirName}"
+        }
+      }
+    },
+    {
+      "name": "batch-release",
+      "displayName": "Windows | Batch | Release",
+      "inherits": "base",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "KINETALIS_BUILD_BATCH": "ON",
+        "KINETALIS_BUILD_VIEWER": "OFF",
+        "KINETALIS_BUILD_TESTS": "OFF"
+      }
+    },
+    {
+      "name": "viewer-release",
+      "displayName": "Windows | Viewer | Release",
+      "inherits": "base",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "KINETALIS_BUILD_BATCH": "OFF",
+        "KINETALIS_BUILD_VIEWER": "ON",
+        "KINETALIS_BUILD_TESTS": "OFF"
+      }
+    },
+    {
+      "name": "viewer-debug",
+      "displayName": "Windows | Viewer | Debug",
+      "inherits": "base",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "KINETALIS_BUILD_BATCH": "OFF",
+        "KINETALIS_BUILD_VIEWER": "ON",
+        "KINETALIS_BUILD_TESTS": "OFF",
+        "KINETALIS_ENABLE_CLANG_TIDY": "ON"
+      }
+    },
+    {
+      "name": "tests-debug",
+      "displayName": "Windows | Tests | Debug",
+      "inherits": "base",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "KINETALIS_BUILD_BATCH": "OFF",
+        "KINETALIS_BUILD_VIEWER": "OFF",
+        "KINETALIS_BUILD_TESTS": "ON",
+        "KINETALIS_ENABLE_CLANG_TIDY": "ON"
+      }
+    },
+    {
+      "name": "ubuntu-batch-release",
+      "displayName": "Ubuntu | Batch | Release",
+      "inherits": [
+        "batch-release",
+        "ubuntu"
+      ]
+    },
+    {
+      "name": "tuhh-hpc-batch-release",
+      "displayName": "TUHH HPC | Batch | Release",
+      "inherits": [
+        "batch-release",
+        "tuhh-hpc"
+      ]
+    }
+  ],
+  "buildPresets": [
+    {
+      "name": "build-batch-release",
+      "displayName": "Windows | Batch | Release",
+      "configurePreset": "batch-release",
+      "targets": [
+        "kinetalis_batch"
+      ]
+    },
+    {
+      "name": "build-viewer-release",
+      "displayName": "Windows | Viewer | Release",
+      "configurePreset": "viewer-release",
+      "targets": [
+        "kinetalis_viewer"
+      ]
+    },
+    {
+      "name": "build-viewer-debug",
+      "displayName": "Windows | Viewer | Debug",
+      "configurePreset": "viewer-debug",
+      "targets": [
+        "kinetalis_viewer"
+      ]
+    },
+    {
+      "name": "build-tests-debug",
+      "displayName": "Windows | Tests | Debug",
+      "configurePreset": "tests-debug",
+      "targets": [
+        "kinetalis_tests"
+      ]
+    }
+  ],
+  "testPresets": [
+    {
+      "name": "test-tests-debug",
+      "displayName": "Windows | Tests | Debug",
+      "configurePreset": "tests-debug",
+      "output": {
+        "outputOnFailure": true
+      }
+    }
+  ]
+}

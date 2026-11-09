@@ -1,0 +1,70 @@
+Checks: >
+  -*,
+  readability-identifier-naming,
+  readability-inconsistent-declaration-parameter-name,
+  readability-operators-representation
+
+HeaderFilterRegex: '.*[\\/](source|studies|apps|tests)[\\/].*'
+SystemHeaders: false
+
+CheckOptions:
+  # Entry points such as main() are exempt.
+  readability-identifier-naming.IgnoreMainLikeFunctions: true
+
+  # Namespaces
+  readability-identifier-naming.NamespaceCase: lower_case
+
+  # Temporary exception for the existing random_ namespace.
+  # A future rename to rng would be cleaner.
+  readability-identifier-naming.NamespaceIgnoredRegexp: '^random_$'
+
+  # Types
+  readability-identifier-naming.ClassCase: CamelCase
+  readability-identifier-naming.StructCase: CamelCase
+  readability-identifier-naming.UnionCase: CamelCase
+  readability-identifier-naming.EnumCase: CamelCase
+  readability-identifier-naming.TypeAliasCase: CamelCase
+  readability-identifier-naming.TypedefCase: CamelCase
+  readability-identifier-naming.ConceptCase: CamelCase
+
+  # Functions and methods
+  readability-identifier-naming.FunctionCase: lower_case
+  readability-identifier-naming.MethodCase: lower_case
+
+  # Variables and parameters
+  readability-identifier-naming.VariableCase: lower_case
+  readability-identifier-naming.ParameterCase: lower_case
+
+  # Data members
+  readability-identifier-naming.MemberCase: lower_case
+
+  readability-identifier-naming.PublicMemberCase: lower_case
+
+  readability-identifier-naming.ProtectedMemberCase: lower_case
+  readability-identifier-naming.ProtectedMemberSuffix: '_'
+
+  readability-identifier-naming.PrivateMemberCase: lower_case
+  readability-identifier-naming.PrivateMemberSuffix: '_'
+
+  # Constants
+  readability-identifier-naming.ConstantCase: lower_case
+  readability-identifier-naming.ConstexprVariableCase: lower_case
+
+  # Established scientific symbols are intentionally exempt.
+  readability-identifier-naming.GlobalConstexprVariableIgnoredRegexp: '^(F|G|R|N_A|K_cd|R_inf|R_k|Z_0|G_0|E_h|k_B|k_J|mu_B|mu_N|nu_Cs)$'
+
+  # Template parameters
+  readability-identifier-naming.TemplateParameterCase: CamelCase
+  readability-identifier-naming.TypeTemplateParameterCase: CamelCase
+  readability-identifier-naming.TemplateTemplateParameterCase: CamelCase
+  readability-identifier-naming.ValueTemplateParameterCase: lower_case
+  readability-identifier-naming.ValueTemplateParameterIgnoredRegexp: '^([A-Z]|Θ)[0-9]*$'
+  readability-identifier-naming.TypeAliasIgnoredRegexp: '^(type|.*_type)$'
+
+  # Preprocessor
+  readability-identifier-naming.MacroDefinitionCase: UPPER_CASE
+
+  # Intentionally omitted:
+  # readability-identifier-naming.ScopedEnumConstantCase
+
+  readability-operators-representation.BinaryOperators: 'and;or;not;!='

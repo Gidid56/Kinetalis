@@ -1,0 +1,19 @@
+[submodule "external/corrade"]
+	path = external/corrade
+	url = https://github.com/mosra/corrade.git
+[submodule "external/magnum"]
+	path = external/magnum
+	url = https://github.com/mosra/magnum.git
+[submodule "external/magnum-integration"]
+	path = external/magnum-integration
+	url = https://github.com/mosra/magnum-integration.git
+[submodule "external/SDL"]
+	path = external/SDL
+	url = https://github.com/libsdl-org/SDL.git
+	branch = SDL2
+[submodule "external/imgui"]
+	path = external/imgui
+	url = https://github.com/ocornut/imgui.git
+[submodule "external/implot"]
+	path = external/implot
+	url = https://github.com/epezent/implot.git

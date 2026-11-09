@@ -1,0 +1,19 @@
+/build/
+/CMakeUserPresets.json
+
+# Visual Studio / CMake
+.vs/
+.vscode/
+out/
+build/
+CMakeUserPresets.json
+CMakeCache.txt
+CMakeFiles/
+
+# Generated data and archives
+/archive/
+/results/
+
+# External dependencies
+/external/*
+!/external/magic_enum/

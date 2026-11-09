@@ -1,0 +1,157 @@
+# Kinetalis C++ formatting
+# Target: clang-format 22.1.x or newer
+#
+# Place this file at the repository root as:
+#   .clang-format
+
+BasedOnStyle: LLVM
+Language: Cpp
+Standard: Latest
+
+# Indentation and line length
+IndentWidth: 4
+ContinuationIndentWidth: 4
+ConstructorInitializerIndentWidth: 4
+TabWidth: 4
+UseTab: Never
+ColumnLimit: 100
+
+# Structural braces
+BreakBeforeBraces: Custom
+
+BraceWrapping:
+  AfterClass: true
+  AfterControlStatement: Always
+  AfterEnum: true
+  AfterFunction: true
+  AfterNamespace: true
+  AfterStruct: true
+  AfterUnion: true
+  AfterExternBlock: true
+  BeforeCatch: true
+  BeforeElse: true
+  BeforeWhile: true
+  SplitEmptyFunction: false
+
+# Braced initialization
+SpaceBeforeCpp11BracedList: false
+Cpp11BracedListStyle: Block
+SpaceInEmptyBraces: Block
+BreakAfterOpenBracketBracedList: true
+BreakBeforeCloseBracketBracedList: true
+
+# Compact constructs
+AllowShortFunctionsOnASingleLine: All
+AllowShortBlocksOnASingleLine: Never
+AllowShortIfStatementsOnASingleLine: Never
+AllowShortLoopsOnASingleLine: false
+AllowShortCaseLabelsOnASingleLine: true
+AllowShortEnumsOnASingleLine: true
+AllowShortLambdasOnASingleLine: Inline
+AllowShortNamespacesOnASingleLine: true
+RequiresClausePosition: WithPreceding
+IndentRequiresClause: false
+
+# Function declarations, definitions, and calls
+AlignAfterOpenBracket: false
+BreakAfterOpenBracketFunction: true
+BreakBeforeCloseBracketFunction: false
+BreakFunctionDefinitionParameters: false
+BinPackArguments: false
+BinPackParameters: OnePerLine
+AllowAllArgumentsOnNextLine: false
+AllowAllParametersOfDeclarationOnNextLine: false
+BreakAfterReturnType: Automatic
+
+# Templates
+BreakTemplateDeclarations: Yes
+
+# Expressions
+BreakBeforeBinaryOperators: None
+AlignOperands: Align
+BreakBeforeTernaryOperators: true
+
+# Constructors and inheritance
+BreakConstructorInitializers: BeforeColon
+PackConstructorInitializers: CurrentLine
+BreakInheritanceList: BeforeColon
+
+# Pointers, references, and qualifiers
+DerivePointerAlignment: false
+PointerAlignment: Left
+ReferenceAlignment: Left
+QualifierAlignment: Leave
+
+# Classes and access labels
+IndentAccessModifiers: false
+AccessModifierOffset: -4
+EmptyLineAfterAccessModifier: Never
+EmptyLineBeforeAccessModifier: LogicalBlock
+
+# Switch statements
+IndentCaseLabels: true
+IndentCaseBlocks: false
+
+# Namespaces
+NamespaceIndentation: All
+CompactNamespaces: false
+WrapNamespaceBodyWithEmptyLines: Never
+FixNamespaceComments: false
+
+# Avoid alignment-only diff noise
+AlignConsecutiveAssignments: None
+AlignConsecutiveDeclarations: None
+AlignConsecutiveMacros: Consecutive
+
+# Empty lines and comments
+MaxEmptyLinesToKeep: 1
+SeparateDefinitionBlocks: Leave
+KeepEmptyLines:
+  AtEndOfFile: false
+  AtStartOfBlock: false
+  AtStartOfFile: false
+
+ReflowComments: Never
+SpacesBeforeTrailingComments: 1
+
+# General spacing
+SpaceBeforeParens: ControlStatements
+SpaceBeforeAssignmentOperators: true
+SpaceBeforeCtorInitializerColon: true
+SpaceBeforeInheritanceColon: true
+SpaceBeforeRangeBasedForLoopColon: true
+
+# Using declarations
+SortUsingDeclarations: Lexicographic
+
+# Include ordering:
+#   1. pch.h
+#   2. corresponding/main header
+#   3. other project headers
+#   4. standard and external headers
+SortIncludes:
+  Enabled: true
+  IgnoreCase: false
+  IgnoreExtension: false
+
+IncludeBlocks: Regroup
+IncludeCategories:
+  - Regex: '^["<](.*/)?pch\.h[">]$'
+    Priority: -2
+    SortPriority: -2
+    CaseSensitive: true
+
+  - Regex: '^"core\.h"$'
+    Priority: -1
+    SortPriority: -1
+    CaseSensitive: true
+
+  - Regex: '^".*"$'
+    Priority: 1
+    SortPriority: 1
+    CaseSensitive: true
+
+  - Regex: '^<.*>$'
+    Priority: 2
+    SortPriority: 2
+    CaseSensitive: true

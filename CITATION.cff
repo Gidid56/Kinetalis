@@ -1,0 +1,12 @@
+cff-version: 1.2.0
+message: >-
+  If you use Kinetalis in scientific work, please cite this software
+  and the relevant associated publication(s) listed in the README.
+title: "Kinetalis: A kinetic Monte Carlo framework for atomistic lattice simulations"
+type: software
+authors:
+  - family-names: "Henkelmann"
+    given-names: "Gideon"
+    orcid: "https://orcid.org/0000-0001-5056-4590"
+repository-code: "https://github.com/Gidid56/Kinetalis"
+license: MIT
