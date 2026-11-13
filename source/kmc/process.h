@@ -54,7 +54,6 @@ public:
     process::Key static_key() const;
     static std::size_t number_keys();
 
-    bool is_allowed() const;
     bool is_active() const { return event_ != Event::none; }
 
     auto event() const { return event_; }
@@ -99,8 +98,8 @@ private:
 class kmc::process::Record
 {
 public:
-    explicit Record(lattice::Site&);
-    explicit Record(lattice::Path const&);
+    Record(lattice::Site&, Event, bool allowed);
+    Record(lattice::Path const&, Event, bool allowed);
 
     void execute(Lattice&);
 

@@ -117,10 +117,11 @@ process::Record KmcSimulation<Rules>::select_random_process()
             throw std::runtime_error{ "tree not updated correctly" };
 
     if (process_index == site.process_index())
-        return process::Record{ site };
+        return process::Record{ site, decltype(rules_.site)::event, rules_.site.allowed(site) };
 
-    else
-        return process::Record{ Path{ &site, lattice_.neighbor(process_index - site_index - 1) } };
+    auto const path{ Path{ &site, lattice_.neighbor(process_index - site_index - 1) } };
+
+    return process::Record{ path, decltype(rules_.path)::event, rules_.path.allowed(path) };
 }
 
 template <class Rules>
@@ -161,29 +162,25 @@ void KmcSimulation<Rules>::update(Site& site)
 template <class Rules>
 Rate KmcSimulation<Rules>::rate_sum(Site& site)
 {
-    Rate rate_sum{};
+    Rate sum{};
 
-    if (not site.is_active())
+    lattice::Index index{ site.process_index() };
+
+    auto add_process = [&](auto const& location, auto const& rule)
     {
-        clear_processes(site);
-        return rate_sum;
-    }
+        auto const process{ make_process(location, rule) };
+        auto const key{ process_key(process) };
 
-    lattice::Index process_index{ site.process_index() };
+        set_process(index++, key);
+        sum += process_rates_.at(key).second;
+    };
 
-    {
-        auto const key{ process_key(Process{ site }) };
-        set_process(process_index++, key);
-        rate_sum += process_rates_.at(key).second;
-    }
+    add_process(site, rules_.site);
 
     for (auto neighbor : lattice_.neighbors(site))
-    {
-        auto const key{ process_key(Process{ Path{ &site, neighbor } }) };
-        set_process(process_index++, key);
-        rate_sum += process_rates_.at(key).second;
-    }
-    return rate_sum;
+        add_process(Path{ &site, neighbor }, rules_.path);
+
+    return sum;
 }
 
 Rate Simulation::block_rate(Site& site)
@@ -204,6 +201,9 @@ Rate Simulation::block_rate(Site& site)
 
 process::Key Simulation::process_key(Process process)
 {
+    if (not process.is_active())
+        return {};
+
     if constexpr (staticProcessKeys)
         return process.static_key();
 
@@ -244,26 +244,32 @@ void KmcSimulation<Rules>::update_static_rates()
     process_rates_.reserve(Process::number_keys());
     process_rates_.emplace_back(Process{}, Rate{});
 
-    constexpr auto process_elements{ utility::prepend(Element::none, lattice::activeElements) };
+    constexpr auto elements{ utility::prepend(Element::none, lattice::activeElements) };
 
-    auto add_process = [&](auto event, auto element, auto coordination) {
-        Process process{ event, element, coordination };
-        if (not process.is_allowed())
-            return;
+    auto add_rule = [&](auto const& rule) {
+        using Rule = std::remove_cvref_t<decltype(rule)>;
 
-        auto key{ process.static_key() };
-        Rate rate{ model_->rate(process) };
+        for (auto element : elements)
+            for (Coordination coordination{}; coordination < lattice::max_coordination;
+                ++coordination)
+            {
+                Process process{ Rule::event, element, coordination };
 
-        if (key >= process_rates_.size())
-            process_rates_.resize(key + 1);
+                if (not rule.supports(process))
+                    continue;
 
-        process_rates_.at(key) = { process, rate };
+                auto const key{ process.static_key() };
+                auto const rate{ model_->rate(process) };
+
+                if (key >= process_rates_.size())
+                    process_rates_.resize(key + 1);
+
+                process_rates_.at(key) = { process, rate };
+            }
     };
 
-    for (auto event : enabledEvents)
-        for (auto element : process_elements)
-            for (Coordination coord{}; coord < lattice::max_coordination; ++coord)
-                add_process(event, element, coord);
+    add_rule(rules_.site);
+    add_rule(rules_.path);
 
     if (process_counts_.empty())
         process_counts_.resize(process_rates_.size());
@@ -296,15 +302,15 @@ void Simulation::set_process(lattice::Index index, process::Key new_key)
         ++process_counts_.at(new_key);
 }
 
-void Simulation::clear_processes(Site& site)
-{
-    auto process_index{ site.process_index() };
-
-    set_process(process_index++, {});
-
-    for ([[maybe_unused]] auto neighbor : lattice_.neighbors(site))
-        set_process(process_index++, {});
-}
+//void Simulation::clear_processes(Site& site)
+//{
+//    auto process_index{ site.process_index() };
+//
+//    set_process(process_index++, {});
+//
+//    for ([[maybe_unused]] auto neighbor : lattice_.neighbors(site))
+//        set_process(process_index++, {});
+//}
 
 double Simulation::rejection_fraction() const
 {

@@ -31,7 +31,7 @@ public:
     Rate block_rate(lattice::Site&);
 
     void set_process(lattice::Index, process::Key);
-    void clear_processes(lattice::Site&);
+    //void clear_processes(lattice::Site&);
     process::Key process_key(Process);
 
     void update_dynamic_rates();

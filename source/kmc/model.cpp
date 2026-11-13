@@ -8,9 +8,6 @@ using namespace kmc;
 
 Frequency Model::rate(Process const& process) const
 {
-    if (not process.is_allowed())
-        return {};
-
     auto tst_rate = physics::equations::kinetics::tst_rate(
         transmission_coefficient(process),
         std::max<Energy>(0_eV, activation_gibbs_energy(process)),

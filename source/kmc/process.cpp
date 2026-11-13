@@ -9,7 +9,7 @@ using namespace kmc;
 using namespace lattice;
 using enum Element;
 
-// TODO fix deposition element to Ag, check for allowed via site / model, not in process.
+// TODO fix deposition element to Ag
 
 Process::Process(Event event, Element element, Coordination coordination)
     : event_{ event },
@@ -31,17 +31,6 @@ Process::Process(Event event, Path const& path)
       element_neighbors_{ path.front().element_neighbors() }
 { }
 
-bool Process::is_allowed() const
-{
-    switch (event_)
-    {
-        case Event::diffusion: return element_ != Element::none;
-        case Event::dissolution: return element_ == Element::Ag;
-        case Event::deposition: return element_ == Element::none and coordination_ >= 1;
-    }
-    return false;
-}
-
 static_assert(
     not elementSpecificNeighbors or not kmc::staticProcessKeys,
     "Element-specific neighbor energies require dynamic process keys.");
@@ -61,7 +50,7 @@ namespace offset
 
 process::Key Process::static_key() const
 {
-    if (not is_allowed())
+    if (not is_active())
         return {};
 
     switch (event_)
@@ -125,15 +114,15 @@ std::formatter<Process>::format(Process const& process, std::format_context& con
     return out;
 }
 
-process::Record::Record(lattice::Site& site)
-    : outcome{ site.is_allowed() ? process::Outcome::accepted : process::Outcome::rejected },
-      process{ site.event(), site },
+process::Record::Record(Site& site, Event event, bool allowed)
+    : outcome{ allowed ? Outcome::accepted : Outcome::rejected },
+      process{ event, site },
       path{ &site, &site }
 { }
 
-process::Record::Record(lattice::Path const& path)
-    : outcome{ path.is_allowed() ? process::Outcome::accepted : process::Outcome::rejected },
-      process{ path.event(), path },
+process::Record::Record(Path const& path, Event event, bool allowed)
+    : outcome{ allowed ? Outcome::accepted : Outcome::rejected },
+      process{ event, path },
       path{ path }
 { }
 
