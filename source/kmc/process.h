@@ -1,6 +1,21 @@
 #pragma once
 #include "lattice/path.h"
 #include "lattice/types.h"
+
+template <typename T>
+concept SiteRule = requires(T const& rule, lattice::Site const& site, kmc::Process const& process) {
+    { T::event } -> std::convertible_to<kmc::Event>;
+    { rule.allowed(site) } -> std::convertible_to<bool>;
+    { rule.supports(process) } -> std::convertible_to<bool>;
+};
+
+template <typename T>
+concept PathRule = requires(T const& rule, lattice::Path const& path, kmc::Process const& process) {
+    { T::event } -> std::convertible_to<kmc::Event>;
+    { rule.allowed(path) } -> std::convertible_to<bool>;
+    { rule.supports(process) } -> std::convertible_to<bool>;
+};
+
 /*
    Stores essential data required to identify strictly equivalent simulation processes.
 

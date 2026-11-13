@@ -6,6 +6,7 @@ target_sources(
     PRIVATE        
         dealloying/analysis/electrochemistry.cpp
         dealloying/analysis/regime.cpp
+        dealloying/models.cpp
 )
 
 target_include_directories(

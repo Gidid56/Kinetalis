@@ -3,8 +3,8 @@
 #include "enums.h"
 #include "physics/physics.h"
 
-#include <functional>
 #include <filesystem>
+#include <functional>
 
 namespace kmc
 {
@@ -26,15 +26,14 @@ namespace kmc
     using Steps = std::vector<Step>;
 
     using namespace physics::unit::literals;
-    
+
     using Temperature = physics::quantity::AbsoluteTemperature;
 
-    using physics::quantity::Time;
     using physics::quantity::Frequency;
+    using physics::quantity::Time;
 
     using Rate = Frequency;
     using Rates = std::vector<Rate>;
-    
 
     namespace rate_tree { struct Interface; }
 
