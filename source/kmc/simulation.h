@@ -27,13 +27,6 @@ public:
 
     virtual Status run(AnalysisPlan&, std::stop_token = {}) = 0;
 
-
-    Rate block_rate(lattice::Site&);
-
-    void set_process(lattice::Index, process::Key);
-    void clear_processes(lattice::Site&);
-    process::Key process_key(Process);
-
     void update_dynamic_rates();
 
     double rejection_fraction() const;
@@ -49,7 +42,6 @@ public:
     auto step() const { return step_; }
     auto time() const { return time_; }
 
-    auto& rate_tree() const { return rate_tree_; }
     auto& process_rates() const { return process_rates_; }
     auto& process_counts() const { return process_counts_; }
 
@@ -70,14 +62,8 @@ protected:
     Time time_{};
     std::atomic<Status> status_{};
 
-    std::unique_ptr<rate_tree::Interface> rate_tree_;
-    Rates site_rates_;
-    process::Keys processes_;
     std::vector<std::pair<Process, Rate>> process_rates_{ { Process{}, Rate{} } };
     std::vector<std::size_t> process_counts_{ 0 };
-    std::unordered_map<Process, process::Key> dynamic_keys_;
-
-    static constexpr lattice::Site* reservoir{ nullptr };
 
     utility::Timer timer_{}, tracked_{};
 };
@@ -96,20 +82,34 @@ public:
         : Simulation{ setup.make_lattice, setup.make_model, setup.seed },
           rules_{ setup.rules }
     {
+        initialize_rates();
         update_rates();
     }
 
     Status run(AnalysisPlan&, std::stop_token = {}) override;
 
+    auto& rate_tree() const { return rate_tree_; }
+
 private:
+    Rate block_rate(lattice::Site&);
+    process::Key process_key(Process);
+    void set_process(lattice::Index, process::Key);
+    void clear_processes(lattice::Site&);
+
     Rate rate_sum(lattice::Site&);
     process::Record select_random_process();
+
+    void initialize_rates();
+    void update_rates();
+    void update_static_rates();
 
     void update(lattice::Site&);
     void update_neighbors(lattice::Site&);
 
-    void update_rates();
-    void update_static_rates();
+    std::unique_ptr<rate_tree::Interface> rate_tree_;
+    Rates site_rates_;
+    process::Keys processes_;
+    std::unordered_map<Process, process::Key> dynamic_keys_;
 
     [[no_unique_address]] Rules rules_;
 };

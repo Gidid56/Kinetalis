@@ -27,11 +27,15 @@ Simulation::Simulation(
     for (auto& site : lattice_.sites())
         site.set_pristine(true);
 
+    //model_.update();
+}
+
+template <class Rules>
+void kmc::KmcSimulation<Rules>::initialize_rates()
+{
     rate_tree_ = rate_tree::make_entry(lattice_.sites().size());
     site_rates_.resize(lattice_.sites().size());
     processes_.resize(lattice_.sites().size() + lattice_.neighbors().size());
-
-    //model_.update();
 }
 
 template <class Rules>
@@ -199,7 +203,8 @@ Rate KmcSimulation<Rules>::rate_sum(Site& site)
     return sum;
 }
 
-Rate Simulation::block_rate(Site& site)
+template <class Rules>
+Rate KmcSimulation<Rules>::block_rate(Site& site)
 {
     constexpr auto block_size{ std::size_t{ 1 } << rate_tree::baseLevel };
 
@@ -215,7 +220,8 @@ Rate Simulation::block_rate(Site& site)
     return sum;
 }
 
-process::Key Simulation::process_key(Process process)
+template <class Rules>
+process::Key KmcSimulation<Rules>::process_key(Process process)
 {
     if (not process.is_active())
         return {};
@@ -295,13 +301,8 @@ void KmcSimulation<Rules>::update_static_rates()
         throw std::logic_error{ "Process key space changed after initialization." };
 }
 
-void Simulation::update_dynamic_rates()
-{
-    for (auto& [process, rate] : process_rates_ | std::views::drop(1))
-        rate = model_->rate(process);
-}
-
-void Simulation::set_process(lattice::Index index, process::Key new_key)
+template <class Rules>
+void KmcSimulation<Rules>::set_process(lattice::Index index, process::Key new_key)
 {
     auto& old_key{ processes_.at(index) };
 
@@ -318,7 +319,8 @@ void Simulation::set_process(lattice::Index index, process::Key new_key)
         ++process_counts_.at(new_key);
 }
 
-void Simulation::clear_processes(Site& site)
+template <class Rules>
+void KmcSimulation<Rules>::clear_processes(Site& site)
 {
     auto index{ site.process_index() };
 
@@ -326,6 +328,12 @@ void Simulation::clear_processes(Site& site)
 
     for (std::size_t i{}; i < site.max_neighbors(); ++i)
         set_process(index++, {});
+}
+
+void Simulation::update_dynamic_rates()
+{
+    for (auto& [process, rate] : process_rates_ | std::views::drop(1))
+        rate = model_->rate(process);
 }
 
 double Simulation::rejection_fraction() const
