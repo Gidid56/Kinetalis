@@ -17,6 +17,12 @@ namespace physics::equations::kinetics
         return k_B * temperature;
     }
 
+    // Characteristic thermal voltage k_B T / e.
+    constexpr auto thermal_voltage(Like<AbsoluteTemperature> auto temperature)
+    {
+        return k_B * temperature / constant::elementary_charge;
+    }
+
     // Transition-state-theory attempt frequency k_B T / h.
     constexpr auto tst_attempt_frequency(Like<AbsoluteTemperature> auto temperature)
     {

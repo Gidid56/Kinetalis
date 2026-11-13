@@ -76,6 +76,13 @@ void Regime::capture_snapshot(kmc::Simulation const& kmc)
     phases_.capture_snapshot(kmc);
     event_flux_.capture_snapshot(kmc);
 
+    auto const pore_volume{ lattice_volume_ * phases_.fraction(pore) };
+    auto const surface_excess{
+        sphere::radius(pore_volume) / phases_.correlation_length(pore) * 4. / 3. - 1.0
+    };
+    if (surface_excess > max_surface_excess_)
+        max_surface_excess_ = surface_excess;
+
     for (auto const condition : enum_values<Condition>())
         if ((marker_conditions_ & condition) != Condition::none)
             if (not has_reached(condition) and meets(condition))
@@ -203,4 +210,10 @@ void Regime::write_final(kmc::Simulation const&)
     }
 
     write<csv>(root_path() / "regimes", text);
+
+    std::string text2{ "key:condition,excess\n" };
+
+    std::format_to(std::back_inserter(text2), "final,{}", max_surface_excess_);
+
+    write<csv>(root_path() / "surface_excess", text2);
 }

@@ -18,7 +18,7 @@ int run_viewer()
 
     viewer.createSimulation(
         //setups::schematic(3),
-        setups::pore_dealloying(CampaignType::dealloying, 10, -37.1_mV + 80_mV, 300_K),
+        setups::pore_dealloying(CampaignType::passivation, 10, -16_mV, 300_K),
         analysis_plans::regime_outcome
         );
 

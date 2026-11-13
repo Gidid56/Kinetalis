@@ -1,0 +1,4 @@
+key:writer,samples,min_snapshot_step_mean,min_snapshot_step_median,min_snapshot_step_std_dev,snapshot_scale_factor_mean,snapshot_scale_factor_median,snapshot_scale_factor_std_dev
+composition,20,100,100,0,1.0500000000000003,1.05,2.2781295785038269e-16
+performance,20,100,100,0,1.0500000000000003,1.05,2.2781295785038269e-16
+regime,20,10,10,0,1.0100000000000002,1.01,2.2781295785038269e-16

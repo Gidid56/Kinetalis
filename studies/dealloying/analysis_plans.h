@@ -41,7 +41,7 @@ namespace studies::dealloying::analysis_plans
     {
         kmc::AnalysisPlan plan = basic(path);
 
-        plan.add<control::DurationCap>(24_h);
+        plan.add<control::DurationCap>(1_h);
 
         //plan.add<analysis::Electrochemistry>(path);
         //plan.add<output::process::Kinetics>(path);
@@ -58,12 +58,12 @@ namespace studies::dealloying::analysis_plans
 
             // Regime-detection thresholds and lookback periods
             // Values correspond to the criteria used in the published analysis [...]
-            .set_threshold(bifurcated, 1.0) // R_vol / ℓ_ac
+            .set_threshold(bifurcated, 1.25) // R_vol / ℓ_ac
             .set_threshold(passivated, 1.0) // f_pas
             .set_threshold(porous, 0.8)     // φ_pristine
-            .set_threshold(arrested, 1e-6)  // Γ_dis / Γ_tot
+            .set_threshold(arrested, 1e-4)  // Γ_dis / Γ_tot
 
-            //.set_stop_conditions(bifurcated | passivated)
+            .set_stop_conditions(bifurcated | passivated)
             //.set_lookback_period(coarsening, 0.1)
             //.set_stop_conditions(coarsening)
             ;

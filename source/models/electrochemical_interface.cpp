@@ -76,13 +76,7 @@ Energy models::ElectrochemicalInterface::activation_gibbs_energy(Process const& 
 #include "physics/equations/kinetics.h"
 using namespace physics::equations::kinetics;
 
-// Erlebacher
-constexpr AbsoluteTemperature standard_temperature{ 300_K };
-constexpr Ratio dissolution_diffusion_ratio{ 1e-9 };
-
-static const auto standard_reference_potential{ -log(dissolution_diffusion_ratio) *
-                                                thermal_energy(standard_temperature) /
-                                                physics::constant::elementary_charge };
+static const auto reference_potential_erlebacher{ -log(1e-9) * thermal_voltage(300_K) };
 
 std::string models::ElectrochemicalInterface::output_text() const
 {
@@ -101,11 +95,11 @@ std::string models::ElectrochemicalInterface::output_text() const
     std::format_to(
         std::back_inserter(text),
         "Symmetry factor = {}\n"
-        //"Standard reference potential = {:V}\n"
-        "Reference potential = {:V}\n",
+        "Reference potential = {:V}\n"
+        "Reference potential (Erlebacher) = {:V}\n",
         constants_.charge_transfer_coefficient,
-        //standard_reference_potential,
-        constants_.reference_potential);
+        constants_.reference_potential,
+        reference_potential_erlebacher);
 
     if constexpr (std::ranges::contains(enabledEvents, Event::deposition))
         std::format_to(

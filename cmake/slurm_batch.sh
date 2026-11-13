@@ -1,8 +1,8 @@
 #!/bin/bash
 #SBATCH --job-name=kinetalis
 #SBATCH --ntasks=1
-#SBATCH --mem=128G
-#SBATCH --cpus-per-task=64
+#SBATCH --mem=64G
+#SBATCH --cpus-per-task=28
 #SBATCH --time=21-00:00:00
 #SBATCH --output=slurm/%x-%j.out
 #SBATCH --error=slurm/%x-%j.err

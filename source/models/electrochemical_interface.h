@@ -11,8 +11,7 @@ public:
 
     struct Constants
     {
-        ElectricPotential reference_potential{ 0.5236_V };
-        //ElectricPotential reference_potential{ 0.535737863990985_V };
+        ElectricPotential reference_potential{ 0.535737863990985_V };
         Energy solvation_energy{ 0.75_eV };
         double charge_transfer_coefficient{ 1.0 };
     };

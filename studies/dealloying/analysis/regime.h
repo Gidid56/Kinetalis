@@ -97,6 +97,8 @@ private:
     Fraction master_alloy_fraction_{};
     Volume lattice_volume_{};
 
+    double max_surface_excess_{};
+
     output::Phases phases_;
     output::Surface surface_;
     output::process::EventFlux event_flux_;

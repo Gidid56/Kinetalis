@@ -15,7 +15,7 @@ int batch::run(Options const& options)
 
     Runner batch{ options.results_directory, options.concurrency_count };
 
-    auto const successful = batch.run(dealloying::campaigns::pore_surface_morphology);
+    auto const successful = batch.run(dealloying::campaigns::critical_potential_bifurcation);
 
     return successful ? EXIT_SUCCESS : EXIT_FAILURE;
 }

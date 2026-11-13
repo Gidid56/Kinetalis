@@ -16,6 +16,12 @@ namespace studies::dealloying::postprocess
         batch::campaign::merge(campaignPath, "surface");
         batch::campaign::summarize(campaignPath, "surface");
     }
+
+    void find_surface_excess(std::filesystem::path const& campaignPath)
+    {
+        batch::campaign::merge(campaignPath, "surface_excess");
+        batch::campaign::summarize(campaignPath, "surface_excess");
+    }
 }
 
 namespace studies::dealloying::campaigns
@@ -28,10 +34,10 @@ namespace studies::dealloying::campaigns
     std::vector const temperature_range{ sequence::linear<kmc::Temperature>(250_K, 350_K, 25_K) };
 
     std::vector const critical_potential_search_range{
-        sequence::linear<ElectricPotential>(-10_mV, 10_mV, 2_mV)
+        sequence::linear<ElectricPotential>(-30_mV, 10_mV, 2_mV)
     };
     std::vector const critical_potential_wide_search_range{
-        sequence::linear<ElectricPotential>(-25_mV, 25_mV, 5_mV)
+        sequence::linear<ElectricPotential>(-50_mV, 0_mV, 10_mV)
     };
     std::vector const critical_morphology_range{
         sequence::linear<ElectricPotential>(-77.1_mV, 82.9_mV, 20_mV)
@@ -127,6 +133,20 @@ namespace studies::dealloying::campaigns
                 temperature_range),
             .analysis_plan = analysis_plans::regime_outcome,
             .postprocessor = postprocess::find_regime_outcome,
+        };
+    }
+
+    inline batch::Campaign critical_potential_bifurcation()
+    {
+        return {
+            .name = "surface excess (x07)",
+            //.seed = seeds[2],
+            .replicate_count = 20,
+            .setups =
+                generate_setups(CampaignType::bifurcation, critical_potential_search_range,
+                { 7 }),
+            .analysis_plan = analysis_plans::regime_outcome,
+            .postprocessor = postprocess::find_surface_excess,
         };
     }
 

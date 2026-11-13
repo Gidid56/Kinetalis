@@ -67,19 +67,19 @@ static constexpr ElectricPotential critical_potential(
 
     switch (x0)
     {
-        case 2: potentials = { 0.7379_V, 0.7179_V, 0.6879_V }; break;
+        case 2: potentials = { 0.7500_V, 0.7300_V, 0.7000_V }; break;
 
-        case 4: potentials = { 0.7829_V, 0.7673_V, 0.7379_V }; break;
-        case 7: potentials = { 0.8329_V, 0.8098_V, 0.7929_V }; break;
+        case 4: potentials = { 0.7950_V, 0.7794_V, 0.7500_V }; break;
+        case 7: potentials = { 0.8450_V, 0.8219_V, 0.8050_V }; break;
 
-        case 10: potentials = { 0.8546_V, 0.8371_V, 0.8215_V }; break;
+        case 10: potentials = { 0.8667_V, 0.8492_V, 0.8336_V }; break;
 
-        case 15: potentials = { 0.8829_V, 0.8686_V, 0.8579_V }; break;
-        case 20: potentials = { 0.9029_V, 0.8906_V, 0.8829_V }; break;
-        case 25: potentials = { 0.9229_V, 0.9096_V, 0.9029_V }; break;
-        case 30: potentials = { 0.9379_V, 0.9233_V, 0.9229_V }; break;
-        case 35: potentials = { 0.9629_V, 0.9433_V, 0.9479_V }; break;
-        case 40: potentials = { 0.9829_V, 0.9624_V, 0.9729_V }; break;
+        case 15: potentials = { 0.8950_V, 0.8807_V, 0.8700_V }; break;
+        case 20: potentials = { 0.9150_V, 0.9027_V, 0.8950_V }; break;
+        case 25: potentials = { 0.9350_V, 0.9217_V, 0.9150_V }; break;
+        case 30: potentials = { 0.9500_V, 0.9354_V, 0.9350_V }; break;
+        case 35: potentials = { 0.9750_V, 0.9554_V, 0.9600_V }; break;
+        case 40: potentials = { 0.9950_V, 0.9745_V, 0.9850_V }; break;
 
         default: return {};
     }
