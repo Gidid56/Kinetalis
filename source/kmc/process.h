@@ -24,16 +24,6 @@ namespace kmc
         [[no_unique_address]] Site site;
         [[no_unique_address]] Path path;
     };
-
-    template <class Location, class R>
-    requires Rule<R, Location>
-    Process make_process(Location const& location, R const& rule)
-    {
-        if (not rule.active(location))
-            return Process{};
-
-        return Process{ R::event, location };
-    }
 }
 /*
    Stores essential data required to identify strictly equivalent simulation processes.
@@ -118,6 +108,19 @@ public:
     Process process;
     lattice::Path path;
 };
+
+namespace kmc
+{
+    template <class Location, class R>
+    requires Rule<R, Location>
+    Process make_process(Location const& location, R const& rule)
+    {
+        if (not rule.active(location))
+            return Process{};
+
+        return Process{ R::event, location };
+    }
+}
 
 template <>
 struct std::hash<kmc::Process>

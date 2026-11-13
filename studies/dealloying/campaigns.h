@@ -56,7 +56,7 @@ namespace studies::dealloying::campaigns
         std::vector<int> compositions = { 10 },
         std::vector<kmc::Temperature> temperatures = { 300_K })
     {
-        std::vector<kmc::Setup> setups;
+        std::vector<Setup> setups;
 
         for (auto temperature : temperatures)
             for (lattice::Composition::Quantity const x0 : compositions)
@@ -152,7 +152,7 @@ namespace studies::dealloying::campaigns
 
     inline auto radius_scan(auto min_radius = 1_nm, auto max_radius = 50_nm)
     {
-        std::vector<kmc::Setup> setups;
+        std::vector<Setup> setups;
 
         for (bool inverted : { true, false })
             for (auto radius{ 0_nm }; radius < max_radius; radius += min_radius)
@@ -173,7 +173,7 @@ namespace studies::dealloying::campaigns
 
     inline auto generate_modulation()
     {
-        std::vector<kmc::Setup> setups;
+        std::vector<Setup> setups;
 
         for (auto& process : modulated_processes())
             for (auto ratio : ratios)

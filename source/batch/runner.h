@@ -58,7 +58,7 @@ private:
     std::size_t concurrency_count_;
 
     std::string seed_generator_name_;
-    std::vector<kmc::Setup<Rules>::Seed> seeds_;
+    std::vector<typename kmc::Setup<Rules>::Seed> seeds_;
 
     std::map<sample::State, std::size_t> counts_{
         { sample::State::completed, 0 },

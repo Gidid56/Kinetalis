@@ -13,7 +13,7 @@ int batch::run(Options const& options)
     std::println("Working directory = {}", std::filesystem::current_path().string());
     std::println("Results directory = {}", options.results_directory.string());
 
-    Runner batch{ options.results_directory, options.concurrency_count };
+    batch::Runner<dealloying::Rules> batch{ options.results_directory, options.concurrency_count };
 
     auto const successful = batch.run(dealloying::campaigns::pore_surface_morphology);
 
