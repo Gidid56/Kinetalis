@@ -6,25 +6,10 @@
 #include "site.h"
 
 using namespace lattice;
-//using kmc::Event;
-
-//Event Path::event() const
-//{
-//    if (not is_active())
-//        return Event::none;
-//
-//    return Event::diffusion;
-//}
-//
-//bool Path::is_active() const { return front().is_active() and is_open(); }
-//
-//bool Path::is_allowed() const
-//{
-//    return this->is_active() and front().is_allowed() and
-//           (back().coordination() >= 3 or front().coordination() == 0);
-//}
 
 bool Path::is_open() const { return front().is_occupied() and back().is_vacant(); }
+
+bool Path::is_same_layer() const { return front().layer() == back().layer(); }
 
 void Path::execute_process(Lattice& lattice)
 {
@@ -43,8 +28,6 @@ void Path::execute_process(Lattice& lattice)
     if (front().is_occupied() and back().is_vacant())
         std::swap(sites_[0], sites_[1]);
 }
-
-bool Path::is_same_layer() const { return front().layer() == back().layer(); }
 
 math::Vector<3, Displacement> Path::path_vector(Lattice const& lattice) const
 {

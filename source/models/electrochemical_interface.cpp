@@ -89,8 +89,7 @@ std::string models::ElectrochemicalInterface::output_text() const
         temperature(),
         potential_);
 
-    if constexpr (std::ranges::contains(enabledEvents, Event::deposition))
-        std::format_to(std::back_inserter(text), "Concentration = {:mol/l}\n", concentration_);
+    std::format_to(std::back_inserter(text), "Concentration = {:mol/l}\n", concentration_);
 
     std::format_to(
         std::back_inserter(text),
@@ -101,11 +100,10 @@ std::string models::ElectrochemicalInterface::output_text() const
         constants_.reference_potential,
         reference_potential_erlebacher);
 
-    if constexpr (std::ranges::contains(enabledEvents, Event::deposition))
-        std::format_to(
-            std::back_inserter(text),
-            "Solvation energy = {:meV}\n",
-            constants_.solvation_energy);
+    std::format_to(
+        std::back_inserter(text),
+        "Solvation energy = {:meV}\n",
+        constants_.solvation_energy);
 
     return text;
 }

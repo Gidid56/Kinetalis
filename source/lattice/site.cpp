@@ -5,7 +5,6 @@
 #include "lattice/lattice.h"
 
 using namespace lattice;
-using kmc::Event;
 
 void Site::set_element(Lattice& lattice, Element element)
 {
@@ -37,36 +36,6 @@ void Site::insert(Site* neighbor, Index neighbor_index)
 
     ++max_neighbors_;
 }
-
-//bool Site::is_active() const
-//{
-//    if constexpr (not std::ranges::contains(kmc::enabledEvents, Event::deposition))
-//        if (element_ == Element::none)
-//            return false;
-//
-//    if (element_ == Element::Au and vacant_neighbors() <= 2)
-//        return false;
-//
-//    return not is_bulk();
-//}
-//
-//bool Site::is_allowed() const { return is_active(); }
-//
-//Event Site::event() const
-//{
-//    if (not is_active())
-//        return Event::none;
-//
-//    if constexpr (std::ranges::contains(kmc::enabledEvents, Event::dissolution))
-//        if (element_ == Element::Ag)
-//            return Event::dissolution;
-//
-//    if constexpr (std::ranges::contains(kmc::enabledEvents, Event::deposition))
-//        if (element_ == Element::none)
-//            return Event::deposition;
-//
-//    return Event::none;
-//}
 
 void Site::execute_process(Lattice& lattice)
 {

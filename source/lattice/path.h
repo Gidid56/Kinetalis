@@ -21,14 +21,10 @@ class lattice::Path
 public:
     explicit Path(Site* left, Site* right) : sites_{ left, right } { }
 
-    //kmc::Event event() const;
-    //bool is_active() const;
-    //bool is_allowed() const;
-
     bool is_open() const;
-    void execute_process(Lattice&);
-
     bool is_same_layer() const;
+
+    void execute_process(Lattice&);
 
     math::Vector<3, Displacement> path_vector(Lattice const&) const;
     std::vector<Position> transition_states(Lattice const&) const;

@@ -1,6 +1,5 @@
 #pragma once
 #include "chemistry/chemistry.h"
-#include "enums.h"
 #include "math/math.h"
 #include "physics/physics.h"
 #include "utility/enums.h"

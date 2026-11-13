@@ -1,6 +1,5 @@
 #pragma once
 #include "chemistry/element.h"
-#include "enums.h"
 #include "physics/physics.h"
 
 #include <filesystem>
@@ -8,14 +7,25 @@
 
 namespace kmc
 {
+    enum class Event : std::uint8_t
+    {
+        none,
+        diffusion,
+        dissolution,
+        deposition,
+    };
+
     using chemistry::Element;
 
-    // Enable or disable events here if desired
-    inline constexpr std::array enabledEvents{
-        Event::diffusion,
-        Event::dissolution,
-        //Event::deposition,
-    };
+    namespace process
+    {
+        enum class Outcome : std::uint8_t
+        {
+            active,
+            accepted,
+            rejected,
+        };
+    }
 
     inline constexpr bool staticProcessKeys{ true }, stochasticResidenceTime{ true };
 }

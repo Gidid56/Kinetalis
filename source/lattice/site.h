@@ -65,10 +65,6 @@ public:
 
     void insert(Site*, Index);
 
-    //bool is_active() const;
-    //bool is_allowed() const;
-    //kmc::Event event() const;
-
     void execute_process(Lattice&);
     void update_neighbors(Lattice&, std::int_fast8_t);
 

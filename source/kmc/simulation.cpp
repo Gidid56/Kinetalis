@@ -162,8 +162,8 @@ void KmcSimulation<Rules>::update(Site& site)
 template <class Rules>
 Rate KmcSimulation<Rules>::rate_sum(Site& site)
 {
-    auto const site_active{ rules_.site.active(site) };
-    auto const path_active{ rules_.path.source_active(site) };
+    const bool site_active{ rules_.site.active(site) };
+    const bool path_active{ rules_.path.source_active(site) };
 
     if (not site_active and not path_active)
     {
@@ -171,23 +171,30 @@ Rate KmcSimulation<Rules>::rate_sum(Site& site)
         return {};
     }
 
+    lattice::Index index{ site.process_index() };
     Rate sum{};
 
-    lattice::Index index{ site.process_index() };
-
-    auto add_process = [&](auto const& location, auto const& rule)
-    {
-        auto const process{ make_process(location, rule) };
-        auto const key{ process_key(process) };
-
+    auto add_process = [&](process::Key key) {
         set_process(index++, key);
         sum += process_rates_.at(key).second;
     };
 
-    add_process(site, rules_.site);
+    add_process(
+        site_active ? process_key(Process{ decltype(rules_.site)::event, site }) : process::Key{});
+
+    if (not path_active)
+    {
+        for (std::size_t i{}; i < site.max_neighbors(); ++i)
+            set_process(index++, {});
+
+        return sum;
+    }
 
     for (auto neighbor : lattice_.neighbors(site))
-        add_process(Path{ &site, neighbor }, rules_.path);
+    {
+        auto const path{ Path{ &site, neighbor } };
+        add_process(process_key(make_process(path, rules_.path)));
+    }
 
     return sum;
 }
@@ -313,12 +320,12 @@ void Simulation::set_process(lattice::Index index, process::Key new_key)
 
 void Simulation::clear_processes(Site& site)
 {
-    auto process_index{ site.process_index() };
+    auto index{ site.process_index() };
 
-    set_process(process_index++, {});
+    set_process(index++, {});
 
-    for ([[maybe_unused]] auto neighbor : lattice_.neighbors(site))
-        set_process(process_index++, {});
+    for (std::size_t i{}; i < site.max_neighbors(); ++i)
+        set_process(index++, {});
 }
 
 double Simulation::rejection_fraction() const

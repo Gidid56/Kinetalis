@@ -171,10 +171,8 @@ std::string global::settings()
 
     settings += std::format(
         "\nSimulation Settings\n"
-        "enabledEvents = {}\n"
         "staticProcessKeys = {}\n"
         "stochasticResidenceTime = {}\n",
-        format_range(kmc::enabledEvents),
         kmc::staticProcessKeys,
         kmc::stochasticResidenceTime);
     return settings;
