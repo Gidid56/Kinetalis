@@ -73,8 +73,8 @@ protected:
     std::unique_ptr<rate_tree::Interface> rate_tree_;
     Rates site_rates_;
     process::Keys processes_;
-    std::vector<std::pair<Process, Rate>> process_rates_;
-    std::vector<std::size_t> process_counts_;
+    std::vector<std::pair<Process, Rate>> process_rates_{ { Process{}, Rate{} } };
+    std::vector<std::size_t> process_counts_{ 0 };
     std::unordered_map<Process, process::Key> dynamic_keys_;
 
     static constexpr lattice::Site* reservoir{ nullptr };

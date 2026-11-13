@@ -223,19 +223,21 @@ process::Key Simulation::process_key(Process process)
     if constexpr (staticProcessKeys)
         return process.static_key();
 
-    auto iterator{ dynamic_keys_.find(process) };
+    if (auto it{ dynamic_keys_.find(process) }; it != dynamic_keys_.end())
+        return it->second;
 
-    if (iterator != std::end(dynamic_keys_))
-        return iterator->second;
+    if (process_rates_.size() > std::numeric_limits<process::Key>::max())
+        throw std::overflow_error{ "Increase process::Key size." };
 
-    if (std::size(dynamic_keys_) > std::numeric_limits<process::Key>::max())
-        throw std::overflow_error{ "increase Process::Key size" };
+    auto const key{ static_cast<process::Key>(process_rates_.size()) };
 
-    auto&& [pair, _]{
-        dynamic_keys_.emplace(process, static_cast<process::Key>(std::size(dynamic_keys_)))
-    };
-    process_rates_.emplace_back(process, model_->rate(process));
-    return pair->second;
+    auto const rate{ model_->rate(process) };
+
+    dynamic_keys_.emplace(process, key);
+    process_rates_.emplace_back(process, rate);
+    process_counts_.emplace_back(0);
+
+    return key;
 }
 
 template <class Rules>
@@ -295,10 +297,8 @@ void KmcSimulation<Rules>::update_static_rates()
 
 void Simulation::update_dynamic_rates()
 {
-    for (auto&& [process, rate] : process_rates_)
-    {
+    for (auto& [process, rate] : process_rates_ | std::views::drop(1))
         rate = model_->rate(process);
-    }
 }
 
 void Simulation::set_process(lattice::Index index, process::Key new_key)
