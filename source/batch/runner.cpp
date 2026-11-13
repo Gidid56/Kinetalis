@@ -212,7 +212,7 @@ void Runner<Rules>::run_sample(std::size_t sample_index) const
     auto const path{ sample_path(sample_index) };
     std::filesystem::create_directories(path);
 
-    kmc::Simulation simulation{ setup };
+    kmc::KmcSimulation<Rules> simulation{ setup };
     auto analysis_plan{ std::invoke(campaign_.analysis_plan, path) };
 
     simulation.run(analysis_plan);

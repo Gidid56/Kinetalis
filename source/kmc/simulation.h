@@ -18,31 +18,22 @@ public:
         analysed,
     };
 
-    explicit Simulation(Setup const&);
-
     Simulation(Simulation const&) = delete;
 
     Simulation(Simulation&&) = delete;
     Simulation& operator=(Simulation&&) = delete;
 
-    ~Simulation() = default;
+    virtual ~Simulation() = default;
 
-    Status run(AnalysisPlan&, std::stop_token = {});
+    virtual Status run(AnalysisPlan&, std::stop_token = {}) = 0;
 
-    process::Record select_random_process();
-
-    void update(lattice::Site&);
-    void update_neighbors(lattice::Site&);
 
     Rate block_rate(lattice::Site&);
-    Rate rate_sum(lattice::Site&);
 
     void set_process(lattice::Index, process::Key);
     void clear_processes(lattice::Site&);
     process::Key process_key(Process);
 
-    void update_rates();
-    void update_static_rates();
     void update_dynamic_rates();
 
     double rejection_fraction() const;
@@ -65,7 +56,12 @@ public:
     auto& rng() { return rng_; }
     auto& rng() const { return rng_; }
 
-private:
+protected:
+    explicit Simulation(
+        lattice::Generator const& make_lattice,
+        model::Generator const& make_model,
+        std::optional<random_::Engine::seed_type> seed);
+
     lattice::Lattice lattice_;
     std::unique_ptr<kmc::Model> model_;
     random_::Engine rng_;
@@ -84,6 +80,38 @@ private:
     static constexpr lattice::Site* reservoir{ nullptr };
 
     utility::Timer timer_{}, tracked_{};
+};
+
+namespace kmc
+{
+    template <class Rules>
+    class KmcSimulation;
+}
+
+template <class Rules>
+class kmc::KmcSimulation final : public Simulation
+{
+public:
+    explicit KmcSimulation(Setup<Rules> const& setup)
+        : Simulation{ setup.make_lattice, setup.make_model, setup.seed },
+          rules_{ setup.rules }
+    {
+        update_rates();
+    }
+
+    Status run(AnalysisPlan&, std::stop_token = {}) override;
+
+private:
+    Rate rate_sum(lattice::Site&);
+    process::Record select_random_process();
+
+    void update(lattice::Site&);
+    void update_neighbors(lattice::Site&);
+
+    void update_rates();
+    void update_static_rates();
+
+    [[no_unique_address]] Rules rules_;
 };
 
 template <>

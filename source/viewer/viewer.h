@@ -13,7 +13,8 @@ public:
     explicit Viewer(const Arguments& = { argc, argv });
     ~Viewer();
 
-    kmc::Simulation& createSimulation(kmc::Setup const&, kmc::PlanFactory);
+    template <class Rules>
+    kmc::Simulation& createSimulation(kmc::Setup<Rules> const&, kmc::PlanFactory);
 
     Viewer& load(Lattice&);
     Viewer& setTask(Task);

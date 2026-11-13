@@ -86,11 +86,12 @@ Viewer::~Viewer()
     ImGui::DestroyContext();
 }
 
-kmc::Simulation& Viewer::createSimulation(kmc::Setup const& setup, kmc::PlanFactory planFactory)
+template <class Rules>
+kmc::Simulation& Viewer::createSimulation(kmc::Setup<Rules> const& setup, kmc::PlanFactory planFactory)
 {
     stopWorker();
 
-    simulation_ = std::make_unique<kmc::Simulation>(setup);
+    simulation_ = std::make_unique<kmc::KmcSimulation<Rules>>(setup);
     analysisPlan_ = planFactory({});
 
     auto& lattice{ simulation_->mutable_lattice() };

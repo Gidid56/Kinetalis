@@ -127,13 +127,13 @@ std::formatter<Process>::format(Process const& process, std::format_context& con
 
 process::Record::Record(lattice::Site& site)
     : outcome{ site.is_allowed() ? process::Outcome::accepted : process::Outcome::rejected },
-      process{ site },
+      process{ site.event(), site },
       path{ &site, &site }
 { }
 
 process::Record::Record(lattice::Path const& path)
     : outcome{ path.is_allowed() ? process::Outcome::accepted : process::Outcome::rejected },
-      process{ path },
+      process{ path.event(), path },
       path{ path }
 { }
 

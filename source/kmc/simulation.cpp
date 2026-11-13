@@ -14,10 +14,13 @@ using lattice::Site;
 static_assert(rate_tree::baseLevel <= rate_tree::maxHeight);
 static_assert(rate_tree::allocationBlockLevels > 0);
 
-Simulation::Simulation(Setup const& setup)
-    : lattice_{ setup.make_lattice() },
-      model_{ setup.make_model() },
-      rng_{ setup.seed }
+Simulation::Simulation(
+    lattice::Generator const& make_lattice,
+    model::Generator const& make_model,
+    std::optional<random_::Engine::seed_type> seed)
+    : lattice_{ make_lattice() },
+      model_{ make_model() },
+      rng_{ seed }
 {
     lattice_.apply_fill_function(rng_);
 
@@ -29,10 +32,10 @@ Simulation::Simulation(Setup const& setup)
     processes_.resize(lattice_.sites().size() + lattice_.neighbors().size());
 
     //model_.update();
-    update_rates();
 }
 
-Simulation::Status Simulation::run(AnalysisPlan& analysis_plan, std::stop_token token)
+template <class Rules>
+Simulation::Status KmcSimulation<Rules>::run(AnalysisPlan& analysis_plan, std::stop_token token)
 {
     utility::Guard guard{ timer_ };
 
@@ -89,7 +92,8 @@ Simulation::Status Simulation::run(AnalysisPlan& analysis_plan, std::stop_token 
     return status_ = Status::analysed;
 }
 
-process::Record Simulation::select_random_process()
+template <class Rules>
+process::Record KmcSimulation<Rules>::select_random_process()
 {
     auto selected_rate{ rate_tree_->rate_sum() * rng_.probability() };
 
@@ -116,17 +120,18 @@ process::Record Simulation::select_random_process()
         return process::Record{ site };
 
     else
-        return process::Record{ Path{ &site,
-            lattice_.neighbor(process_index - site_index - 1) } };
+        return process::Record{ Path{ &site, lattice_.neighbor(process_index - site_index - 1) } };
 }
 
-void Simulation::update_neighbors(Site& site)
+template <class Rules>
+void KmcSimulation<Rules>::update_neighbors(Site& site)
 {
     for (auto neighbor : lattice_.neighbors(site))
         update(*neighbor);
 }
 
-void Simulation::update(Site& site)
+template <class Rules>
+void KmcSimulation<Rules>::update(Site& site)
 {
     //site.setClassification(lattice_.classification(site));
 
@@ -153,7 +158,8 @@ void Simulation::update(Site& site)
     site.set_dirty(false);
 }
 
-Rate Simulation::rate_sum(Site& site)
+template <class Rules>
+Rate KmcSimulation<Rules>::rate_sum(Site& site)
 {
     Rate rate_sum{};
 
@@ -216,7 +222,8 @@ process::Key Simulation::process_key(Process process)
     return pair->second;
 }
 
-void Simulation::update_rates()
+template <class Rules>
+void KmcSimulation<Rules>::update_rates()
 {
     if constexpr (staticProcessKeys)
         update_static_rates();
@@ -230,7 +237,8 @@ void Simulation::update_rates()
     }
 }
 
-void Simulation::update_static_rates()
+template <class Rules>
+void KmcSimulation<Rules>::update_static_rates()
 {
     process_rates_.clear();
     process_rates_.reserve(Process::number_keys());
