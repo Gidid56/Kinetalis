@@ -28,9 +28,11 @@ namespace studies::dealloying::rules
     {
         static constexpr auto event = kmc::Event::diffusion;
 
+        lattice::Coordination max_source_coordination{ 9 }, min_target_coordination{ 2 };
+
         bool source_active(lattice::Site const& site) const
         {
-            return site.is_occupied() and site.vacant_neighbors() >= 3;
+            return site.is_occupied() and site.coordination() <= max_source_coordination;
         }
 
         bool active(lattice::Path const& path) const
@@ -40,8 +42,8 @@ namespace studies::dealloying::rules
 
         bool allowed(lattice::Path const& path) const
         {
-            return active(path) and
-                   (path.back().coordination() >= 3 or path.front().coordination() == 0);
+            return active(path) and (path.back().coordination() > min_target_coordination or
+                                        path.front().coordination() == 0);
         }
 
         bool supports(kmc::Process const& process) const

@@ -398,7 +398,7 @@ void Viewer::scrollEvent(ScrollEvent& event)
     camera_->zoom(1.0f - 0.1f * delta);
 }
 
-#include "../../studies/dealloying/models.h"
+#include "../../studies/dealloying/rules.h"
 
 template kmc::Simulation& viewer::Viewer::createSimulation<studies::dealloying::Rules>(
     kmc::Setup<studies::dealloying::Rules> const&,

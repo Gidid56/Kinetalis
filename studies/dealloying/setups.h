@@ -2,7 +2,7 @@
 #include "kmc/setup.h"
 #include "lattice/lattice.h"
 #include "models/linear_bond_breaking.h"
-#include "models.h"
+#include "rules.h"
 #include "parameters.h"
 
 namespace studies::dealloying::setups

@@ -289,7 +289,7 @@ void KmcSimulation<Rules>::update_static_rates()
     add_rule(rules_.site);
     add_rule(rules_.path);
 
-    if (process_counts_.empty())
+    if (process_counts_.size() == 1)
         process_counts_.resize(process_rates_.size());
     else if (process_counts_.size() != process_rates_.size())
         throw std::logic_error{ "Process key space changed after initialization." };
@@ -349,6 +349,6 @@ Duration Simulation::tracked_time() const
     return Duration{ std::chrono::duration<double>{ tracked_.duration() }.count() };
 }
 
-#include "../studies/dealloying/models.h"
+#include "../studies/dealloying/rules.h"
 
 template class KmcSimulation<studies::dealloying::Rules>;
