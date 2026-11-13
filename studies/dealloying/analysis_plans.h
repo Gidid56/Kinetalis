@@ -58,10 +58,10 @@ namespace studies::dealloying::analysis_plans
 
             // Regime-detection thresholds and lookback periods
             // Values correspond to the criteria used in the published analysis [...]
-            .set_threshold(bifurcated, 1.25) // R_vol / ℓ_ac
+            .set_threshold(bifurcated, 1.0) // R_vol / ℓ_ac
             .set_threshold(passivated, 1.0) // f_pas
             .set_threshold(porous, 0.8)     // φ_pristine
-            .set_threshold(arrested, 1e-4)  // Γ_dis / Γ_tot
+            .set_threshold(arrested, 1e-6)  // Γ_dis / Γ_tot
 
             .set_stop_conditions(bifurcated | passivated)
             //.set_lookback_period(coarsening, 0.1)
@@ -85,8 +85,8 @@ namespace studies::dealloying::analysis_plans
         plan.add<output::Surface>(path);
         plan.add<output::process::EventFlux>(path);
         plan.add<output::process::Kinetics>(path);
-        plan.add<output::process::Statistics>(path).set_resolution(
-            { .min_snapshot_step = 1000, .snapshot_scale_factor = 1.2 });
+        //plan.add<output::process::Statistics>(path).set_resolution(
+        //    { .min_snapshot_step = 1000, .snapshot_scale_factor = 1.2 });
 
         return plan;
     }

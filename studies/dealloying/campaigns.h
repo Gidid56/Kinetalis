@@ -81,10 +81,10 @@ namespace studies::dealloying::campaigns
             .name = "pore surface morphology",
             //.seed = "6791dff7-d3b546b9-93e332b7-bacb20c4-f43b2c56-05008600-6a91e4fc-9a6e2626",
             //.seed = "e7d526b4-723b3def-502439d4-e7c787e8-a5e24a89-6c7537a6-c9856836-93583aab",
-            .seed = "84750a87-00df5231-b7b2b84b-e4fbf896-68b3d209-77fef6ff-23bc881f-f1ae0817",
+            //.seed = "84750a87-00df5231-b7b2b84b-e4fbf896-68b3d209-77fef6ff-23bc881f-f1ae0817",
             //.seed = seeds[0],
             .replicate_count = 1,
-            .setups = generate_setups(CampaignType::dealloying, { -37.1_mV + 80_mV }),
+            .setups = generate_setups(CampaignType::dealloying, { -40_mV }, full_composition_range),
             .analysis_plan = analysis_plans::geometry,
             .postprocessor = postprocess::find_regime_outcome,
         };
