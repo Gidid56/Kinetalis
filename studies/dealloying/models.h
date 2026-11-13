@@ -19,6 +19,7 @@ namespace studies::dealloying::rules
     {
         static constexpr auto event = kmc::Event::diffusion;
 
+        bool source_active(lattice::Site const&) const;
         bool active(lattice::Path const&) const;
         bool allowed(lattice::Path const&) const;
         bool supports(kmc::Process const&) const;

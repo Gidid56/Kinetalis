@@ -162,6 +162,15 @@ void KmcSimulation<Rules>::update(Site& site)
 template <class Rules>
 Rate KmcSimulation<Rules>::rate_sum(Site& site)
 {
+    auto const site_active{ rules_.site.active(site) };
+    auto const path_active{ rules_.path.source_active(site) };
+
+    if (not site_active and not path_active)
+    {
+        clear_processes(site);
+        return {};
+    }
+
     Rate sum{};
 
     lattice::Index index{ site.process_index() };
@@ -302,15 +311,15 @@ void Simulation::set_process(lattice::Index index, process::Key new_key)
         ++process_counts_.at(new_key);
 }
 
-//void Simulation::clear_processes(Site& site)
-//{
-//    auto process_index{ site.process_index() };
-//
-//    set_process(process_index++, {});
-//
-//    for ([[maybe_unused]] auto neighbor : lattice_.neighbors(site))
-//        set_process(process_index++, {});
-//}
+void Simulation::clear_processes(Site& site)
+{
+    auto process_index{ site.process_index() };
+
+    set_process(process_index++, {});
+
+    for ([[maybe_unused]] auto neighbor : lattice_.neighbors(site))
+        set_process(process_index++, {});
+}
 
 double Simulation::rejection_fraction() const
 {

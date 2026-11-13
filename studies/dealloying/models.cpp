@@ -21,9 +21,14 @@ bool Dissolution::supports(kmc::Process const& process) const
     return process.event() == event and process.element() == Element::Ag;
 }
 
+bool Diffusion::source_active(lattice::Site const& site) const
+{
+    return site.is_occupied() and site.vacant_neighbors() >= 3;
+}
+
 bool Diffusion::active(lattice::Path const& path) const
 {
-    return path.is_open() and path.front().vacant_neighbors() >= 3;
+    return source_active(path.front()) and path.back().is_vacant();
 }
 
 bool Diffusion::allowed(lattice::Path const& path) const
