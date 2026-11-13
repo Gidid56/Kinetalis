@@ -24,6 +24,16 @@ namespace kmc
         [[no_unique_address]] Site site;
         [[no_unique_address]] Path path;
     };
+
+    template <class Location, class R>
+    requires Rule<R, Location>
+    Process make_process(Location const& location, R const& rule)
+    {
+        if (not rule.active(location))
+            return Process{};
+
+        return Process{ R::event, location };
+    }
 }
 /*
    Stores essential data required to identify strictly equivalent simulation processes.
@@ -48,8 +58,8 @@ class kmc::Process
 public:
     explicit Process() = default;
     explicit Process(Event, Element, lattice::Coordination);
-    explicit Process(lattice::Site const&);
-    explicit Process(lattice::Path const&);
+    explicit Process(Event, lattice::Site const&);
+    explicit Process(Event, lattice::Path const&);
 
     process::Key static_key() const;
     static std::size_t number_keys();

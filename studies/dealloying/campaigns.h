@@ -1,7 +1,8 @@
 #pragma once
 #include "batch/campaign.h"
-#include "dealloying/setups.h"
 #include "dealloying/analysis_plans.h"
+#include "dealloying/setups.h"
+#include "models.h"
 
 namespace studies::dealloying::postprocess
 {
@@ -66,7 +67,7 @@ namespace studies::dealloying::campaigns
         return setups;
     }
 
-    inline batch::Campaign post_processing()
+    inline Campaign post_processing()
     {
         return {
             .name = "critical composition",
@@ -75,7 +76,7 @@ namespace studies::dealloying::campaigns
         };
     }
 
-    inline batch::Campaign pore_surface_morphology()
+    inline Campaign pore_surface_morphology()
     {
         return {
             .name = "pore surface morphology",
@@ -90,7 +91,7 @@ namespace studies::dealloying::campaigns
         };
     }
 
-    inline batch::Campaign passivation_study()
+    inline Campaign passivation_study()
     {
         return {
             .name = "subcritical passivation",
@@ -105,7 +106,7 @@ namespace studies::dealloying::campaigns
         };
     }
 
-    inline batch::Campaign critical_potential_composition()
+    inline Campaign critical_potential_composition()
     {
         return {
             .name = "critical composition",
@@ -120,7 +121,7 @@ namespace studies::dealloying::campaigns
         };
     }
 
-    inline batch::Campaign critical_potential_temperature()
+    inline Campaign critical_potential_temperature()
     {
         return {
             .name = "critical temperature",
@@ -136,15 +137,14 @@ namespace studies::dealloying::campaigns
         };
     }
 
-    inline batch::Campaign critical_potential_bifurcation()
+    inline Campaign critical_potential_bifurcation()
     {
         return {
             .name = "surface excess (x07)",
             //.seed = seeds[2],
             .replicate_count = 20,
             .setups =
-                generate_setups(CampaignType::bifurcation, critical_potential_search_range,
-                { 7 }),
+                generate_setups(CampaignType::bifurcation, critical_potential_search_range, { 7 }),
             .analysis_plan = analysis_plans::regime_outcome,
             .postprocessor = postprocess::find_surface_excess,
         };
@@ -161,7 +161,7 @@ namespace studies::dealloying::campaigns
         return setups;
     }
 
-    inline batch::Campaign surface_geometry()
+    inline Campaign surface_geometry()
     {
         return {
             .name = "surface geometry",
@@ -192,7 +192,7 @@ namespace studies::dealloying::campaigns
         return setups;
     }
 
-    inline batch::Campaign sesitivity_test()
+    inline Campaign sesitivity_test()
     {
         return {
             .name = "sesitivity test",
@@ -204,14 +204,15 @@ namespace studies::dealloying::campaigns
         };
     }
 
-    inline batch::Campaign bifurcation_radius()
+    inline Campaign bifurcation_radius()
     {
         return {
             .name = "bifurcation radius",
             .seed = seeds[6],
             .replicate_count = 40,
             .setups = generate_setups(
-                CampaignType::passivation, { 5_mV },
+                CampaignType::passivation,
+                { 5_mV },
                 { 7, 10, 15, 20, 25, 30, 35, 40 }),
             .analysis_plan = analysis_plans::regime_outcome,
             .postprocessor = postprocess::find_regime_outcome,

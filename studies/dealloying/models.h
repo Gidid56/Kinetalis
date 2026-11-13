@@ -1,5 +1,8 @@
 #pragma once
 #include "kmc/types.h"
+#include "kmc/setup.h"
+#include "kmc/process.h"
+#include "batch/campaign.h"
 
 namespace studies::dealloying::rules
 {
@@ -20,4 +23,15 @@ namespace studies::dealloying::rules
         bool allowed(lattice::Path const&) const;
         bool supports(kmc::Process const&) const;
     };
+}
+
+namespace studies::dealloying
+{
+    using Rules = kmc::EventRules<
+        rules::Dissolution,
+        rules::Diffusion
+    >;
+
+    using Setup = kmc::Setup<Rules>;
+    using Campaign = batch::Campaign<Rules>;
 }

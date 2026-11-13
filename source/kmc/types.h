@@ -50,6 +50,7 @@ namespace kmc
     class Model;
     class Process;
     class Simulation;
+    template <class Rules>
     struct Setup;
 
     namespace model { using Generator = std::function<std::unique_ptr<Model>()>; }

@@ -10,12 +10,13 @@
 
 namespace batch
 {
+    template <class Rules>
     struct Campaign
     {
         std::string name{};
         std::string seed{};
         std::size_t replicate_count{ 1 };
-        std::vector<kmc::Setup> setups;
+        std::vector<kmc::Setup<Rules>> setups;
         kmc::PlanFactory analysis_plan;
         Postprocessor postprocessor;
 

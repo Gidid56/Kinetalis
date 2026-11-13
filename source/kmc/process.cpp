@@ -17,15 +17,15 @@ Process::Process(Event event, Element element, Coordination coordination)
       coordination_{ coordination }
 { }
 
-Process::Process(Site const& site)
-    : event_{ site.event() },
+Process::Process(Event event, Site const& site)
+    : event_{ event },
       element_{ site.element() },
       coordination_{ site.coordination() },
       element_neighbors_{ site.element_neighbors() }
 { }
 
-Process::Process(Path const& path)
-    : event_{ path.event() },
+Process::Process(Event event, Path const& path)
+    : event_{ event },
       element_{ path.front().element() },
       coordination_{ path.front().coordination() },
       element_neighbors_{ path.front().element_neighbors() }

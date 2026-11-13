@@ -2,6 +2,7 @@
 #include "kmc/setup.h"
 #include "lattice/lattice.h"
 #include "models/linear_bond_breaking.h"
+#include "models.h"
 #include "parameters.h"
 
 namespace studies::dealloying::setups
@@ -96,14 +97,14 @@ namespace studies::dealloying::setups
         return lattice;
     }
 
-    static inline kmc::Setup pore_dealloying(
+    static inline Setup pore_dealloying(
         CampaignType campaign_type,
         lattice::Composition::Quantity x0 = 10,
         ElectricPotential overpotential = 0_V,
         kmc::Temperature temperature = 300_K,
         std::optional<kmc::Model::Modulation> modulation = {})
     {
-        kmc::Setup setup;
+        Setup setup;
 
         setup.make_lattice = [x0, campaign_type] {
             return bulk_with_vacancy(x0, box_size(x0, campaign_type));
@@ -124,9 +125,9 @@ namespace studies::dealloying::setups
         return setup;
     }
 
-    static inline kmc::Setup geometry_analysis(physics::quantity::Radius radius, bool inverted)
+    static inline Setup geometry_analysis(physics::quantity::Radius radius, bool inverted)
     {
-        kmc::Setup setup;
+        Setup setup;
 
         setup.make_lattice = [radius, inverted] {
             return cut_sphere(2 * radius + 1_nm, radius, inverted);
@@ -137,9 +138,9 @@ namespace studies::dealloying::setups
         return setup;
     }
 
-    static inline kmc::Setup schematic(int layer)
+    static inline Setup schematic(int layer)
     {
-        kmc::Setup setup;
+        Setup setup;
 
         setup.make_lattice = [layer] {
             return passivation_schematic(layer);

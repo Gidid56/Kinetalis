@@ -8,11 +8,12 @@
 
 using namespace batch;
 
-Terminal::Terminal(Runner const& runner)
-    : runner_{ runner },
-      entries_(runner.sample_count()),
+Terminal::Terminal(std::size_t sample_count, std::size_t worker_count)
+    : sample_count_(sample_count),
+      worker_count_(worker_count),
+      entries_(sample_count),
       counts_{
-          { sample::State::waiting, runner.sample_count() },
+          { sample::State::waiting, sample_count },
           { sample::State::running, 0 },
           { sample::State::completed, 0 },
           { sample::State::failed, 0 },

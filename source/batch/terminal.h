@@ -4,7 +4,7 @@
 class batch::Terminal
 {
 public:
-    explicit Terminal(batch::Runner const& runner);
+    explicit Terminal(std::size_t sample_count, std::size_t worker_count);
 
     void render();
 
@@ -23,7 +23,7 @@ private:
         std::string line() const;
     };
 
-    batch::Runner const& runner_;
+    std::size_t sample_count_, worker_count_;
 
     std::mutex mutex_;
     std::vector<Entry> entries_;
