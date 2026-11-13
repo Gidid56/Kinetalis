@@ -21,11 +21,11 @@ class lattice::Path
 public:
     explicit Path(Site* left, Site* right) : sites_{ left, right } { }
 
-    kmc::Event event() const;
+    //kmc::Event event() const;
+    //bool is_active() const;
+    //bool is_allowed() const;
 
     bool is_open() const;
-    bool is_active() const;
-    bool is_allowed() const;
     void execute_process(Lattice&);
 
     bool is_same_layer() const;

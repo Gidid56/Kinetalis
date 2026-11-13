@@ -332,3 +332,7 @@ Duration Simulation::tracked_time() const
 {
     return Duration{ std::chrono::duration<double>{ tracked_.duration() }.count() };
 }
+
+#include "../studies/dealloying/models.h"
+
+template class KmcSimulation<studies::dealloying::Rules>;

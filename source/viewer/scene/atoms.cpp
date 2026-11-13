@@ -179,7 +179,7 @@ void Atoms::rebuildHolograms()
             {
                 lattice::Path path{ &source, destination };
 
-                if (path.is_allowed())
+                if (path.is_open())
                     std::invoke(function, path);
             }
         }

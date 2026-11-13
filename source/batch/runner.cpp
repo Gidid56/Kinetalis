@@ -281,3 +281,7 @@ std::filesystem::path Runner<Rules>::sample_path(std::size_t sample_index) const
 
     return path;
 }
+
+#include "../studies/dealloying/models.h"
+
+template class Runner<studies::dealloying::Rules>;
