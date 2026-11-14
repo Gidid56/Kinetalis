@@ -25,7 +25,7 @@ namespace studies::dealloying::rules
 
         bool active(lattice::Site const& site) const
         {
-            return site.element() == element and not site.is_bulk();
+            return site.element() == element and site.coordination() <= max_coordination;
         }
 
         bool allowed(lattice::Site const& site) const { return active(site); }
