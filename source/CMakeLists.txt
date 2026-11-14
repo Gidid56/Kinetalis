@@ -16,7 +16,6 @@ target_sources(
 
         kmc/model.cpp
         kmc/process.cpp
-        kmc/simulation.cpp
         kmc/observer.cpp
 
         models/electrochemical_interface.cpp

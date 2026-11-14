@@ -1,18 +1,21 @@
-#include "pch.h"
-
-#include "simulation.h"
+#pragma once
+// Template definitions for RejectionTreeSimulation; included by simulation.h.
 
 #include "analysis_plan.h"
-#include "lattice/lattice.h"
 #include "lattice/path.h"
+#include "utility/utility.h"
 
-using namespace kmc;
-using lattice::Coordination;
-using lattice::Site;
-using simulation::Status;
+#include <algorithm>
+#include <cmath>
+#include <limits>
+#include <ranges>
+#include <stdexcept>
+#include <type_traits>
 
+namespace kmc
+{
 template <class Rules>
-void kmc::RejectionTreeSimulation<Rules>::initialize_rates()
+void RejectionTreeSimulation<Rules>::initialize_rates()
 {
     rate_tree_ = rate_tree::make_entry(lattice_.sites().size());
     site_rates_.resize(lattice_.sites().size());
@@ -24,21 +27,21 @@ simulation::Status RejectionTreeSimulation<Rules>::run(AnalysisPlan& analysis_pl
 {
     utility::Guard guard{ timer_ };
 
-    if (status_ == Status::created)
+    if (status_ == simulation::Status::created)
         analysis_plan.observe_started(*this);
 
-    status_ = Status::running;
+    status_ = simulation::Status::running;
 
     while (not analysis_plan.stop_requested())
     {
         if (token.stop_requested())
-            return status_ = Status::paused;
+            return status_ = simulation::Status::paused;
 
         const auto total_rate{ rate_tree_->rate_sum() };
         if (total_rate <= Rate{})
         {
             analysis_plan.observe_completed(*this);
-            return status_ = Status::exhausted;
+            return status_ = simulation::Status::exhausted;
         }
 
         const auto escape_time{ 1.0 / total_rate };
@@ -74,7 +77,7 @@ simulation::Status RejectionTreeSimulation<Rules>::run(AnalysisPlan& analysis_pl
     }
 
     analysis_plan.observe_completed(*this);
-    return status_ = Status::analysed;
+    return status_ = simulation::Status::analysed;
 }
 
 template <class Rules>
@@ -110,14 +113,14 @@ process::Record RejectionTreeSimulation<Rules>::select_random_process()
 }
 
 template <class Rules>
-void RejectionTreeSimulation<Rules>::update_neighbors(Site& site)
+void RejectionTreeSimulation<Rules>::update_neighbors(lattice::Site& site)
 {
     for (auto neighbor : lattice_.neighbors(site))
         update(*neighbor);
 }
 
 template <class Rules>
-void RejectionTreeSimulation<Rules>::update(Site& site)
+void RejectionTreeSimulation<Rules>::update(lattice::Site& site)
 {
     //site.setClassification(lattice_.classification(site));
 
@@ -145,7 +148,7 @@ void RejectionTreeSimulation<Rules>::update(Site& site)
 }
 
 template <class Rules>
-Rate RejectionTreeSimulation<Rules>::rate_sum(Site& site)
+Rate RejectionTreeSimulation<Rules>::rate_sum(lattice::Site& site)
 {
     const bool site_active{ rules_.site.active(site) };
     const bool path_active{ rules_.path.source_active(site) };
@@ -185,7 +188,7 @@ Rate RejectionTreeSimulation<Rules>::rate_sum(Site& site)
 }
 
 template <class Rules>
-Rate RejectionTreeSimulation<Rules>::block_rate(Site& site)
+Rate RejectionTreeSimulation<Rules>::block_rate(lattice::Site& site)
 {
     constexpr auto block_size{ std::size_t{ 1 } << rate_tree::baseLevel };
 
@@ -255,7 +258,7 @@ void RejectionTreeSimulation<Rules>::update_static_rates()
         using Rule = std::remove_cvref_t<decltype(rule)>;
 
         for (auto element : elements)
-            for (Coordination coordination{}; coordination < lattice::max_coordination;
+            for (lattice::Coordination coordination{}; coordination < lattice::max_coordination;
                 ++coordination)
             {
                 Process process{ Rule::event, element, coordination };
@@ -308,7 +311,7 @@ void RejectionTreeSimulation<Rules>::set_process(lattice::Index index, process::
 }
 
 template <class Rules>
-void RejectionTreeSimulation<Rules>::clear_processes(Site& site)
+void RejectionTreeSimulation<Rules>::clear_processes(lattice::Site& site)
 {
     auto index{ site.process_index() };
 
@@ -318,6 +321,4 @@ void RejectionTreeSimulation<Rules>::clear_processes(Site& site)
         set_process(index++, {});
 }
 
-#include "../studies/dealloying/rules.h"
-
-template class RejectionTreeSimulation<studies::dealloying::Rules>;
+}
