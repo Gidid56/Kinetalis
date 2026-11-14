@@ -41,7 +41,7 @@ namespace studies::dealloying::analysis_plans
     {
         kmc::AnalysisPlan plan = basic(path);
 
-        plan.add<control::DurationCap>(1_h);
+        plan.add<control::DurationLimit>(1_h);
 
         //plan.add<analysis::Electrochemistry>(path);
         //plan.add<output::process::Kinetics>(path);
@@ -75,7 +75,7 @@ namespace studies::dealloying::analysis_plans
     {
         kmc::AnalysisPlan plan = regime_outcome(path);
 
-        //plan.get<control::DurationCap>().set_cap(1_d);
+        //plan.get<control::DurationLimit>().set_cap(1_d);
 
         plan.get<analysis::Regime>().set_stop_conditions(analysis::Regime::Condition::none);
 

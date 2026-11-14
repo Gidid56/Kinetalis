@@ -20,6 +20,8 @@ public:
     void observe_selected(kmc::process::Record const&) override;
 
 private:
+    std::string_view name() const override { return "trajectory_recorder"; }
+
     void makeStep();
     void makeStep(Direction);
     bool finished(Direction) const;

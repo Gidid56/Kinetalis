@@ -12,14 +12,14 @@ using namespace output;
 
 namespace global { std::string settings(); }
 
-bool control::StepCap::stop_requested() const
+bool control::StepLimit::stop_requested() const
 {
-    return simulation_ and simulation_->step() >= cap_;
+    return simulation_ and simulation_->step() >= limit_;
 }
 
-bool control::DurationCap::stop_requested() const
+bool control::DurationLimit::stop_requested() const
 {
-    return simulation_ and simulation_->run_duration() >= cap_;
+    return simulation_ and simulation_->run_duration() >= limit_;
 }
 
 void output::Config::write_init(kmc::Simulation const& kmc)

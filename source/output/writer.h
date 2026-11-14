@@ -20,7 +20,6 @@ public:
     [[nodiscard]] auto& last_snapshot() const { return last_snapshot_; }
 
 protected:
-    virtual std::string_view name() const = 0;
     virtual bool uses_snapshot_resolution() const { return true; }
 
     virtual void capture_init(kmc::Simulation const&) { }

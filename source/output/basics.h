@@ -1,33 +1,45 @@
 #pragma once
 #include "writer.h"
 
-class control::StepCap : public kmc::Observer
+class control::StepLimit : public kmc::Observer
 {
 public:
-    explicit StepCap(kmc::Step cap) : cap_{ cap } { }
+    explicit StepLimit(kmc::Step limit) : limit_{ limit } { }
 
     bool stop_requested() const override;
 
 private:
+    std::string_view name() const override { return "step_limit"; }
+    std::string parameters() const override
+    {
+        return std::format("Simulation step limit: {}", limit_);
+    }
+
     void observe_started(kmc::Simulation const& simulation) override { simulation_ = &simulation; }
 
-    kmc::Step cap_{};
+    kmc::Step limit_{};
     kmc::Simulation const* simulation_{};
 };
 
-class control::DurationCap : public kmc::Observer
+class control::DurationLimit : public kmc::Observer
 {
 public:
-    explicit DurationCap(Duration cap) : cap_{ cap } { }
+    explicit DurationLimit(Duration limit) : limit_{ limit } { }
 
     bool stop_requested() const override;
 
-    void set_cap(Duration cap) { cap_ = cap; }
+    void set_cap(Duration limit) { limit_ = limit; }
 
 private:
+    std::string_view name() const override { return "duration_limit"; }
+    std::string parameters() const override
+    {
+        return std::format("Execution time limit: {}", limit_);
+    }
+
     void observe_started(kmc::Simulation const& simulation) override { simulation_ = &simulation; }
 
-    Duration cap_{};
+    Duration limit_{};
     kmc::Simulation const* simulation_{};
 };
 

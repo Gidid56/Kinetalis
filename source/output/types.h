@@ -2,8 +2,8 @@
 
 namespace control
 {
-    class StepCap;
-    class DurationCap;
+    class StepLimit;
+    class DurationLimit;
 }
 
 namespace output

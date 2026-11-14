@@ -83,6 +83,22 @@ public:
         };
     }
 
+    std::string parameters() const
+    {
+        std::string text{ "key:observer,min_snapshot_step,snapshot_scale_factor,parameters\n" };
+
+        for (auto& observer : observers_)
+            std::format_to(
+                std::back_inserter(text),
+                "{},{},{},{}\n",
+                observer->name(),
+                observer->resolution().min_snapshot_step,
+                observer->resolution().snapshot_scale_factor,
+                observer->parameters());
+
+        return text;
+    }
+
 private:
     std::vector<std::unique_ptr<Observer>> observers_;
 };

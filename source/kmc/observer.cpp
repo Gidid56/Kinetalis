@@ -26,14 +26,3 @@ void Observer::observe_step(Simulation const& simulation)
             math::round<Step>(next_snapshot_step_ * resolution_.snapshot_scale_factor));
     }
 }
-
-std::format_context::iterator std::formatter<Observer::Resolution>::format(
-    Observer::Resolution const& resolution,
-    std::format_context& context) const
-{
-    return std::format_to(
-        context.out(),
-        "{},{:.6g}",
-        resolution.min_snapshot_step,
-        resolution.snapshot_scale_factor);
-}

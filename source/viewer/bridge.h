@@ -80,6 +80,8 @@ public:
     void setReplayRate(int rate) noexcept { replayRate_.store(rate, std::memory_order_relaxed); }
 
 private:
+    std::string_view name() const override { return "viewer_bridge"; }
+
     void updateGUI(kmc::Simulation const&, bool appendSample);
     void signalUpdate(lattice::Index index) noexcept;
     void publish(lattice::Site const&) noexcept;

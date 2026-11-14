@@ -110,6 +110,8 @@ template <class Rules>
 void Runner<Rules>::write_campaign() const
 {
     file::write<txt>(campaign_path_ / "campaign", campaign_info());
+    auto analysis_plan{ std::invoke(campaign_.analysis_plan, campaign_path_) };
+    file::write<txt>(campaign_path_ / "analysis_plan", analysis_plan.parameters());
 }
 
 template <class Rules>
