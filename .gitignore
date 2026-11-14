@@ -17,3 +17,4 @@ CMakeFiles/
 # External dependencies
 /external/*
 !/external/magic_enum/
+!/external/boost/
