@@ -47,13 +47,13 @@ private:
 
 public:
     void fill(Element);
-    void fill(random_::Engine&, Composition const&);
+    void fill(simulation::Engine&, Composition const&);
     void fill(Element, Shape const&, bool place_inside = true);
-    void fill(random_::Engine&, Composition const&, Shape const&, bool place_inside = true);
-    void fill_exact(random_::Engine&, Composition const&, Shape const&, bool place_inside = true);
+    void fill(simulation::Engine&, Composition const&, Shape const&, bool place_inside = true);
+    void fill_exact(simulation::Engine&, Composition const&, Shape const&, bool place_inside = true);
 
     void set_fill_function(FillFunction&& function) { fill_function_ = std::move(function); }
-    void apply_fill_function(random_::Engine& rng)
+    void apply_fill_function(simulation::Engine& rng)
     {
         if (fill_function_)
             fill_function_(*this, rng);
@@ -61,7 +61,7 @@ public:
     void set_label(std::string const& label) { label_ = label; }
 
     void gradient_fill(
-        random_::Engine&,
+        simulation::Engine&,
         Composition const& bottom,
         Displacement,
         Composition const& top,

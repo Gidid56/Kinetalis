@@ -11,7 +11,7 @@ public:
     explicit Simulation(
         lattice::Generator const& make_lattice,
         model::Generator const& make_model,
-        std::optional<random_::Engine::seed_type> seed);
+        std::optional<simulation::Seed> seed);
 
     virtual simulation::Status run(AnalysisPlan&, std::stop_token = {}) = 0;
 
@@ -33,19 +33,15 @@ protected:
 
     std::vector<std::pair<Process, Rate>> process_rates_{ { Process{}, Rate{} } };
     std::vector<std::size_t> process_counts_{ 0 };
+
+    std::unordered_map<Process, process::Key> dynamic_keys_;
 };
 
-namespace kmc
-{
-    template <class Rules>
-    class KmcSimulation;
-}
-
 template <class Rules>
-class kmc::KmcSimulation final : public Simulation
+class kmc::RejectionTreeSimulation final : public Simulation
 {
 public:
-    explicit KmcSimulation(Setup<Rules> const& setup)
+    explicit RejectionTreeSimulation(Setup<Rules> const& setup)
         : Simulation{ setup.make_lattice, setup.make_model, setup.seed },
           rules_{ setup.rules }
     {
@@ -76,22 +72,6 @@ private:
     std::unique_ptr<rate_tree::Interface> rate_tree_;
     Rates site_rates_;
     process::Keys processes_;
-    std::unordered_map<Process, process::Key> dynamic_keys_;
 
     [[no_unique_address]] Rules rules_;
-};
-
-template <>
-struct std::formatter<utility::Timer> : public std::formatter<physics::quantity::Duration>
-{
-    auto format(utility::Timer const& timer, std::format_context& context) const
-    {
-        using namespace physics::unit::literals;
-
-        physics::quantity::Duration const elapsed{
-            1_ns * std::chrono::duration_cast<std::chrono::nanoseconds>(timer.duration()).count()
-        };
-
-        return std::formatter<physics::quantity::Duration>::format(elapsed, context);
-    }
 };

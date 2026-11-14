@@ -2,8 +2,9 @@
 #include "kmc/setup.h"
 #include "lattice/lattice.h"
 #include "models/linear_bond_breaking.h"
-#include "rules.h"
 #include "parameters.h"
+#include "rules.h"
+#include "simulation/engine.h"
 
 namespace studies::dealloying::setups
 {
@@ -28,7 +29,7 @@ namespace studies::dealloying::setups
     bulk_with_vacancy(Composition::Quantity x0 = 10, Length side = utility::is_debug ? 5_nm : 30_nm)
     {
         Lattice lattice{ cube<Bravais::cF>(Element::Au, side) };
-        lattice.set_fill_function([x0](Lattice& lattice, random_::Engine& rng) {
+        lattice.set_fill_function([x0](Lattice& lattice, simulation::Engine& rng) {
             using enum Element;
             Composition composition{ { Ag, 100 - x0 }, { Au, x0 } };
             lattice.set_label("bulk with vacancy");
@@ -42,7 +43,7 @@ namespace studies::dealloying::setups
     cut_sphere(Length box_side, physics::quantity::Radius radius, bool inverted)
     {
         Lattice lattice{ cube<Bravais::cF>(Element::Au, box_side) };
-        lattice.set_fill_function([radius, inverted](Lattice& lattice, random_::Engine& rng) {
+        lattice.set_fill_function([radius, inverted](Lattice& lattice, simulation::Engine& rng) {
             using enum Element;
             lattice.set_label("nanopore");
             lattice.fill(inverted ? Au : none);
@@ -58,7 +59,7 @@ namespace studies::dealloying::setups
     passivation_schematic(int dissolved_layers, int total_layers = 8, int noble_factor = 4)
     {
         Lattice lattice{ cube<Bravais::cF>(Element::Au, 1.5_nm) };
-        lattice.set_fill_function([=](Lattice& lattice, random_::Engine& rng) {
+        lattice.set_fill_function([=](Lattice& lattice, simulation::Engine& rng) {
             lattice.set_label("passivation schematic");
             using enum Element;
 
@@ -147,7 +148,7 @@ namespace studies::dealloying::setups
         };
         setup.make_model = &std::make_unique<kmc::models::LinearBondBreaking>;
         setup.name = std::format("schematic");
-        setup.seed = random_::Engine::parse_seed(seeds[0]);
+        setup.seed = simulation::Engine::parse_seed(seeds[0]);
 
         return setup;
     }

@@ -19,7 +19,7 @@ namespace kmc
             constexpr std::string_view seed{ "00000000-00000001-00000002-00000003-"
                                              "00000004-00000005-00000006-00000007" };
 
-            random_::Engine rng{ seed };
+            simulation::Engine rng{ seed };
             constexpr std::array expected{
                 UINT64_C(0x3e18000000000000),
                 UINT64_C(0x3ee0008000100000),
@@ -31,7 +31,7 @@ namespace kmc
             for (auto expected_bits : expected)
                 expect(eq(std::bit_cast<std::uint64_t>(rng.probability()), expected_bits));
 
-            random_::Engine first{ seed }, second{ seed };
+            simulation::Engine first{ seed }, second{ seed };
 
             auto reproducible{ true };
             for (std::size_t i{}; i < 10'000; ++i)
@@ -45,8 +45,8 @@ namespace kmc
 
             auto bounded{ true };
             for (std::size_t i{}; i < 10'000; ++i)
-                if (random_::Engine::state_word_type value{
-                        first.integer(random_::Engine::state_word_type{ 99 }) };
+                if (simulation::Engine::state_word_type value{
+                        first.integer(simulation::Engine::state_word_type{ 99 }) };
                     value > 99)
                 {
                     bounded = false;

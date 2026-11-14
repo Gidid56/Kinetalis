@@ -5,7 +5,7 @@
 #include "chemistry/composition.h"
 #include "lattice/shape.h"
 
-using namespace random_;
+using namespace simulation;
 
 /*
 	xoshiro256+ 1.0 was written by David Blackman and Sebastiano Vigna and
@@ -14,7 +14,7 @@ using namespace random_;
 	implementation to an instance-owned C++ state.
 */
 
-auto Engine::parse_seed(std::string_view text) -> seed_type
+auto Engine::parse_seed(std::string_view text) -> Seed
 {
     constexpr std::size_t word_digits{ 8 };
     constexpr std::size_t expected_size{ seed_words * word_digits + seed_words - 1 };
@@ -22,7 +22,7 @@ auto Engine::parse_seed(std::string_view text) -> seed_type
     if (text.size() != expected_size)
         throw std::invalid_argument{ "Invalid RNG seed length" };
 
-    seed_type seed{};
+    Seed seed{};
 
     for (std::size_t word{}; word < seed.size(); ++word)
     {
@@ -42,15 +42,15 @@ auto Engine::parse_seed(std::string_view text) -> seed_type
     return seed;
 }
 
-Engine::seed_type Engine::generate_seed() noexcept
+Seed Engine::generate_seed() noexcept
 {
-    seed_type seed;
+    Seed seed;
 
     for (std::size_t word{}; word < state_words; ++word)
     {
         auto const value{ next() };
-        seed[2 * word] = static_cast<seed_word_type>(value >> 32);
-        seed[2 * word + 1] = static_cast<seed_word_type>(value);
+        seed[2 * word] = static_cast<Seed::value_type>(value >> 32);
+        seed[2 * word + 1] = static_cast<Seed::value_type>(value);
     }
 
     return seed;
@@ -131,7 +131,7 @@ lattice::Indices Engine::miller_indices(int max_index)
     return { indices[0], indices[1], indices[2] };
 }
 
-std::string Engine::seed_to_string(seed_type const& seed, std::string_view separator)
+std::string Engine::seed_to_string(Seed const& seed, std::string_view separator)
 {
     std::string text;
     text.reserve(seed_words * 8 + (seed_words - 1) * separator.size());
@@ -146,13 +146,13 @@ std::string Engine::seed_to_string(seed_type const& seed, std::string_view separ
     return text;
 }
 
-std::format_context::iterator std::formatter<random_::Engine>::format(
-    random_::Engine const& rng,
+std::format_context::iterator std::formatter<simulation::Engine>::format(
+    simulation::Engine const& rng,
     std::format_context& context) const
 {
     return std::format_to(
         context.out(),
         "Engine {}\nSeed = {}\n",
-        random_::Engine::engine_name,
-        random_::Engine::seed_to_string(rng.seed()));
+        simulation::Engine::engine_name,
+        simulation::Engine::seed_to_string(rng.seed()));
 }

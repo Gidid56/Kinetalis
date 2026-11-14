@@ -33,7 +33,7 @@ target_sources(
         output/process_kinetics.cpp
         utility/csv.cpp
 
-        random/engine.cpp
+        "simulation/engine.cpp"
 )
 
 target_include_directories(

@@ -18,15 +18,27 @@ static_assert(rate_tree::allocationBlockLevels > 0);
 Simulation::Simulation(
     lattice::Generator const& make_lattice,
     model::Generator const& make_model,
-    std::optional<random_::Engine::seed_type> seed)
+    std::optional<simulation::Seed> seed)
     : simulation::Base{ make_lattice, seed },
       model_{ make_model() }
 {
     //model_.update();
 }
 
+void Simulation::update_dynamic_rates()
+{
+    for (auto& [process, rate] : process_rates_ | std::views::drop(1))
+        rate = model_->rate(process);
+}
+
+double Simulation::rejection_fraction() const
+{
+    auto const selections{ step_ + rejections_ };
+    return selections == 0 ? 0.0 : static_cast<double>(rejections_) / selections;
+}
+
 template <class Rules>
-void kmc::KmcSimulation<Rules>::initialize_rates()
+void kmc::RejectionTreeSimulation<Rules>::initialize_rates()
 {
     rate_tree_ = rate_tree::make_entry(lattice_.sites().size());
     site_rates_.resize(lattice_.sites().size());
@@ -34,7 +46,7 @@ void kmc::KmcSimulation<Rules>::initialize_rates()
 }
 
 template <class Rules>
-simulation::Status KmcSimulation<Rules>::run(AnalysisPlan& analysis_plan, std::stop_token token)
+simulation::Status RejectionTreeSimulation<Rules>::run(AnalysisPlan& analysis_plan, std::stop_token token)
 {
     utility::Guard guard{ timer_ };
 
@@ -92,7 +104,7 @@ simulation::Status KmcSimulation<Rules>::run(AnalysisPlan& analysis_plan, std::s
 }
 
 template <class Rules>
-process::Record KmcSimulation<Rules>::select_random_process()
+process::Record RejectionTreeSimulation<Rules>::select_random_process()
 {
     auto selected_rate{ rate_tree_->rate_sum() * rng_.probability() };
 
@@ -124,14 +136,14 @@ process::Record KmcSimulation<Rules>::select_random_process()
 }
 
 template <class Rules>
-void KmcSimulation<Rules>::update_neighbors(Site& site)
+void RejectionTreeSimulation<Rules>::update_neighbors(Site& site)
 {
     for (auto neighbor : lattice_.neighbors(site))
         update(*neighbor);
 }
 
 template <class Rules>
-void KmcSimulation<Rules>::update(Site& site)
+void RejectionTreeSimulation<Rules>::update(Site& site)
 {
     //site.setClassification(lattice_.classification(site));
 
@@ -159,7 +171,7 @@ void KmcSimulation<Rules>::update(Site& site)
 }
 
 template <class Rules>
-Rate KmcSimulation<Rules>::rate_sum(Site& site)
+Rate RejectionTreeSimulation<Rules>::rate_sum(Site& site)
 {
     const bool site_active{ rules_.site.active(site) };
     const bool path_active{ rules_.path.source_active(site) };
@@ -199,7 +211,7 @@ Rate KmcSimulation<Rules>::rate_sum(Site& site)
 }
 
 template <class Rules>
-Rate KmcSimulation<Rules>::block_rate(Site& site)
+Rate RejectionTreeSimulation<Rules>::block_rate(Site& site)
 {
     constexpr auto block_size{ std::size_t{ 1 } << rate_tree::baseLevel };
 
@@ -216,7 +228,7 @@ Rate KmcSimulation<Rules>::block_rate(Site& site)
 }
 
 template <class Rules>
-process::Key KmcSimulation<Rules>::process_key(Process process)
+process::Key RejectionTreeSimulation<Rules>::process_key(Process process)
 {
     if (not process.is_active())
         return {};
@@ -242,7 +254,7 @@ process::Key KmcSimulation<Rules>::process_key(Process process)
 }
 
 template <class Rules>
-void KmcSimulation<Rules>::update_rates()
+void RejectionTreeSimulation<Rules>::update_rates()
 {
     if constexpr (staticProcessKeys)
         update_static_rates();
@@ -257,7 +269,7 @@ void KmcSimulation<Rules>::update_rates()
 }
 
 template <class Rules>
-void KmcSimulation<Rules>::update_static_rates()
+void RejectionTreeSimulation<Rules>::update_static_rates()
 {
     process_rates_.clear();
     process_rates_.reserve(Process::number_keys());
@@ -297,7 +309,7 @@ void KmcSimulation<Rules>::update_static_rates()
 }
 
 template <class Rules>
-void KmcSimulation<Rules>::set_process(lattice::Index index, process::Key new_key)
+void RejectionTreeSimulation<Rules>::set_process(lattice::Index index, process::Key new_key)
 {
     auto& old_key{ processes_.at(index) };
 
@@ -315,7 +327,7 @@ void KmcSimulation<Rules>::set_process(lattice::Index index, process::Key new_ke
 }
 
 template <class Rules>
-void KmcSimulation<Rules>::clear_processes(Site& site)
+void RejectionTreeSimulation<Rules>::clear_processes(Site& site)
 {
     auto index{ site.process_index() };
 
@@ -325,18 +337,6 @@ void KmcSimulation<Rules>::clear_processes(Site& site)
         set_process(index++, {});
 }
 
-void Simulation::update_dynamic_rates()
-{
-    for (auto& [process, rate] : process_rates_ | std::views::drop(1))
-        rate = model_->rate(process);
-}
-
-double Simulation::rejection_fraction() const
-{
-    auto const selections{ step_ + rejections_ };
-    return selections == 0 ? 0.0 : static_cast<double>(rejections_) / selections;
-}
-
 #include "../studies/dealloying/rules.h"
 
-template class KmcSimulation<studies::dealloying::Rules>;
+template class RejectionTreeSimulation<studies::dealloying::Rules>;

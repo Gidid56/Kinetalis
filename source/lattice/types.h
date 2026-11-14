@@ -9,7 +9,7 @@
 #include <map>
 #include <vector>
 
-namespace random_ { class Engine; }
+namespace simulation { class Engine; }
 
 namespace lattice
 {
@@ -105,7 +105,7 @@ namespace lattice
     class Cells;
     class Lattice;
 
-    using FillFunction = std::function<void(Lattice&, random_::Engine&)>;
+    using FillFunction = std::function<void(Lattice&, simulation::Engine&)>;
     using Generator = std::function<Lattice()>;
 }
 using lattice::Lattice;

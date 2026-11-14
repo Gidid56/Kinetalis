@@ -55,7 +55,7 @@ void Runner<Rules>::initialize(CampaignFactory<Rules> campaign)
 template <class Rules>
 void Runner<Rules>::generate_seeds()
 {
-    random_::Engine campaign_engine{ campaign_.seed };
+    simulation::Engine campaign_engine{ campaign_.seed };
 
     seed_generator_name_ = std::format("{}", campaign_engine);
     seeds_.resize(campaign_.sample_count());
@@ -67,7 +67,7 @@ void Runner<Rules>::generate_seeds()
         auto const first_seed{ setup_index == 0 ? campaign_engine.seed()
                                                 : campaign_engine.generate_seed() };
 
-        random_::Engine replicate_engine{ first_seed };
+        simulation::Engine replicate_engine{ first_seed };
 
         for (std::size_t replicate_index{}; replicate_index < campaign_.replicate_count;
             ++replicate_index)
@@ -139,7 +139,7 @@ void Runner<Rules>::write_samples() const
             sample_name(sample_index),
             sample_setup_index(sample_index),
             sample_replicate_index(sample_index),
-            random_::Engine::seed_to_string(seeds_[sample_index]));
+            simulation::Engine::seed_to_string(seeds_[sample_index]));
 
     file::write<file::Type::csv>(campaign_path_ / "samples", text);
 }

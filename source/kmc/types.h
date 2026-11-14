@@ -60,8 +60,12 @@ namespace kmc
     class Model;
     class Process;
     class Simulation;
+
     template <class Rules>
     struct Setup;
+
+    template <class Rules>
+    class RejectionTreeSimulation;
 
     namespace model { using Generator = std::function<std::unique_ptr<Model>()>; }
 

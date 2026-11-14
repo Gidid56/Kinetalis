@@ -91,7 +91,7 @@ kmc::Simulation& Viewer::createSimulation(kmc::Setup<Rules> const& setup, kmc::P
 {
     stopWorker();
 
-    simulation_ = std::make_unique<kmc::KmcSimulation<Rules>>(setup);
+    simulation_ = std::make_unique<kmc::RejectionTreeSimulation<Rules>>(setup);
     analysisPlan_ = planFactory({});
 
     auto& lattice{ simulation_->mutable_lattice() };

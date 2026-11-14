@@ -3,7 +3,7 @@
 #include "lattice.h"
 
 #include "cells.h"
-#include "random/engine.h"
+#include "simulation/engine.h"
 
 using namespace lattice;
 
@@ -228,7 +228,7 @@ void Lattice::fill(Element element)
         site.set_element(*this, element);
 }
 
-void Lattice::fill(random_::Engine& rng, Composition const& composition)
+void Lattice::fill(simulation::Engine& rng, Composition const& composition)
 {
     master_alloy_ = composition;
 
@@ -248,7 +248,7 @@ void Lattice::fill(Element element, Shape const& shape, bool place_inside)
 }
 
 void Lattice::fill(
-    random_::Engine& rng,
+    simulation::Engine& rng,
     Composition const& composition,
     Shape const& shape,
     bool place_inside)
@@ -263,7 +263,7 @@ void Lattice::fill(
 }
 
 void Lattice::fill_exact(
-    random_::Engine& rng,
+    simulation::Engine& rng,
     Composition const& composition,
     Shape const& shape,
     bool place_inside)
@@ -289,7 +289,7 @@ void Lattice::fill_exact(
 }
 
 void Lattice::gradient_fill(
-    random_::Engine& rng,
+    simulation::Engine& rng,
     Composition const& bottom,
     Displacement bottom_pos,
     Composition const& top,
