@@ -79,7 +79,7 @@ void Phases::observe_selected(kmc::process::Record const& process)
         if (std::ranges::contains(active_phases, phase))
             if (is_phase(site, phase))
             {
-                counts_[phase] += solid_change;
+                counts_[phase] += phase == Phase::pristine ? neighbor_change : solid_change;
                 correlation_[phase] += 2 * neighbor_change * phase_neighbor_count(site, phase);
             }
 }
