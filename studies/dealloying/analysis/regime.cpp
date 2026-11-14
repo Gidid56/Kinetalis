@@ -15,6 +15,34 @@ using namespace studies::dealloying::analysis;
 using namespace physics::equations;
 using enum output::Phases::Phase;
 
+std::string Regime::settings() const
+{
+    auto text = std::format(
+        "stop_conditions = {}\n"
+        "marker_conditions = {}\n",
+        enum_flags_name(stop_conditions_),
+        enum_flags_name(marker_conditions_));
+
+    if (not thresholds_.empty())
+        text += "thresholds:\n";
+
+    for (auto const& [condition, threshold] : thresholds_)
+    {
+        text += std::format("  {} = {}\n", condition, threshold);
+    }
+
+    if (not lookback_periods_.empty())
+        text += "lookback_periods:\n";
+
+    for (auto const& [condition, fraction] : lookback_periods_)
+    {
+        text += std::format("  {} = {}\n", condition, fraction);
+    }
+    text += std::format("save_lattice = {}\n", save_lattice_);
+
+    return text;
+}
+
 void Regime::capture_init(kmc::Simulation const& kmc)
 {
     phases_.capture_init(kmc);

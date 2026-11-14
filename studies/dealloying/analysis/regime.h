@@ -71,6 +71,7 @@ public:
 
 private:
     std::string_view name() const override { return "regime"; }
+    std::string settings() const override;
 
     void capture_init(kmc::Simulation const&) override;
     void observe_selected(kmc::process::Record const&) override;
@@ -109,8 +110,8 @@ private:
     std::map<Condition, output::Phases::Data> snapshots_;
 
     std::deque<output::Phases::Data> history_;
-    std::map<Condition, Fraction> lookback_periods_{};
     std::map<Condition, Factor> thresholds_{};
+    std::map<Condition, Fraction> lookback_periods_{};
 
     bool save_lattice_{};
 

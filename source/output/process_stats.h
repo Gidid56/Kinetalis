@@ -18,6 +18,10 @@ public:
 
 private:
     std::string_view name() const override { return "processes"; }
+    std::string settings() const override
+    {
+        return std::format("output_transitions = {}", output_transitions_);
+    }
 
     void capture_init(kmc::Simulation const&) override;
     void observe_selected(kmc::process::Record const&) override;
