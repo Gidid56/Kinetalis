@@ -220,7 +220,7 @@ void GUI::showSelection(lattice::Index index, Lattice const& lattice)
 
             if constexpr (element_specific_neighbors)
                 if (paused)
-                    for (auto element : lattice::activeElements)
+                    for (auto element : lattice::active_elements)
                         Text("%s: %i", symbol(element).data(), site.coordination(element));
 
             TableNextColumn();

@@ -6,6 +6,7 @@
 #include <bit>
 #include <boost/ut.hpp>
 #include <cstdint>
+#include <stdexcept>
 #include <string_view>
 
 using boost::ut::suite;
@@ -62,11 +63,16 @@ namespace kmc
 
             static_assert(models::bond_pair(Ag, Au) == models::bond_pair(Au, Ag));
 
-            expect(boost::ut::nothrow([] {
+            auto construct_model = [] {
                 models::CompositionDependent model;
                 model.set_potential(1.0_V);
                 model.set_temperature(300_K);
-            }));
+            };
+
+            if constexpr (lattice::element_specific_neighbors)
+                expect(boost::ut::nothrow(construct_model));
+            else
+                expect(boost::ut::throws<std::logic_error>(construct_model));
         };
     };
 
