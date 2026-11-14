@@ -8,16 +8,23 @@
 class kmc::Simulation : public simulation::Base
 {
 public:
-    explicit Simulation(
+    Simulation(
         lattice::Generator const& make_lattice,
         model::Generator const& make_model,
-        std::optional<simulation::Seed> seed);
+        std::optional<simulation::Seed> seed)
+        : simulation::Base{ make_lattice, seed },
+          model_{ make_model() }
+    {
+        //model_.update();
+    }
 
     virtual simulation::Status run(AnalysisPlan&, std::stop_token = {}) = 0;
 
-    void update_dynamic_rates();
-
-    double rejection_fraction() const;
+    double rejection_fraction() const
+    {
+        auto const selections{ step_ + rejections_ };
+        return selections == 0 ? 0.0 : static_cast<double>(rejections_) / selections;
+    }
 
     auto time() const { return time_; }
     auto& model() const { return model_; }
@@ -33,8 +40,6 @@ protected:
 
     std::vector<std::pair<Process, Rate>> process_rates_{ { Process{}, Rate{} } };
     std::vector<std::size_t> process_counts_{ 0 };
-
-    std::unordered_map<Process, process::Key> dynamic_keys_;
 };
 
 template <class Rules>
@@ -66,12 +71,16 @@ private:
     void update_rates();
     void update_static_rates();
 
+    void update_dynamic_rates();
+
     void update(lattice::Site&);
     void update_neighbors(lattice::Site&);
 
     std::unique_ptr<rate_tree::Interface> rate_tree_;
     Rates site_rates_;
     process::Keys processes_;
+
+    std::unordered_map<Process, process::Key> dynamic_keys_;
 
     [[no_unique_address]] Rules rules_;
 };

@@ -13,11 +13,6 @@ public:
 
     virtual ~Base() = default;
 
-    double tracked_fraction() const
-    {
-        return static_cast<double>(tracked_.duration().count()) / timer_.duration().count();
-    }
-
     Duration run_duration() const
     {
         return Duration{ std::chrono::duration<double>{ timer_.duration() }.count() };
@@ -26,6 +21,11 @@ public:
     Duration tracked_time() const
     {
         return Duration{ std::chrono::duration<double>{ tracked_.duration() }.count() };
+    }
+
+    double tracked_fraction() const
+    {
+        return static_cast<double>(tracked_.duration().count()) / timer_.duration().count();
     }
 
     auto& mutable_lattice() { return lattice_; }

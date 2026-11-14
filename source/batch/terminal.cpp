@@ -84,7 +84,7 @@ void Terminal::render()
     constexpr std::size_t max_failed{ 5 };
 
     std::vector<std::string> lines;
-    lines.reserve(runner_.worker_count() + max_failed + 5);
+    lines.reserve(worker_count_ + max_failed + 5);
 
     lines.emplace_back(std::format("{:>9}  {}  {:<9}", "sample", "mm:ss", "state"));
 

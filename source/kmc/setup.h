@@ -1,6 +1,7 @@
 #pragma once
 #include "lattice/types.h"
 #include "simulation/types.h"
+#include "kmc/types.h"
 
 template <class Rules>
 struct kmc::Setup

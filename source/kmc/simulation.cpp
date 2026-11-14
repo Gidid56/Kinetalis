@@ -15,28 +15,6 @@ using simulation::Status;
 static_assert(rate_tree::baseLevel <= rate_tree::maxHeight);
 static_assert(rate_tree::allocationBlockLevels > 0);
 
-Simulation::Simulation(
-    lattice::Generator const& make_lattice,
-    model::Generator const& make_model,
-    std::optional<simulation::Seed> seed)
-    : simulation::Base{ make_lattice, seed },
-      model_{ make_model() }
-{
-    //model_.update();
-}
-
-void Simulation::update_dynamic_rates()
-{
-    for (auto& [process, rate] : process_rates_ | std::views::drop(1))
-        rate = model_->rate(process);
-}
-
-double Simulation::rejection_fraction() const
-{
-    auto const selections{ step_ + rejections_ };
-    return selections == 0 ? 0.0 : static_cast<double>(rejections_) / selections;
-}
-
 template <class Rules>
 void kmc::RejectionTreeSimulation<Rules>::initialize_rates()
 {
@@ -306,6 +284,13 @@ void RejectionTreeSimulation<Rules>::update_static_rates()
         process_counts_.resize(process_rates_.size());
     else if (process_counts_.size() != process_rates_.size())
         throw std::logic_error{ "Process key space changed after initialization." };
+}
+
+template <class Rules>
+void RejectionTreeSimulation<Rules>::update_dynamic_rates()
+{
+    for (auto& [process, rate] : process_rates_ | std::views::drop(1))
+        rate = model_->rate(process);
 }
 
 template <class Rules>
