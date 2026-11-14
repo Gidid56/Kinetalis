@@ -11,6 +11,8 @@ target_sources(
         lattice/shape.cpp
         lattice/site.cpp
         lattice/unitcell.cpp
+        
+        simulation/base.cpp
 
         kmc/model.cpp
         kmc/process.cpp

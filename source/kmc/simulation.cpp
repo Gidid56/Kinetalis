@@ -10,6 +10,7 @@ using namespace kmc;
 using lattice::Coordination;
 using lattice::Path;
 using lattice::Site;
+using simulation::Status;
 
 static_assert(rate_tree::baseLevel <= rate_tree::maxHeight);
 static_assert(rate_tree::allocationBlockLevels > 0);
@@ -18,15 +19,9 @@ Simulation::Simulation(
     lattice::Generator const& make_lattice,
     model::Generator const& make_model,
     std::optional<random_::Engine::seed_type> seed)
-    : lattice_{ make_lattice() },
-      model_{ make_model() },
-      rng_{ seed }
+    : simulation::Base{ make_lattice, seed },
+      model_{ make_model() }
 {
-    lattice_.apply_fill_function(rng_);
-
-    for (auto& site : lattice_.sites())
-        site.set_pristine(true);
-
     //model_.update();
 }
 
@@ -39,7 +34,7 @@ void kmc::KmcSimulation<Rules>::initialize_rates()
 }
 
 template <class Rules>
-Simulation::Status KmcSimulation<Rules>::run(AnalysisPlan& analysis_plan, std::stop_token token)
+simulation::Status KmcSimulation<Rules>::run(AnalysisPlan& analysis_plan, std::stop_token token)
 {
     utility::Guard guard{ timer_ };
 
@@ -340,21 +335,6 @@ double Simulation::rejection_fraction() const
 {
     auto const selections{ step_ + rejections_ };
     return selections == 0 ? 0.0 : static_cast<double>(rejections_) / selections;
-}
-
-double Simulation::tracked_fraction() const
-{
-    return static_cast<double>(tracked_.duration().count()) / timer_.duration().count();
-}
-
-Duration Simulation::run_duration() const
-{
-    return Duration{ std::chrono::duration<double>{ timer_.duration() }.count() };
-}
-
-Duration Simulation::tracked_time() const
-{
-    return Duration{ std::chrono::duration<double>{ tracked_.duration() }.count() };
 }
 
 #include "../studies/dealloying/rules.h"

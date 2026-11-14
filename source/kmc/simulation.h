@@ -1,71 +1,38 @@
 #pragma once
-#include "lattice/lattice.h"
+#include "simulation/base.h"
 #include "model.h"
 #include "process.h"
-#include "random/engine.h"
 #include "rate_tree.h"
 #include "setup.h"
 
-class kmc::Simulation
+class kmc::Simulation : public simulation::Base
 {
 public:
-    enum class Status
-    {
-        created,
-        paused,
-        running,
-        exhausted,
-        analysed,
-    };
-
-    Simulation(Simulation const&) = delete;
-
-    Simulation(Simulation&&) = delete;
-    Simulation& operator=(Simulation&&) = delete;
-
-    virtual ~Simulation() = default;
-
-    virtual Status run(AnalysisPlan&, std::stop_token = {}) = 0;
-
-    void update_dynamic_rates();
-
-    double rejection_fraction() const;
-    double tracked_fraction() const;
-
-    Duration run_duration() const;
-    Duration tracked_time() const;
-
-    auto& mutable_lattice() { return lattice_; }
-    auto& lattice() const { return lattice_; }
-    auto& model() const { return model_; }
-
-    auto step() const { return step_; }
-    auto time() const { return time_; }
-
-    auto& process_rates() const { return process_rates_; }
-    auto& process_counts() const { return process_counts_; }
-
-    auto& rng() { return rng_; }
-    auto& rng() const { return rng_; }
-
-protected:
     explicit Simulation(
         lattice::Generator const& make_lattice,
         model::Generator const& make_model,
         std::optional<random_::Engine::seed_type> seed);
 
-    lattice::Lattice lattice_;
-    std::unique_ptr<kmc::Model> model_;
-    random_::Engine rng_;
+    virtual simulation::Status run(AnalysisPlan&, std::stop_token = {}) = 0;
 
-    Step step_{}, rejections_{};
+    void update_dynamic_rates();
+
+    double rejection_fraction() const;
+
+    auto time() const { return time_; }
+    auto& model() const { return model_; }
+
+    auto& process_rates() const { return process_rates_; }
+    auto& process_counts() const { return process_counts_; }
+
+protected:
+    std::unique_ptr<kmc::Model> model_;
+
     Time time_{};
-    std::atomic<Status> status_{};
+    std::size_t rejections_{};
 
     std::vector<std::pair<Process, Rate>> process_rates_{ { Process{}, Rate{} } };
     std::vector<std::size_t> process_counts_{ 0 };
-
-    utility::Timer timer_{}, tracked_{};
 };
 
 namespace kmc
@@ -86,7 +53,7 @@ public:
         update_rates();
     }
 
-    Status run(AnalysisPlan&, std::stop_token = {}) override;
+    simulation::Status run(AnalysisPlan&, std::stop_token = {}) override;
 
     auto& rate_tree() const { return rate_tree_; }
 
