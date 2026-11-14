@@ -7,12 +7,6 @@ enum class CampaignType
     dealloying,
 };
 
-constexpr std::array seeds{
-    "a6398046-93eac882-daab407f-43ad7f8a-9e1dec6b-2cfa7509-d5d06115-cdedda63",
-    "b0cfadb8-0da64832-ceb7db8e-c80485e3-8383e059-8242fe5f-d67432fa-090fd6bf",
-    "a7a6e3f6-e81ddb7a-c111cbec-81da6d1c-bc0080ef-b15004d6-5d7d64cf-77bc1ae3",
-};
-
 static constexpr Length min_box_size(CampaignType campaign_type)
 {
     static constexpr auto default_box_size = 40.7_nm;
@@ -117,3 +111,22 @@ static constexpr std::vector<kmc::Process> modulated_processes()
 }
 
 static constexpr std::array ratios{ 0.5, 1.0 / std::numbers::sqrt2, std::numbers::sqrt2, 2.0 };
+
+constexpr std::array seeds{
+    "6cdcdd54-fb64f488-b620a9dc-c5bb7f71-cdff365b-3c80e0a6-b73997c2-274f505d",
+    "dbb8b3d1-919fc29d-adae49f7-7d15f484-65f84f76-bbed03fb-773a454a-bec55b19",
+    "15f1f6e6-04a81617-12dcc955-347e6662-f61ab94d-8ebcb122-e4514d7b-ea4a224f",
+    "f6bc3225-293bbc55-55aff5a8-036904c6-b18609f3-da660643-7efd5e4a-f71e9547",
+    "e02fce6d-918aa9ff-9b9ef10b-b64ab64c-a42205a1-62cd5c7d-5e3ce747-887a7707",
+    "6995b027-5c2c8adf-d53c824a-80303835-17e233cc-c2936033-91ad59b1-dae4793f",
+    "ecc5a451-fe78db88-24ac533e-9e219cd5-a0b71b23-efcc8525-94b3c53c-aa554d81",
+    "ecb3fdf8-c7aee8e8-f2c709c2-125e82b0-7c8c8f25-c0e7ddef-9880f432-79e4f8f8",
+    "2141d92c-785407a0-c6ec0f1a-0f0fdc4a-247c9228-ddb4a89a-9b2eeb3e-398926f0",
+    "74fad755-112a3ee6-b6877ff0-68894d24-d135688c-053f4e8d-616db4c3-f78bc7d3",
+    "dc57ffec-d70716c2-aeb9aaa1-ec189104-a3bf0479-82760a0d-91d274fc-40b2312d",
+    "052ecab0-f3406e23-d1f42ab6-584ebd85-a73edc55-1e188a04-1637ebcf-4442843f",
+    "bedaca1c-18c60a28-df0ef6bd-5c8477f8-2e6989b2-666e2ccc-d879a8bc-c792a31b",
+    "f08375b7-d90df0b9-d0690bd4-0db0c856-7dbc9cc2-f9333719-794446a2-60794d05",
+    "fbc1dfd9-081b0f5f-beba1577-0ea3ef69-7ee9cf15-cfcfb71f-71357fbf-fae2dded",
+    "bb4798ed-cd2a09c8-6a7d5528-284cd316-6731cd1e-9e0de6d7-70ea204f-bedf3923",
+};
