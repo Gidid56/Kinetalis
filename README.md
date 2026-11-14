@@ -9,18 +9,15 @@ Two applications use the same simulation core:
 - **`kinetalis_batch`** runs parameter studies and independent replicates, writes numerical results, and performs campaign-level postprocessing.
 - **`kinetalis_viewer`** runs and displays simulations interactively, with camera controls and live inspection of the atomic configuration.
 
-The **core library and batch runner have no third-party build dependencies**: supporting code, including `magic_enum`, is included in the repository. The viewer is optional and uses graphical libraries supplied as Git submodules.
+The **core library and batch runner require no separately installed third-party libraries**: supporting headers, including `magic_enum`, are kept in the repository. Unit tests use the vendored, header-only **Boost.UT** (`external/boost/ut.hpp`); no Boost package or Visual Studio test adapter is needed. The optional viewer uses graphical libraries supplied as Git submodules.
 
 ## Build requirements
 
-| | Windows | Linux |
-| --- | --- | --- |
-| Compiler | MSVC with C++23 standard-library support; developed with Visual Studio 2026 | GCC 14 or newer with matching `libstdc++` |
-| Build tools | CMake 3.25+ and Ninja | CMake 3.25+ and Ninja |
-| Core and batch | No additional libraries to install | No additional libraries to install |
-| Viewer | Corrade, Magnum, Magnum Integration, SDL2, Dear ImGui, ImPlot, and an OpenGL-capable system | Same graphical dependencies; suitable windowing/OpenGL environment |
+- **C++23 compiler and standard library**, including support for `<format>`, `<print>`, and ranges.
+- **CMake 3.25+**, **Ninja**, and **Git**.
+- **Optional:** `clang-tidy` for static-analysis-enabled presets; an OpenGL-capable system and the Git submodules for the graphical viewer.
 
-The repository provides ready-to-use presets for MSVC, GCC 14, and the TUHH HPC environment. The root `CMakeLists.txt` defines the individual build options; the supplied presets use CMake 3.25 or later.
+The core and batch application need no separately installed C++ libraries. The unit tests use the bundled Boost.UT header (`external/boost/ut.hpp`); the viewer's graphical dependencies are supplied as submodules. See [Get started](#get-started) for platform-specific toolchains, Visual Studio components, and build presets.
 
 ## Get started
 
@@ -33,7 +30,10 @@ cd Kinetalis
 
 ### A. Windows: Visual Studio 2026
 
-1. Install Visual Studio with **Desktop development with C++**, including MSVC, CMake, and Ninja.
+1. In **Visual Studio Installer**, select the **Desktop development with C++** workload. Under **Individual components**, make sure the following are installed:
+   - **MSVC x64/x86 build tools** and a **Windows 10/11 SDK**.
+   - **C++ CMake tools for Windows** (CMake and Ninja support).
+   - **C++ Clang tools for Windows** (provides `clang-tidy`), required by the `tests-debug` and `viewer-debug` presets.
 2. Open the repository with **File → Open → Folder**, selecting the folder containing the root `CMakeLists.txt`.
 3. Select the **`batch-release`** CMake configure preset.
 4. Build the **`kinetalis_batch`** target, then run it from Visual Studio or a Developer PowerShell.
@@ -46,7 +46,7 @@ cmake --build --preset build-batch-release
 .\build\batch-release\Release\bin\kinetalis_batch.exe --help
 ```
 
-Visual Studio opens Kinetalis as a CMake folder; no Visual Studio solution file is required. To work with the graphical application, initialize the submodules and switch to `viewer-release` (see [Interactive viewer](#interactive-viewer)).
+Visual Studio opens Kinetalis as a CMake folder; no Visual Studio solution file is required. Clang tools are used for **static analysis**, not as a replacement for MSVC. The release presets do not enable `clang-tidy`; the `tests-debug` and `viewer-debug` presets do. To work with the graphical application, initialize the submodules and switch to `viewer-release` (see [Interactive viewer](#interactive-viewer)).
 
 ### B. General CMake project
 
@@ -128,7 +128,7 @@ auto const successful = batch.run([] {
         .setups = { dealloying::setups::geometry_analysis(1_nm, false) },
         .analysis_plan = [](std::filesystem::path const& path) {
             auto plan = dealloying::analysis_plans::basic(path);
-            plan.add<control::StepCap>(100);
+            plan.add<control::StepLimit>(100);
             return plan;
         },
     };
@@ -170,7 +170,7 @@ viewer.createSimulation(
     setups::geometry_analysis(1_nm, false),
     [](std::filesystem::path const&) {
         kmc::AnalysisPlan plan;
-        plan.add<control::StepCap>(100);
+        plan.add<control::StepLimit>(100);
         return plan;
     });
 ```
@@ -284,7 +284,7 @@ For example, a study can add a surface measurement and an event-count limit to a
 ```cpp
 auto plan = studies::dealloying::analysis_plans::basic(path);
 plan.add<output::Surface>(path);
-plan.add<control::StepCap>(100);
+plan.add<control::StepLimit>(100);
 ```
 
 Observers are attached to the simulation through its analysis plan, so new measurements generally require no changes to the KMC loop. Snapshot sampling frequency can be configured independently for each observer. The dealloying study combines generic writers and stopping criteria with its own [`Regime`](studies/dealloying/analysis/regime.h) analysis for passivation, branching, and terminal-state classification.
@@ -303,7 +303,7 @@ The `--concurrency` argument controls throughput without modifying the physical 
 | [`source/kmc/`](source/kmc/) | Simulation state, processes, event selection, rate tree, observer interfaces |
 | [`source/models/`](source/models/) | Physical and electrochemical rate laws |
 | [`source/math/`](source/math/), [`source/physics/`](source/physics/), [`source/chemistry/`](source/chemistry/) | General mathematical, physical, and material utilities |
-| [`source/random/`](source/random/), [`source/utility/`](source/utility/) | Random sampling, file I/O, formatting, and supporting utilities |
+| [`source/simulation/`](source/simulation/), [`source/utility/`](source/utility/) | Simulation base, random sampling, file I/O, formatting, and supporting utilities |
 | [`source/output/`](source/output/) | Measurements and writers |
 | [`source/batch/`](source/batch/) | Parallel campaign execution and aggregation |
 | [`studies/dealloying/`](studies/dealloying/) | Dealloying setups, analyses, and campaigns |
@@ -341,9 +341,19 @@ Offline rendering and other analysis tools in [`tools/`](tools/) are separate fr
 
 ## Tests and development tools
 
-The repository includes a `kinetalis_tests` target, formatting rules in `.clang-format`, and static-analysis settings in `.clang-tidy`. The tests use Boost.UT headers; make these available to the compiler when building that target. Unit tests are independent of the graphical viewer.
+The repository includes a `kinetalis_tests` target, formatting rules in `.clang-format`, and static-analysis settings in `.clang-tidy`. Tests use the **vendored Boost.UT** header at `external/boost/ut.hpp`; this is separate from Boost.Test and does not require installing Boost through Visual Studio Installer. Ensure the header is present in your checkout. Unit tests do not require the graphical viewer.
 
-A test build can be configured with:
+On Windows, use the supplied `tests-debug` preset, which enables `clang-tidy`:
+
+```powershell
+cmake --preset tests-debug
+cmake --build --preset build-tests-debug
+ctest --preset test-tests-debug
+```
+
+If CMake reports `Could not find KINETALIS_CLANG_TIDY`, ensure **C++ Clang tools for Windows** is installed and `clang-tidy.exe` is discoverable (try `where.exe clang-tidy`). Alternatively, supply its full path with `-DKINETALIS_CLANG_TIDY="C:/path/to/clang-tidy.exe"` or disable analysis using `cmake --preset tests-debug -DKINETALIS_ENABLE_CLANG_TIDY=OFF`.
+
+On Linux, a test build without static analysis can be configured with:
 
 ```sh
 cmake -S . -B build/tests -G Ninja \
