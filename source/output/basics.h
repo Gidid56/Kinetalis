@@ -10,10 +10,7 @@ public:
 
 private:
     std::string_view name() const override { return "step_limit"; }
-    std::string parameters() const override
-    {
-        return std::format("Simulation step limit: {}", limit_);
-    }
+    std::string settings() const override { return std::format("limit = {}", limit_); }
 
     void observe_started(kmc::Simulation const& simulation) override { simulation_ = &simulation; }
 
@@ -32,10 +29,7 @@ public:
 
 private:
     std::string_view name() const override { return "duration_limit"; }
-    std::string parameters() const override
-    {
-        return std::format("Execution time limit: {}", limit_);
-    }
+    std::string settings() const override { return std::format("limit = {}", limit_); }
 
     void observe_started(kmc::Simulation const& simulation) override { simulation_ = &simulation; }
 
@@ -74,7 +68,6 @@ public:
 
 private:
     std::string_view name() const override { return "time"; }
-    //static constexpr auto unit{ "s" };
 
     void write_init(kmc::Simulation const&) override;
     void write_snapshot(kmc::Simulation const&) override;
@@ -93,6 +86,7 @@ public:
 
 private:
     std::string_view name() const override { return "lattice"; }
+    std::string settings() const override { return std::format("save_bulk = {}", save_bulk_); }
 
     void write_init(kmc::Simulation const&) override;
     void write_snapshot(kmc::Simulation const&) override;
@@ -126,6 +120,7 @@ public:
 
 private:
     std::string_view name() const override { return "composition"; }
+    std::string settings() const override;
 
     void capture_init(kmc::Simulation const&) override;
     void observe_processed(kmc::process::Record const&) override;

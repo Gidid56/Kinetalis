@@ -48,11 +48,14 @@ public:
     virtual bool stop_requested() const { return false; }
 
     virtual std::string_view name() const = 0;
-    virtual std::string parameters() const { return {}; }
+    virtual std::string settings() const { return {}; }
+
+    virtual bool uses_snapshot_resolution() const { return false; }
 
     auto& resolution() const { return resolution_; }
 
 protected:
+
     virtual void take_snapshot(Simulation const&) { }
 
     Resolution resolution_{};

@@ -85,7 +85,7 @@ namespace studies::dealloying::campaigns
             //.seed = "84750a87-00df5231-b7b2b84b-e4fbf896-68b3d209-77fef6ff-23bc881f-f1ae0817",
             //.seed = seeds[0],
             .replicate_count = 1,
-            .setups = generate_setups(CampaignType::dealloying, { -40_mV }, full_composition_range),
+            .setups = generate_setups(CampaignType::dealloying, { -40_mV }, {10}),
             .analysis_plan = analysis_plans::geometry,
             .postprocessor = postprocess::find_regime_outcome,
         };

@@ -83,18 +83,33 @@ public:
         };
     }
 
-    std::string parameters() const
+    std::string output_settings() const
     {
-        std::string text{ "key:observer,min_snapshot_step,snapshot_scale_factor,parameters\n" };
+        std::string text;
+
+        for (std::size_t index{}; auto& observer : observers_)
+            //if (auto const settings{ observer->settings() }; not settings.empty())
+                std::format_to(
+                    std::back_inserter(text),
+                    "[{}]\n{}\n\n",
+                    observer->name(),
+                    observer->settings());
+
+        return text;
+    }
+
+    std::string output_resolution() const
+    {
+        std::string text{ "key:observer,min_snapshot_step,snapshot_scale_factor\n" };
 
         for (auto& observer : observers_)
-            std::format_to(
-                std::back_inserter(text),
-                "{},{},{},{}\n",
-                observer->name(),
-                observer->resolution().min_snapshot_step,
-                observer->resolution().snapshot_scale_factor,
-                observer->parameters());
+            if (observer->uses_snapshot_resolution())
+                std::format_to(
+                    std::back_inserter(text),
+                    "{},{},{}\n",
+                    observer->name(),
+                    observer->resolution().min_snapshot_step,
+                    observer->resolution().snapshot_scale_factor);
 
         return text;
     }

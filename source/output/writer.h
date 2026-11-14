@@ -20,8 +20,6 @@ public:
     [[nodiscard]] auto& last_snapshot() const { return last_snapshot_; }
 
 protected:
-    virtual bool uses_snapshot_resolution() const { return true; }
-
     virtual void capture_init(kmc::Simulation const&) { }
     virtual void capture_snapshot(kmc::Simulation const&) { }
     virtual void capture_final(kmc::Simulation const&) { }
@@ -39,9 +37,11 @@ private:
     std::size_t snapshot_index_{};
     std::optional<kmc::Observer::Snapshot> last_snapshot_;
 
+    bool uses_snapshot_resolution() const override { return true; }
+
     void observe_started(kmc::Simulation const&) override final;
     void take_snapshot(kmc::Simulation const&) override final;
     void observe_completed(kmc::Simulation const&) override final;
 
-    void register_resolution() const;
+    //void register_resolution() const;
 };

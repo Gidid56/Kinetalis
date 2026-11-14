@@ -111,7 +111,10 @@ void Runner<Rules>::write_campaign() const
 {
     file::write<txt>(campaign_path_ / "campaign", campaign_info());
     auto analysis_plan{ std::invoke(campaign_.analysis_plan, campaign_path_) };
-    file::write<txt>(campaign_path_ / "analysis_plan", analysis_plan.parameters());
+    file::write<file::Type::csv>(
+        campaign_path_ / "observer_resolution",
+        analysis_plan.output_resolution());
+    file::write<txt>(campaign_path_ / "observer_settings", analysis_plan.output_settings());
 }
 
 template <class Rules>

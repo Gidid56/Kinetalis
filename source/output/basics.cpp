@@ -89,6 +89,30 @@ void output::Rates::write_final(kmc::Simulation const& kmc)
     file::write<csv>(writer_path(), text);
 }
 
+template <std::ranges::input_range Range>
+std::string format_range(Range const& range)
+{
+    std::string result{ "[" };
+    bool first{ true };
+
+    for (auto const& value : range)
+    {
+        if (not first)
+            result += ", ";
+
+        std::format_to(std::back_inserter(result), "{}", value);
+        first = false;
+    }
+
+    result += ']';
+    return result;
+}
+
+std::string output::Composition::settings() const
+{
+    return std::format("elements = {}", format_range(active_elements));
+}
+
 void output::Composition::capture_init(kmc::Simulation const& kmc)
 {
     element_counts_.clear();
@@ -122,34 +146,14 @@ void output::Composition::write_snapshot(kmc::Simulation const& kmc)
 
     for (auto element : active_elements)
     {
-        auto const fraction{
-            occupied_sites == 0 ? std::numeric_limits<double>::quiet_NaN()
-                                : static_cast<double>(element_counts_[element]) / occupied_sites
-        };
+        auto const fraction{ occupied_sites == 0
+                                 ? std::numeric_limits<double>::quiet_NaN()
+                                 : static_cast<double>(element_counts_[element]) / occupied_sites };
 
         std::format_to(std::back_inserter(line), ",{}", fraction);
     }
 
     file::append<csv>(writer_path(), line += '\n');
-}
-
-template <std::ranges::input_range Range>
-std::string format_range(Range const& range)
-{
-    std::string result{ "[" };
-    bool first{ true };
-
-    for (auto const& value : range)
-    {
-        if (not first)
-            result += ", ";
-
-        std::format_to(std::back_inserter(result), "{}", value);
-        first = false;
-    }
-
-    result += ']';
-    return result;
 }
 
 std::string global::settings()

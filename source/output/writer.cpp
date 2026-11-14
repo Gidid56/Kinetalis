@@ -20,6 +20,9 @@ void Writer::observe_started(kmc::Simulation const& kmc)
     if (not root_.empty())
     {
         write_init(kmc);
+
+        //if (uses_snapshot_resolution())
+        //    register_resolution();
     }
 
     if (uses_snapshot_resolution())
@@ -55,6 +58,27 @@ void Writer::observe_completed(kmc::Simulation const& kmc)
     if (not root_.empty())
         write_final(kmc);
 }
+
+//void Writer::register_resolution() const
+//{
+//    auto const file{ root_path() / "analysis_plan" };
+//    auto const write_header{ not std::filesystem::exists(file) or
+//                             std::filesystem::file_size(file) == 0 };
+//
+//    std::string text;
+//
+//    if (write_header)
+//        text = "key:writer,min_snapshot_step,snapshot_scale_factor\n";
+//
+//    std::format_to(
+//        std::back_inserter(text),
+//        "{},{},{}\n",
+//        name(),
+//        resolution_.min_snapshot_step,
+//        resolution_.snapshot_scale_factor);
+//
+//    file::append<csv>(file, text);
+//}
 
 std::string Writer::snapshot_name(kmc::Step step) const
 {
