@@ -205,9 +205,19 @@ void Regime::record(Condition condition)
             phases_.lattice().to_xyz_file(false));
 }
 
-void Regime::write_init(kmc::Simulation const& kmc) { phases_.write_init(kmc); }
+void Regime::write_init(kmc::Simulation const& kmc)
+{
+    phases_.write_init(kmc);
+    surface_.write_init(kmc);
+    event_flux_.write_init(kmc);
+}
 
-void Regime::write_snapshot(kmc::Simulation const& kmc) { phases_.write_snapshot(kmc); }
+void Regime::write_snapshot(kmc::Simulation const& kmc)
+{
+    phases_.write_snapshot(kmc);
+    surface_.write_snapshot(kmc);
+    event_flux_.write_snapshot(kmc);
+}
 
 void Regime::write_final(kmc::Simulation const&)
 {

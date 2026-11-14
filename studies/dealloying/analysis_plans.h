@@ -82,8 +82,6 @@ namespace studies::dealloying::analysis_plans
         //plan.add<output::Lattice>(path).set_save_bulk(false).set_resolution(
         //    { .min_snapshot_step = 10, .snapshot_scale_factor = 1.01 });
 
-        plan.add<output::Surface>(path);
-        plan.add<output::process::EventFlux>(path);
         plan.add<output::process::Kinetics>(path);
         //plan.add<output::process::Statistics>(path).set_resolution(
         //    { .min_snapshot_step = 1000, .snapshot_scale_factor = 1.2 });

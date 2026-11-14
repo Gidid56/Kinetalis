@@ -55,6 +55,7 @@ protected:
 
 private:
     std::string_view name() const override { return "phases"; }
+    std::string settings() const override;
 
     Count phase_neighbor_count(lattice::Site const&, Phase) const;
 

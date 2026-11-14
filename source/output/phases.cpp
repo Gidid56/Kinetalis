@@ -113,6 +113,18 @@ void Phases::observe_processed(kmc::process::Record const& process)
             }
 }
 
+std::string Phases::settings() const
+{
+    auto text = std::format(
+        "active_phases = {}\n"
+        "marker_conditions = {}\n",
+        active_phases,
+        max_coordination);
+
+    return text;
+}
+
+
 Phases::Count Phases::phase_neighbor_count(Site const& site, Phase phase) const
 {
     return std::ranges::count_if(lattice_->neighbors(site), [phase](auto const neighbor) {
