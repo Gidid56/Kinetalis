@@ -86,7 +86,7 @@ Viewer::~Viewer()
     ImGui::DestroyContext();
 }
 
-kmc::Simulation& viewer::Viewer::createAnalysisPlan(kmc::PlanFactory planFactory)
+void viewer::Viewer::createAnalysisPlan(kmc::PlanFactory planFactory)
 {
     analysisPlan_ = planFactory({});
 

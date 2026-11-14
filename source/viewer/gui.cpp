@@ -218,7 +218,7 @@ void GUI::showSelection(lattice::Index index, Lattice const& lattice)
             TableNextColumn();
             Text("%i / %i", state.coordination, state.maxNeighbors);
 
-            if constexpr (elementSpecificNeighbors)
+            if constexpr (element_specific_neighbors)
                 if (paused)
                     for (auto element : lattice::activeElements)
                         Text("%s: %i", symbol(element).data(), site.coordination(element));
@@ -239,7 +239,7 @@ void GUI::showSelection(lattice::Index index, Lattice const& lattice)
             TableNextColumn();
             TextUnformatted(std::format(locale_, "{:L}", index).c_str());
 
-            if constexpr (useLayers)
+            if constexpr (use_layers)
             {
                 TableNextColumn();
                 TextUnformatted("Monolayer");
@@ -267,7 +267,7 @@ void GUI::showViewerControls()
         RadioButton("ID", &viewMode, std::to_underlying(ViewMode::ID));
         SameLine();
         RadioButton("Pristine", &viewMode, std::to_underlying(ViewMode::Pristine));
-        if constexpr (useLayers)
+        if constexpr (use_layers)
         {
             SameLine();
             RadioButton("Layers", &viewMode, std::to_underlying(ViewMode::Layers));

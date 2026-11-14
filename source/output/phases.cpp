@@ -84,7 +84,7 @@ void Phases::observe_selected(kmc::process::Record const& process)
             }
 }
 
-//if constexpr (useLayers)
+//if constexpr (use_layers)
 //{
 //	phasesByLayers_[Phase::pore][site.layer()] -= delta;
 //	phasesByLayers_[Phase::solid][site.layer()] += delta;
@@ -169,7 +169,7 @@ void Phases::write_snapshot(kmc::Simulation const& kmc)
     file::append<csv>(writer_path(), text += '\n');
 }
 
-//if constexpr (lattice::useLayers)
+//if constexpr (lattice::use_layers)
 //{
 //	std::string text;
 //

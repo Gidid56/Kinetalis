@@ -164,14 +164,14 @@ std::string global::settings()
 
     settings += std::format(
         "Lattice Settings\n"
-        "activeElements = {}\n"
-        "elementSpecificNeighbors = {}\n"
-        "useLayers = {}\n"
+        "active_elements = {}\n"
+        "element_specific_neighbors = {}\n"
+        "use_layers = {}\n"
         "epsilon::length = {:fm}\n"
         "epsilon::coordinate = {}\n",
-        format_range(lattice::activeElements),
-        lattice::elementSpecificNeighbors,
-        lattice::useLayers,
+        format_range(lattice::active_elements),
+        lattice::element_specific_neighbors,
+        lattice::use_layers,
         lattice::epsilon::length,
         lattice::epsilon::coordinate);
 

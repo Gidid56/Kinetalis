@@ -4,6 +4,14 @@
 class kmc::models::CompositionDependent : public LinearBondBreaking
 {
 public:
+    CompositionDependent()
+    {
+        if constexpr (not lattice::element_specific_neighbors)
+            throw std::logic_error{
+                "CompositionDependent requires element-specific neighbor tracking."
+            };
+    }
+
     Energy lattice_energy_barrier(Process const&) const override;
 
     std::string output_text() const override;

@@ -16,7 +16,7 @@ public:
     template <class Rules>
     kmc::Simulation& createSimulation(kmc::Setup<Rules> const&, kmc::PlanFactory);
 
-    kmc::Simulation& createAnalysisPlan(kmc::PlanFactory);
+    void createAnalysisPlan(kmc::PlanFactory);
 
     Viewer& load(Lattice&);
     Viewer& setTask(Task);

@@ -54,7 +54,7 @@ Energy models::CompositionDependent::lattice_energy_barrier(Process const& proce
     Energy energy{};
 
     for (auto&& [element, coordination] :
-        std::views::zip(lattice::activeElements, process.element_neighbors()))
+        std::views::zip(lattice::active_elements, process.element_neighbors()))
     {
         energy += coordination * composition_dependent::bond_energy(process.element(), element);
     }

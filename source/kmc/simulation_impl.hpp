@@ -245,7 +245,7 @@ void RejectionTreeSimulation<Rules>::update_static_rates()
     process_rates_.reserve(Process::number_keys());
     process_rates_.emplace_back(Process{}, Rate{});
 
-    constexpr auto elements{ utility::prepend(Element::none, lattice::activeElements) };
+    constexpr auto elements{ utility::prepend(Element::none, lattice::active_elements) };
 
     auto add_rule = [&](auto const& rule) {
         using Rule = std::remove_cvref_t<decltype(rule)>;

@@ -104,7 +104,7 @@ private:
     Coordination coordination_{}, max_neighbors_{};
     [[no_unique_address]] ElementNeighbors element_neighbors_{};
     Flags flags_{};
-    [[no_unique_address]] utility::Storage<Layer, useLayers> layer_{};
+    [[no_unique_address]] utility::Storage<Layer, use_layers> layer_{};
 
     Index site_index_{}, neighbor_index_{};
 

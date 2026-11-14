@@ -99,7 +99,7 @@ public:
     auto neighbors(this auto& self, Site const& site)
     {
         auto indices =
-            std::span{ &self.neighbors_.at(site.neighbor_index()), site.max_neighbors() };
+            std::span{ self.neighbors_ }.subspan(site.neighbor_index(), site.max_neighbors());
 
         return indices | std::views::transform(
                              [sites = self.sites_.data()](Index index) { return sites + index; });

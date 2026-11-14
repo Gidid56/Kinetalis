@@ -202,7 +202,7 @@ Layers::iterator Lattice::get_layer(physics::quantity::Displacement position)
 
 void Lattice::construct_layers(math::Axis axis)
 {
-    if constexpr (not useLayers)
+    if constexpr (not use_layers)
         return;
 
     layer_axis_ = axis;
@@ -478,12 +478,12 @@ std::formatter<Lattice>::format(Lattice const& lattice, std::format_context& con
         enum_flags_name(lattice.periodic_boundaries()),
         lattice.max_path_length());
 
-    if constexpr (useLayers)
+    if constexpr (use_layers)
         out = std::format_to(out, "Layers perpendicular to {}-axis.\n", lattice.layer_axis());
 
     out = std::format_to(out, "\nSite composition\n");
 
-    for (auto& element : activeElements)
+    for (auto& element : active_elements)
     {
         out = std::format_to(out, "{} {:%;.3}\n", element, Fraction{ lattice.fraction(element) });
     }

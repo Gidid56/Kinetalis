@@ -24,7 +24,7 @@ void Site::set_element(Lattice& lattice, Element element)
 
 void Site::insert(Site* neighbor, Index neighbor_index)
 {
-    if constexpr (elementSpecificNeighbors)
+    if constexpr (element_specific_neighbors)
         if (neighbor->element() != Element::none)
             ++element_neighbors_[elementKey(neighbor->element())];
 
@@ -51,7 +51,7 @@ void Site::update_neighbors(Lattice& lattice, std::int_fast8_t delta)
     {
         neighbor->set_dirty(true);
         neighbor->coordination_ += delta;
-        if constexpr (elementSpecificNeighbors)
+        if constexpr (element_specific_neighbors)
             if (element_ != Element::none)
                 neighbor->element_neighbors_[elementKey(element_)] += delta;
     }

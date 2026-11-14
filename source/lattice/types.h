@@ -17,13 +17,13 @@ namespace lattice
     using chemistry::Element;
 
     // Add new elements here if desired
-    inline constexpr std::array activeElements{
+    inline constexpr std::array active_elements{
         Element::Ag,
         Element::Au,
         //Element::Cu,
     };
 
-    inline constexpr bool elementSpecificNeighbors{ false }, useLayers{ false };
+    inline constexpr bool element_specific_neighbors{ false }, use_layers{ false };
 }
 
 namespace lattice
@@ -42,7 +42,7 @@ namespace lattice
     static constexpr Coordination max_coordination{ 12 };
 
     using ElementNeighbors =
-        utility::ArrayStorage<Coordination, std::size(activeElements), elementSpecificNeighbors>;
+        utility::ArrayStorage<Coordination, std::size(active_elements), element_specific_neighbors>;
 
     using Index = std::uint32_t;
     using Indices = math::Vector<3, int>;
@@ -120,10 +120,10 @@ namespace lattice::epsilon
     inline constexpr Difference coordinate{ 1e-6 };
 }
 
-// Automatically managed activeElements. Enabled by elementSpecificNeighbors
+// Automatically managed activeElements. Enabled by element_specific_neighbors
 namespace lattice
 {
-    inline constexpr std::size_t numberActiveElements{ elementSpecificNeighbors *
-                                                       std::size(lattice::activeElements) };
-    inline constexpr auto elementKey{ &utility::array_key<activeElements> };
+    inline constexpr std::size_t numberActiveElements{ element_specific_neighbors *
+                                                       std::size(lattice::active_elements) };
+    inline constexpr auto elementKey{ &utility::array_key<active_elements> };
 }

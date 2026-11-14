@@ -32,7 +32,7 @@ Process::Process(Event event, Path const& path)
 { }
 
 static_assert(
-    not elementSpecificNeighbors or not kmc::staticProcessKeys,
+    not element_specific_neighbors or not kmc::staticProcessKeys,
     "Element-specific neighbor energies require dynamic process keys.");
 
 // maxCoordination is the exclusive upper bound for active
@@ -41,7 +41,7 @@ namespace offset
 {
     constexpr process::Key diffusion{ 1 };
 
-    constexpr process::Key dissolution{ diffusion + max_coordination * std::size(activeElements) };
+    constexpr process::Key dissolution{ diffusion + max_coordination * std::size(active_elements) };
 
     constexpr process::Key deposition{ dissolution + max_coordination };
 
@@ -78,8 +78,8 @@ std::size_t std::hash<Process>::operator()(Process const& process) const
     hash += static_cast<std::size_t>(process.coordination()) << offset;
     offset += 4;
 
-    if constexpr (elementSpecificNeighbors)
-        for (auto& element : activeElements)
+    if constexpr (element_specific_neighbors)
+        for (auto& element : active_elements)
         {
             hash += static_cast<std::size_t>(process.element_neighbors()[elementKey(element)])
                     << offset;
@@ -100,11 +100,11 @@ std::formatter<Process>::format(Process const& process, std::format_context& con
         separator,
         process.coordination());
 
-    if constexpr (elementSpecificNeighbors)
+    if constexpr (element_specific_neighbors)
     {
         out = std::format_to(out, "{}(", separator);
 
-        for (auto& element : activeElements)
+        for (auto& element : active_elements)
             if (auto neighbors{ process.element_neighbors()[elementKey(element)] })
                 out = std::format_to(out, "{}x {}; ", neighbors, symbol(element));
 
