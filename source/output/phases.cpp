@@ -117,7 +117,7 @@ std::string Phases::settings() const
 {
     auto text = std::format(
         "active_phases = {}\n"
-        "marker_conditions = {}\n",
+        "max_coordination = {}\n",
         active_phases,
         max_coordination);
 
