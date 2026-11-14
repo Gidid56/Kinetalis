@@ -86,12 +86,8 @@ Viewer::~Viewer()
     ImGui::DestroyContext();
 }
 
-template <class Rules>
-kmc::Simulation& Viewer::createSimulation(kmc::Setup<Rules> const& setup, kmc::PlanFactory planFactory)
+kmc::Simulation& viewer::Viewer::createAnalysisPlan(kmc::PlanFactory planFactory)
 {
-    stopWorker();
-
-    simulation_ = std::make_unique<kmc::RejectionTreeSimulation<Rules>>(setup);
     analysisPlan_ = planFactory({});
 
     auto& lattice{ simulation_->mutable_lattice() };
@@ -110,8 +106,6 @@ kmc::Simulation& Viewer::createSimulation(kmc::Setup<Rules> const& setup, kmc::P
         simulation_->lattice(),
         simulation_->model()->output_text(),
         simulation_->rng());
-
-    return *simulation_;
 }
 
 Viewer& Viewer::load(Lattice& lattice)
@@ -397,9 +391,3 @@ void Viewer::scrollEvent(ScrollEvent& event)
 
     camera_->zoom(1.0f - 0.1f * delta);
 }
-
-#include "../../studies/dealloying/rules.h"
-
-template kmc::Simulation& viewer::Viewer::createSimulation<studies::dealloying::Rules>(
-    kmc::Setup<studies::dealloying::Rules> const&,
-    kmc::PlanFactory);

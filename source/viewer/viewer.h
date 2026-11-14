@@ -16,6 +16,8 @@ public:
     template <class Rules>
     kmc::Simulation& createSimulation(kmc::Setup<Rules> const&, kmc::PlanFactory);
 
+    kmc::Simulation& createAnalysisPlan(kmc::PlanFactory);
+
     Viewer& load(Lattice&);
     Viewer& setTask(Task);
     Viewer& run() { return setTask(Task::Run); }
@@ -66,3 +68,15 @@ private:
     std::jthread worker_;
     Lattice* lattice_{ nullptr };
 };
+
+template <class Rules>
+kmc::Simulation&
+viewer::Viewer::createSimulation(kmc::Setup<Rules> const& setup, kmc::PlanFactory planFactory)
+{
+    stopWorker();
+
+    simulation_ = std::make_unique<kmc::RejectionTreeSimulation<Rules>>(setup);
+    createAnalysisPlan(planFactory);
+
+    return *simulation_;
+}
