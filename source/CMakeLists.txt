@@ -59,7 +59,6 @@ target_sources(
         batch/statistics/aggregate.cpp
         batch/statistics/merge.cpp
         batch/terminal.cpp
-        batch/runner.cpp
 )
 
 target_link_libraries(
