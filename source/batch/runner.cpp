@@ -12,15 +12,14 @@ using namespace batch;
 using namespace utility;
 using enum file::Type;
 
-template <class Rules>
-bool Runner<Rules>::run(CampaignFactory<Rules> campaign)
+bool Runner::run_impl(std::function<CampaignData()> factory)
 {
     if (std::exchange(used_, true))
         throw std::logic_error{ "Runner can only be used once." };
 
     try
     {
-        initialize(std::move(campaign));
+        initialize(std::invoke(factory));
 
         write_init();
         run_samples();
@@ -37,10 +36,9 @@ bool Runner<Rules>::run(CampaignFactory<Rules> campaign)
     }
 }
 
-template <class Rules>
-void Runner<Rules>::initialize(CampaignFactory<Rules> campaign)
+void Runner::initialize(CampaignData campaign)
 {
-    campaign_ = campaign();
+    campaign_ = std::move(campaign);
 
     if (campaign_.name.empty())
         campaign_.name = "campaign";
@@ -52,15 +50,14 @@ void Runner<Rules>::initialize(CampaignFactory<Rules> campaign)
     terminal_ = std::make_unique<Terminal>(campaign_.sample_count(), worker_count());
 }
 
-template <class Rules>
-void Runner<Rules>::generate_seeds()
+void Runner::generate_seeds()
 {
     simulation::Engine campaign_engine{ campaign_.seed };
 
     seed_generator_name_ = std::format("{}", campaign_engine);
     seeds_.resize(campaign_.sample_count());
 
-    auto const setup_count{ campaign_.setups.size() };
+    auto const setup_count{ campaign_.setup_names.size() };
 
     for (std::size_t setup_index{}; setup_index < setup_count; ++setup_index)
     {
@@ -80,20 +77,18 @@ void Runner<Rules>::generate_seeds()
     }
 }
 
-template <class Rules>
-std::string Runner<Rules>::campaign_info() const
+std::string Runner::campaign_info() const
 {
     return std::format(
         "Campaign Seed {}\n"
         "{} setups × {} replicates = {} total samples.\n",
         seed_generator_name_,
-        campaign_.setups.size(),
+        campaign_.setup_names.size(),
         campaign_.replicate_count,
         campaign_.sample_count());
 }
 
-template <class Rules>
-void Runner<Rules>::write_init() const
+void Runner::write_init() const
 {
     std::print(
         "\n[{:%T}] Starting campaign '{}'.\n{}\n",
@@ -106,8 +101,7 @@ void Runner<Rules>::write_init() const
     write_samples();
 }
 
-template <class Rules>
-void Runner<Rules>::write_campaign() const
+void Runner::write_campaign() const
 {
     file::write<txt>(campaign_path_ / "campaign", campaign_info());
     auto analysis_plan{ std::invoke(campaign_.analysis_plan, campaign_path_) };
@@ -117,23 +111,21 @@ void Runner<Rules>::write_campaign() const
     file::write<txt>(campaign_path_ / "observer_settings", analysis_plan.output_settings());
 }
 
-template <class Rules>
-void Runner<Rules>::write_setups() const
+void Runner::write_setups() const
 {
     std::string text{ "setup,description\n" };
 
-    for (std::size_t setup_index{}; auto const& setup : campaign_.setups)
+    for (std::size_t setup_index{}; auto const& name : campaign_.setup_names)
         std::format_to(
             std::back_inserter(text),
             "{},{}\n",
             setup_index++,
-            csv::Table::encode_field(setup.name));
+            csv::Table::encode_field(name));
 
     file::write<file::Type::csv>(campaign_path_ / "setups", text);
 }
 
-template <class Rules>
-void Runner<Rules>::write_samples() const
+void Runner::write_samples() const
 {
     std::string text{ "sample,setup,replicate,seed\n" };
 
@@ -149,8 +141,7 @@ void Runner<Rules>::write_samples() const
     file::write<file::Type::csv>(campaign_path_ / "samples", text);
 }
 
-template <class Rules>
-void Runner<Rules>::write_final() const
+void Runner::write_final() const
 {
     file::append<txt>(
         campaign_path_ / "campaign",
@@ -159,20 +150,17 @@ void Runner<Rules>::write_final() const
     std::print("\n[{:%T}] Campaign completed successfully.\n", WallClock::now());
 }
 
-template <class Rules>
-std::size_t Runner<Rules>::sample_count() const
+std::size_t Runner::sample_count() const
 {
     return campaign_.sample_count();
 }
 
-template <class Rules>
-std::size_t Runner<Rules>::worker_count() const
+std::size_t Runner::worker_count() const
 {
     return std::min(concurrency_count_, sample_count());
 }
 
-template <class Rules>
-void Runner<Rules>::run_samples()
+void Runner::run_samples()
 {
     std::vector<std::jthread> workers;
     workers.reserve(worker_count());
@@ -181,8 +169,7 @@ void Runner<Rules>::run_samples()
         workers.emplace_back([this] { run_worker(); });
 }
 
-template <class Rules>
-void Runner<Rules>::run_worker()
+void Runner::run_worker()
 {
     while (true)
     {
@@ -208,30 +195,25 @@ void Runner<Rules>::run_worker()
     }
 }
 
-template <class Rules>
-void Runner<Rules>::run_sample(std::size_t sample_index) const
+void Runner::run_sample(std::size_t sample_index) const
 {
-    auto setup{ campaign_.setups[sample_setup_index(sample_index)] };
-    setup.seed = seeds_[sample_index];
-
     auto const path{ sample_path(sample_index) };
     std::filesystem::create_directories(path);
 
-    kmc::RejectionTreeSimulation<Rules> simulation{ setup };
-    auto analysis_plan{ std::invoke(campaign_.analysis_plan, path) };
-
-    simulation.run(analysis_plan);
+    campaign_.execute_sample(
+        sample_setup_index(sample_index),
+        seeds_[sample_index],
+        path,
+        campaign_.analysis_plan);
 }
 
-template <class Rules>
-void Runner<Rules>::record(sample::State state)
+void Runner::record(sample::State state)
 {
     std::scoped_lock lock{ counts_mutex_ };
     ++counts_.at(state);
 }
 
-template <class Rules>
-void Runner<Rules>::postprocess() const
+void Runner::postprocess() const
 {
     std::print("\n[{:%T}] Starting postprocessor.\n", WallClock::now());
 
@@ -245,36 +227,32 @@ void Runner<Rules>::postprocess() const
     std::print("[{:%T}] Postprocessing completed successfully.\n", WallClock::now());
 }
 
-template <class Rules>
-std::size_t Runner<Rules>::sample_setup_index(std::size_t sample_index) const
+std::size_t Runner::sample_setup_index(std::size_t sample_index) const
 {
-    return sample_index % campaign_.setups.size();
+    return sample_index % campaign_.setup_names.size();
 }
 
-template <class Rules>
-std::size_t Runner<Rules>::sample_replicate_index(std::size_t sample_index) const
+std::size_t Runner::sample_replicate_index(std::size_t sample_index) const
 {
-    return sample_index / campaign_.setups.size();
+    return sample_index / campaign_.setup_names.size();
 }
 
 std::size_t index_width(std::size_t count) { return std::to_string(count - 1).size(); };
 
-template <class Rules>
-std::string Runner<Rules>::sample_name(std::size_t sample_index) const
+std::string Runner::sample_name(std::size_t sample_index) const
 {
     return std::format(
         "{:0{}}/{:0{}}",
         sample_setup_index(sample_index),
-        index_width(campaign_.setups.size()),
+        index_width(campaign_.setup_names.size()),
         sample_replicate_index(sample_index),
         index_width(campaign_.replicate_count));
 }
 
-template <class Rules>
-std::filesystem::path Runner<Rules>::sample_path(std::size_t sample_index) const
+std::filesystem::path Runner::sample_path(std::size_t sample_index) const
 {
     auto const setup_index{ sample_setup_index(sample_index) };
-    auto const setup_count{ campaign_.setups.size() };
+    auto const setup_count{ campaign_.setup_names.size() };
     auto const setup_path{ std::format("{:0{}}", setup_index, index_width(setup_count)) };
     auto path{ campaign_path_ / "setups" / setup_path };
 
@@ -287,6 +265,3 @@ std::filesystem::path Runner<Rules>::sample_path(std::size_t sample_index) const
     return path;
 }
 
-#include "../studies/dealloying/rules.h"
-
-template class Runner<studies::dealloying::Rules>;

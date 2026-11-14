@@ -5,7 +5,6 @@ namespace batch
     template <class Rules>
     struct Campaign;
 
-    template <class Rules>
     class Runner;
     class Terminal;
 
