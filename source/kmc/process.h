@@ -23,6 +23,17 @@ namespace kmc
     {
         [[no_unique_address]] Site site;
         [[no_unique_address]] Path path;
+
+        std::string settings() const
+        {
+            return std::format(
+                "[site: {}]\n{}\n\n"
+                "[path: {}]\n{}\n",
+                enum_name(Site::event),
+                site.settings(),
+                enum_name(Path::event),
+                path.settings());
+        }
     };
 }
 /*

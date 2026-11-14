@@ -29,7 +29,7 @@ public:
 
     Frequency rate(Process const&) const;
 
-    virtual std::string output_text() const = 0;
+    virtual std::string output_text() const;
 
     auto temperature() const { return temperature_; }
 

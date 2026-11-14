@@ -105,5 +105,5 @@ std::string models::ElectrochemicalInterface::output_text() const
         "Solvation energy = {:meV}\n",
         constants_.solvation_energy);
 
-    return text;
+    return text += Model::output_text();
 }

@@ -18,3 +18,14 @@ Frequency Model::rate(Process const& process) const
 
     return tst_rate;
 }
+std::string kmc::Model::output_text() const
+{
+    if (not modulation_)
+        return {};
+
+    return std::format(
+        "Modulated process = {:_}\n"
+        "Modulation ratio = {}\n",
+        modulation_->process,
+        modulation_->ratio);
+}

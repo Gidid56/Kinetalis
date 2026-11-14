@@ -18,6 +18,8 @@ public:
         //model_.update();
     }
 
+    virtual std::string output_settings() const = 0;
+
     virtual simulation::Status run(AnalysisPlan&, std::stop_token = {}) = 0;
 
     double rejection_fraction() const
@@ -55,6 +57,8 @@ public:
     }
 
     simulation::Status run(AnalysisPlan&, std::stop_token = {}) override;
+
+    std::string output_settings() const override { return rules_.settings(); }
 
     auto& rate_tree() const { return rate_tree_; }
 

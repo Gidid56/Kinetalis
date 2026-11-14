@@ -11,16 +11,28 @@ namespace studies::dealloying::rules
     {
         static constexpr auto event = kmc::Event::dissolution;
 
+        kmc::Element element{ kmc::Element::Ag };
+        lattice::Coordination max_coordination{ 11 };
+
+        std::string settings() const
+        {
+            return std::format(
+                "element = {}\n"
+                "max_coordination = {}",
+                element,
+                static_cast<unsigned>(max_coordination));
+        }
+
         bool active(lattice::Site const& site) const
         {
-            return site.element() == kmc::Element::Ag and not site.is_bulk();
+            return site.element() == element and not site.is_bulk();
         }
 
         bool allowed(lattice::Site const& site) const { return active(site); }
 
         bool supports(kmc::Process const& process) const
         {
-            return process.event() == event and process.element() == kmc::Element::Ag;
+            return process.event() == event and process.element() == element;
         }
     };
 
@@ -49,6 +61,15 @@ namespace studies::dealloying::rules
         bool supports(kmc::Process const& process) const
         {
             return process.event() == event and process.element() != kmc::Element::none;
+        }
+
+        std::string settings() const
+        {
+            return std::format(
+                "max_source_coordination = {}\n"
+                "min_target_coordination = {}",
+                static_cast<unsigned>(max_source_coordination),
+                static_cast<unsigned>(min_target_coordination));
         }
     };
 }

@@ -28,6 +28,7 @@ void output::Config::write_init(kmc::Simulation const& kmc)
     file::write<txt>(root_path() / "lattice", std::format("{}", kmc.lattice()));
     file::write<txt>(root_path() / "seed", std::format("{}", kmc.rng()));
     file::write<txt>(root_path() / "settings", global::settings());
+    file::write<txt>(root_path() / "rules", kmc.output_settings());
 }
 
 void output::Time::write_init(kmc::Simulation const&)
