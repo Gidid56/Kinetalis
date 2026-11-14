@@ -42,6 +42,4 @@ private:
     void observe_started(kmc::Simulation const&) override final;
     void take_snapshot(kmc::Simulation const&) override final;
     void observe_completed(kmc::Simulation const&) override final;
-
-    //void register_resolution() const;
 };

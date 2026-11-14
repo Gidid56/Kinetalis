@@ -17,11 +17,15 @@ using enum output::Phases::Phase;
 
 std::string Regime::settings() const
 {
+    auto format_conditions = [](Condition conditions) {
+        return conditions == Condition::none ? std::string{ enum_name(conditions) }
+                                             : enum_flags_name(conditions);
+    };
     auto text = std::format(
         "stop_conditions = {}\n"
         "marker_conditions = {}\n",
-        enum_flags_name(stop_conditions_),
-        enum_flags_name(marker_conditions_));
+        format_conditions(stop_conditions_),
+        format_conditions(marker_conditions_));
 
     if (not thresholds_.empty())
         text += "thresholds:\n";

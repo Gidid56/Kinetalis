@@ -83,7 +83,7 @@ namespace studies::dealloying::campaigns
             //.seed = "6791dff7-d3b546b9-93e332b7-bacb20c4-f43b2c56-05008600-6a91e4fc-9a6e2626",
             //.seed = "e7d526b4-723b3def-502439d4-e7c787e8-a5e24a89-6c7537a6-c9856836-93583aab",
             //.seed = "84750a87-00df5231-b7b2b84b-e4fbf896-68b3d209-77fef6ff-23bc881f-f1ae0817",
-            //.seed = seeds.at(0),
+            .seed = seeds.at(0),
             .replicate_count = 1,
             .setups = generate_setups(CampaignType::dealloying, { -40_mV }, {10}),
             .analysis_plan = analysis_plans::geometry,
@@ -95,7 +95,7 @@ namespace studies::dealloying::campaigns
     {
         return {
             .name = "subcritical passivation",
-            //.seed = seeds.at(1),
+            .seed = seeds.at(1),
             .replicate_count = 20,
             .setups = generate_setups(
                 CampaignType::passivation,
@@ -110,7 +110,7 @@ namespace studies::dealloying::campaigns
     {
         return {
             .name = "critical composition",
-            //.seed = seeds.at(2),
+            .seed = seeds.at(2),
             .replicate_count = 20,
             .setups = generate_setups(
                 CampaignType::bifurcation,
@@ -125,7 +125,7 @@ namespace studies::dealloying::campaigns
     {
         return {
             .name = "critical temperature",
-            //.seed = seeds.at(3),
+            .seed = seeds.at(3),
             .replicate_count = 20,
             .setups = generate_setups(
                 CampaignType::bifurcation,
@@ -141,7 +141,7 @@ namespace studies::dealloying::campaigns
     {
         return {
             .name = "surface excess (x07)",
-            //.seed = seeds.at(4),
+            .seed = seeds.at(4),
             .replicate_count = 20,
             .setups =
                 generate_setups(CampaignType::bifurcation, critical_potential_search_range, { 7 }),
@@ -165,7 +165,7 @@ namespace studies::dealloying::campaigns
     {
         return {
             .name = "surface geometry",
-            //.seed = seeds.at(4),
+            .seed = seeds.at(5),
             .replicate_count = 20,
             .setups = radius_scan(0.5_nm, 30_nm),
         };
@@ -196,7 +196,7 @@ namespace studies::dealloying::campaigns
     {
         return {
             .name = "sesitivity test",
-            //.seed = seeds.at(5),
+            .seed = seeds.at(6),
             .replicate_count = 20,
             .setups = generate_modulation(),
             .analysis_plan = analysis_plans::regime_outcome,
@@ -208,7 +208,7 @@ namespace studies::dealloying::campaigns
     {
         return {
             .name = "bifurcation radius",
-            //.seed = seeds.at(6),
+            .seed = seeds.at(7),
             .replicate_count = 40,
             .setups = generate_setups(
                 CampaignType::passivation,

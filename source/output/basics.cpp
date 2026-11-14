@@ -73,7 +73,8 @@ void output::Lattice::write_snapshot(kmc::Simulation const& kmc)
 
 void output::Lattice::write_final(kmc::Simulation const& kmc)
 {
-    file::write<xyz>(writer_path() / "final", kmc.lattice().to_xyz_file(not save_bulk_));
+    if (not save_bulk_)
+        file::write<xyz>(writer_path() / "final", kmc.lattice().to_xyz_file(true));
 }
 
 void output::Rates::write_init(kmc::Simulation const& kmc) { write_final(kmc); }
