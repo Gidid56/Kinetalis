@@ -1,5 +1,6 @@
 #include "models/composition_dependent.h"
-#include "random/engine.h"
+#include "simulation/engine.h"
+#include "kmc/rate_tree.h"
 
 #include <array>
 #include <bit>
@@ -45,8 +46,8 @@ namespace kmc
 
             auto bounded{ true };
             for (std::size_t i{}; i < 10'000; ++i)
-                if (simulation::Engine::state_word_type value{
-                        first.integer(simulation::Engine::state_word_type{ 99 }) };
+                if (simulation::Engine::State::value_type value{
+                        first.integer(simulation::Engine::State::value_type{ 99 }) };
                     value > 99)
                 {
                     bounded = false;
@@ -68,4 +69,7 @@ namespace kmc
             }));
         };
     };
+
+    static_assert(rate_tree::baseLevel <= rate_tree::maxHeight);
+    static_assert(rate_tree::allocationBlockLevels > 0);
 }

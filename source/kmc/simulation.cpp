@@ -8,12 +8,8 @@
 
 using namespace kmc;
 using lattice::Coordination;
-using lattice::Path;
 using lattice::Site;
 using simulation::Status;
-
-static_assert(rate_tree::baseLevel <= rate_tree::maxHeight);
-static_assert(rate_tree::allocationBlockLevels > 0);
 
 template <class Rules>
 void kmc::RejectionTreeSimulation<Rules>::initialize_rates()
@@ -108,7 +104,7 @@ process::Record RejectionTreeSimulation<Rules>::select_random_process()
     if (process_index == site.process_index())
         return process::Record{ site, decltype(rules_.site)::event, rules_.site.allowed(site) };
 
-    auto const path{ Path{ &site, lattice_.neighbor(process_index - site_index - 1) } };
+    auto const path{ lattice::Path{ &site, lattice_.neighbor(process_index - site_index - 1) } };
 
     return process::Record{ path, decltype(rules_.path)::event, rules_.path.allowed(path) };
 }
@@ -181,7 +177,7 @@ Rate RejectionTreeSimulation<Rules>::rate_sum(Site& site)
 
     for (auto neighbor : lattice_.neighbors(site))
     {
-        auto const path{ Path{ &site, neighbor } };
+        auto const path{ lattice::Path{ &site, neighbor } };
         add_process(process_key(make_process(path, rules_.path)));
     }
 
