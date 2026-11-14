@@ -8,14 +8,13 @@ namespace kmc
     concept EventLocation = std::same_as<T, lattice::Site> or std::same_as<T, lattice::Path>;
 
     template <typename T, class Location>
-    concept Rule = EventLocation<Location>
-        and requires(T const& rule, Location const& location, kmc::Process const& process)
-    {
-        { T::event } -> std::convertible_to<kmc::Event>;
-        { rule.active(location) } -> std::convertible_to<bool>;
-        { rule.allowed(location) } -> std::convertible_to<bool>;
-        { rule.supports(process) } -> std::convertible_to<bool>;
-    };
+    concept Rule = EventLocation<Location> and
+                   requires(T const& rule, Location const& location, kmc::Process const& process) {
+                       { T::event } -> std::convertible_to<kmc::Event>;
+                       { rule.active(location) } -> std::convertible_to<bool>;
+                       { rule.allowed(location) } -> std::convertible_to<bool>;
+                       { rule.supports(process) } -> std::convertible_to<bool>;
+                   };
 
     template <class Site, class Path>
     requires Rule<Site, lattice::Site> && Rule<Path, lattice::Path>

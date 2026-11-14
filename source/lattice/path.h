@@ -1,4 +1,5 @@
 #pragma once
+#include "lattice/types.h"
 /*
    Represents a unidirectional diffusion path between lattice sites.
 
