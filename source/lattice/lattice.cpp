@@ -49,7 +49,7 @@ void Lattice::construct_sites()
         throw std::overflow_error{ "Increase lattice::Index size." };
 
     rotate_up();
-    sort_sites();
+    sort_sites_by_hilbert();
 }
 
 void Lattice::rotate_up()
@@ -66,7 +66,8 @@ void Lattice::rotate_up()
     shape_.set_vectors(math::Matrix<3>::identity() * shape_.parameters());
 }
 
-void Lattice::sort_sites()
+// Keep spatial neighbors close in memory, improving cache locality for local KMC updates.
+void Lattice::sort_sites_by_hilbert()
 {
     if (sites_.empty())
         return;
@@ -83,11 +84,12 @@ void Lattice::sort_sites()
             upper[axis] = std::max(upper[axis], value);
         }
 
+    // Use one scale for all axes to preserve spatial proportions.
     constexpr std::uint64_t max_coordinate{ (1ull << 21) - 1 };
     const auto extent{ std::max({ upper[0] - lower[0], upper[1] - lower[1], upper[2] - lower[2] }) };
     const auto scale{ extent > 0 ? static_cast<double>(max_coordinate) / extent : 0.0 };
 
-    auto code = [&](Site const& site) {
+    auto hilbert_key = [&](Site const& site) {
         std::array<std::uint64_t, 3> xyz{};
         for (std::size_t axis{}; axis < 3; ++axis)
         {
@@ -124,6 +126,7 @@ void Lattice::sort_sites()
         for (auto& coordinate : xyz)
             coordinate ^= correction;
 
+        // Interleave the transformed bits into a 63-bit Hilbert key.
         std::uint64_t key{};
         for (int bit{ 20 }; bit >= 0; --bit)
             for (auto coordinate : xyz)
@@ -134,7 +137,8 @@ void Lattice::sort_sites()
     std::vector<std::pair<std::uint64_t, Index>> order;
     order.reserve(sites_.size());
     for (Index index{}; index < sites_.size(); ++index)
-        order.emplace_back(code(sites_[index]), index);
+        order.emplace_back(hilbert_key(sites_[index]), index);
+    // The original index breaks ties when multiple sites share a quantized position.
     std::ranges::sort(order);
 
     Sites sorted;
