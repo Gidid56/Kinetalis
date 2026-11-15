@@ -80,7 +80,7 @@ namespace kmc
             update_neighbors(*site);
             update(*site);
         }
-    
+
         if (block_updates_.size() == 1)
         {
             auto& update{ block_updates_.front() };
