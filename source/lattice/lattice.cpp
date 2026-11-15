@@ -66,7 +66,7 @@ void Lattice::rotate_up()
     shape_.set_vectors(math::Matrix<3>::identity() * shape_.parameters());
 }
 
-// Keep spatial neighbors close in memory, improving cache locality for local KMC updates.
+// Order sites along a 3D Hilbert curve to improve locality of neighborhood updates.
 void Lattice::sort_sites_by_hilbert()
 {
     if (sites_.empty())
@@ -84,7 +84,8 @@ void Lattice::sort_sites_by_hilbert()
             upper[axis] = std::max(upper[axis], value);
         }
 
-    // Use one scale for all axes to preserve spatial proportions.
+    // Quantize to 21 bits per axis, using a common scale to preserve physical distance ratios.
+    // Unlike per-axis normalization, this does not stretch shorter dimensions.
     constexpr std::uint64_t max_coordinate{ (1ull << 21) - 1 };
     const auto extent{ std::max({ upper[0] - lower[0], upper[1] - lower[1], upper[2] - lower[2] }) };
     const auto scale{ extent > 0 ? static_cast<double>(max_coordinate) / extent : 0.0 };
@@ -98,7 +99,7 @@ void Lattice::sort_sites_by_hilbert()
                 std::clamp(value, 0.0, static_cast<double>(max_coordinate)));
         }
 
-        // Skilling's axes-to-transpose transform for a 3D Hilbert curve.
+        // Convert quantized coordinates to Hilbert-transposed axes (Skilling).
         constexpr auto highest_bit{ 1ull << 20 };
         for (auto bit{ highest_bit }; bit > 1; bit >>= 1)
         {
@@ -138,7 +139,7 @@ void Lattice::sort_sites_by_hilbert()
     order.reserve(sites_.size());
     for (Index index{}; index < sites_.size(); ++index)
         order.emplace_back(hilbert_key(sites_[index]), index);
-    // The original index breaks ties when multiple sites share a quantized position.
+    // Preserve deterministic ordering when quantization produces identical Hilbert keys.
     std::ranges::sort(order);
 
     Sites sorted;
