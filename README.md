@@ -88,7 +88,7 @@ Each campaign run creates a new directory under `results/` by default. Key files
 
 The batch runner derives separate random seeds for each replicate, independently of worker scheduling. For scientific reproducibility, retain the output together with the **exact source revision** and the campaign definition. The sampling and classification criteria can be inspected in [`studies/dealloying/analysis_plans.h`](studies/dealloying/analysis_plans.h).
 
-The optional critical-potential fitting script, [`tools/fit_critical_potential.py`](tools/fit_critical_potential.py), runs separately from the C++ application and requires Python with NumPy, pandas, and `firthmodels`.
+The optional critical-potential fitting script, [`tools/fit_critical_potential.py`](tools/fit_critical_potential.py), runs separately from the C++ application and requires Python with NumPy, pandas, and `firthmodels`. Supply your own `regimes.csv` in the working directory when running it; the script writes `critical_potential_fits.csv` there. Analysis CSV and Excel files under `tools/` are local inputs or outputs and are not tracked in Git.
 
 ## Optional components
 
@@ -104,14 +104,14 @@ cmake --build --preset build-windows-tests-debug
 ctest --preset test-windows-tests-debug
 ~~~
 
-The `kinetalis_tests` target **builds all six test executables** without running them: five individual modules and `test_all.exe`. In Visual Studio, select `test_all.exe` as the **Startup Item** and run it to execute every suite. The test sources are compiled once and shared between the module executables and `test_all.exe`.
+The `kinetalis_tests` target **builds all eight test executables** without running them: seven individual modules (`chemistry`, `kmc`, `lattice`, `math`, `models`, `physics`, and `simulation`) and `test_all.exe`. In Visual Studio, select `test_all.exe` as the **Startup Item** and run it to execute every suite. The test sources are compiled once and shared between the module executables and `test_all.exe`.
 
 ~~~powershell
 cmake --build build/windows-tests-debug --target test_all
 .\build\windows-tests-debug\Debug\bin\test_all.exe
 ~~~
 
-`ctest --preset test-windows-tests-debug` also runs all tests, reporting results separately for each of the five modules.
+`ctest --preset test-windows-tests-debug` also runs all tests, reporting results separately for each of the seven modules.
 
 For optional checks, select `windows-tests-analysis` (clang-tidy enabled) or
 `windows-tests-no-pch` (precompiled headers disabled). Both have matching
@@ -129,6 +129,10 @@ ctest --preset test-ubuntu-tests-debug
 
 To run a single module, pass a CTest filter, such as
 `ctest --test-dir build/windows-tests-debug -R kmc --output-on-failure`.
+
+GitHub Actions validates Debug tests and Release Batch builds on GCC 14 and
+MSVC. The Batch `--help` smoke test does not run a simulation campaign.
+The No-PCH configuration remains available locally but is not part of CI.
 
 ### Interactive viewer
 
@@ -149,6 +153,30 @@ Pop-Location
 ~~~
 
 The simulation shown is configured in [`apps/viewer/main.cpp`](apps/viewer/main.cpp). Use the same study setup and analysis-plan factories as the batch application.
+
+## Tools
+
+The [`tools/`](tools/) directory contains optional development and postprocessing tools.
+They are not required for ordinary Kinetalis builds or simulations.
+
+| Tool | Purpose |
+| --- | --- |
+| [`fit_critical_potential.py`](tools/fit_critical_potential.py) | Fit the porous/arrested outcome transition using Firth logistic regression; reads a local `regimes.csv` and writes `critical_potential_fits.csv`. Requires NumPy, pandas, and `firthmodels`. |
+| [`generate_physics_literals`](tools/literals_generator.cpp) | CMake target that regenerates `source/physics/literals.generated.h`; invoke only when the literal definitions change. |
+| [`setup_dependencies.ps1`](tools/setup_dependencies.ps1) | Windows helper for fetching viewer dependencies. For the repository's pinned versions, prefer `git submodule update --init --recursive`. |
+| [`render_results.ps1`](tools/render_results.ps1) | Render simulation XYZ trajectories with OVITO using [`render_script_ovito.py`](tools/render_script_ovito.py) and the [`rendering.ovito`](tools/rendering.ovito) session. Requires an OVITO installation with the configured renderer. |
+| [`make_movies.ps1`](tools/make_movies.ps1) | Assemble numbered PNG frames into MP4 movies using FFmpeg. |
+| [`git_version_release.ps1`](tools/git_version_release.ps1) | Create a versioned release from the CMake project version; use on a clean `main` branch. |
+
+If PowerShell prevents an inspected, trusted script from running because of its
+execution policy, the restriction can be relaxed **for the current session only**:
+
+~~~powershell
+Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
+~~~
+
+This is not required for normal CMake builds and does not change the machine-wide
+policy. Review scripts before executing them.
 
 ## Framework overview
 

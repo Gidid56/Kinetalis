@@ -12,8 +12,6 @@ target_sources(
         lattice/site.cpp
         lattice/unitcell.cpp
         
-        simulation/base.cpp
-
         kmc/model.cpp
         kmc/process.cpp
         kmc/observer.cpp

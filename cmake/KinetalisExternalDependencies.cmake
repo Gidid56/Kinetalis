@@ -7,9 +7,8 @@ function(kinetalis_require_submodule name path marker)
             "Missing ${name} submodule at ${path}.\n"
             "Initialize the external dependencies with:\n"
             "    git submodule update --init --recursive\n"
-            "For a repository converted from an archive, run one of:\n"
-            "    tools/setup_submodules.ps1\n"
-            "    tools/setup_submodules.sh"
+            "If working from a source archive without submodules, clone the Git repository instead.\n"
+            "On Windows, tools/setup_dependencies.ps1 can separately fetch viewer dependencies."
         )
     endif()
 endfunction()
