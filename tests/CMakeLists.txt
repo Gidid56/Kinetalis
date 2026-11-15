@@ -1,11 +1,20 @@
-# Independent test executables provide per-module CTest results and targeted runs.
+# Compile each module once, and link its objects into both the module test
+# executable and the combined test_all executable.
 function(kinetalis_add_test_suite suite)
-    set(target kinetalis_test_${suite})
-    add_executable(${target} "${PROJECT_SOURCE_DIR}/tests/main.cpp" ${ARGN})
-    target_link_libraries(${target} PRIVATE Kinetalis::core)
-    kinetalis_target_defaults(${target})
-    add_test(NAME ${suite} COMMAND ${target})
-    set_property(GLOBAL APPEND PROPERTY KINETALIS_TEST_EXECUTABLES ${target})
+    set(objects kinetalis_test_${suite}_objects)
+    set(executable kinetalis_test_${suite})
+
+    add_library(${objects} OBJECT ${ARGN})
+    target_link_libraries(${objects} PRIVATE Kinetalis::core)
+    kinetalis_target_defaults(${objects})
+
+    add_executable(${executable} "${PROJECT_SOURCE_DIR}/tests/main.cpp")
+    target_link_libraries(${executable} PRIVATE Kinetalis::core ${objects})
+    kinetalis_target_defaults(${executable})
+
+    add_test(NAME ${suite} COMMAND ${executable})
+    set_property(GLOBAL APPEND PROPERTY KINETALIS_TEST_OBJECTS ${objects})
+    set_property(GLOBAL APPEND PROPERTY KINETALIS_TEST_EXECUTABLES ${executable})
 endfunction()
 
 kinetalis_add_test_suite(kmc
@@ -23,14 +32,13 @@ add_subdirectory(chemistry)
 add_subdirectory(math)
 add_subdirectory(physics)
 
-get_property(test_executables GLOBAL PROPERTY KINETALIS_TEST_EXECUTABLES)
-add_custom_target(kinetalis_tests DEPENDS ${test_executables})
+# A real executable, visible as a startup target in Visual Studio.
+# It contains exactly the same suites as the individual CTest executables.
+get_property(test_objects GLOBAL PROPERTY KINETALIS_TEST_OBJECTS)
+add_executable(test_all "${PROJECT_SOURCE_DIR}/tests/main.cpp")
+target_link_libraries(test_all PRIVATE Kinetalis::core ${test_objects})
+kinetalis_target_defaults(test_all)
 
-# Build and execute the full test suite with a single build target.
-add_custom_target(test_all
-    COMMAND "${CMAKE_CTEST_COMMAND}" --test-dir "${PROJECT_BINARY_DIR}" --output-on-failure
-    DEPENDS kinetalis_tests
-    USES_TERMINAL
-    VERBATIM
-    COMMENT "Running all Kinetalis tests"
-)
+# Build everything; executing tests remains an explicit user action.
+get_property(test_executables GLOBAL PROPERTY KINETALIS_TEST_EXECUTABLES)
+add_custom_target(kinetalis_tests DEPENDS test_all ${test_executables})

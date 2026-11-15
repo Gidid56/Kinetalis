@@ -188,15 +188,6 @@
       ]
     },
     {
-      "name": "build-windows-tests-all",
-      "displayName": "Windows | Tests | Run All",
-      "description": "Build and execute every test suite (test_all)",
-      "configurePreset": "windows-tests-debug",
-      "targets": [
-        "test_all"
-      ]
-    },
-    {
       "name": "build-windows-tests-analysis",
       "displayName": "Windows | Tests | Analysis",
       "configurePreset": "windows-tests-analysis",
