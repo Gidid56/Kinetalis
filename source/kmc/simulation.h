@@ -75,6 +75,7 @@ private:
     void update_static_rates();
 
     void update_dynamic_rates();
+    void update_affected_rates(process::Record const&);
 
     void update(lattice::Site&);
     void update_neighbors(lattice::Site&);

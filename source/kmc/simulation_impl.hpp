@@ -55,26 +55,7 @@ namespace kmc
 
                 process.execute(lattice_);
 
-                block_updates_.clear();
-                for (auto site : process.path.sites())
-                {
-                    update_neighbors(*site);
-                    update(*site);
-                }
-
-                if (block_updates_.size() == 1)
-                {
-                    auto& update{ block_updates_.front() };
-                    update.rate = block_rate(lattice_.sites().at(update.index));
-                    rate_tree_->update_rate(update.index, update.rate);
-                }
-                else if (not block_updates_.empty())
-                {
-                    std::ranges::sort(block_updates_, {}, &rate_tree::BlockUpdate::index);
-                    for (auto& update : block_updates_)
-                        update.rate = block_rate(lattice_.sites().at(update.index));
-                    rate_tree_->update_rates(block_updates_);
-                }
+                update_affected_rates(process);
 
                 analysis_plan.observe_processed(process);
             }
@@ -88,6 +69,31 @@ namespace kmc
 
         analysis_plan.observe_completed(*this);
         return status_ = simulation::Status::analysed;
+    }
+
+    template <class Rules>
+    void RejectionTreeSimulation<Rules>::update_affected_rates(process::Record const& process)
+    {
+        block_updates_.clear();
+        for (auto site : process.path.sites())
+        {
+            update_neighbors(*site);
+            update(*site);
+        }
+    
+        if (block_updates_.size() == 1)
+        {
+            auto& update{ block_updates_.front() };
+            update.rate = block_rate(lattice_.sites().at(update.index));
+            rate_tree_->update_rate(update.index, update.rate);
+        }
+        else if (not block_updates_.empty())
+        {
+            std::ranges::sort(block_updates_, {}, &rate_tree::BlockUpdate::index);
+            for (auto& update : block_updates_)
+                update.rate = block_rate(lattice_.sites().at(update.index));
+            rate_tree_->update_rates(block_updates_);
+        }
     }
 
     template <class Rules>
