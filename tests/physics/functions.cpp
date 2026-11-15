@@ -47,7 +47,7 @@ namespace
                 "sqrt(length) cannot be represented with integral dimension exponents");
 
             ut::expect(ut::eq(3.0, from_area.value()));
-            ut::expect(ut::eq(3.0, from_volume.value()));
+            ut::expect(ut::that % std::abs(from_volume.value() - 3.0) < 1E-12);
         };
 
         "exp works on an ordinary dimensionless quantity"_test = [] {

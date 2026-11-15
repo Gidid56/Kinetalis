@@ -87,8 +87,32 @@
         "KINETALIS_BUILD_BATCH": "OFF",
         "KINETALIS_BUILD_VIEWER": "OFF",
         "KINETALIS_BUILD_TESTS": "ON",
+        "KINETALIS_ENABLE_CLANG_TIDY": "OFF"
+      }
+    },
+    {
+      "name": "tests-analysis",
+      "displayName": "Tests with clang-tidy",
+      "inherits": "tests-debug",
+      "cacheVariables": {
         "KINETALIS_ENABLE_CLANG_TIDY": "ON"
       }
+    },
+    {
+      "name": "tests-no-pch",
+      "displayName": "Tests without PCH",
+      "inherits": "tests-debug",
+      "cacheVariables": {
+        "KINETALIS_ENABLE_PCH": "OFF"
+      }
+    },
+    {
+      "name": "ubuntu-tests-debug",
+      "displayName": "Ubuntu tests GCC 14",
+      "inherits": [
+        "tests-debug",
+        "ubuntu"
+      ]
     },
     {
       "name": "ubuntu-batch-release",
@@ -139,6 +163,13 @@
       "targets": [
         "kinetalis_tests"
       ]
+    },
+    {
+      "name": "build-ubuntu-tests-debug",
+      "configurePreset": "ubuntu-tests-debug",
+      "targets": [
+        "kinetalis_tests"
+      ]
     }
   ],
   "testPresets": [
@@ -146,6 +177,13 @@
       "name": "test-tests-debug",
       "displayName": "Windows | Tests | Debug",
       "configurePreset": "tests-debug",
+      "output": {
+        "outputOnFailure": true
+      }
+    },
+    {
+      "name": "test-ubuntu-tests-debug",
+      "configurePreset": "ubuntu-tests-debug",
       "output": {
         "outputOnFailure": true
       }

@@ -1,0 +1,65 @@
+name: C++ Tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: ${{ matrix.name }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: GCC 14 / Ubuntu 24.04
+            os: ubuntu-24.04
+          - name: MSVC / Windows Server 2025
+            os: windows-2025-vs2026
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Install GCC 14
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gcc-14 g++-14 ninja-build
+
+      - name: Initialize MSVC
+        if: runner.os == 'Windows'
+        uses: ilammy/msvc-dev-cmd@v1
+
+      - name: Configure Linux
+        if: runner.os == 'Linux'
+        run: >
+          cmake -S . -B build/ci -G Ninja
+          -DCMAKE_BUILD_TYPE=Debug
+          -DCMAKE_C_COMPILER=gcc-14
+          -DCMAKE_CXX_COMPILER=g++-14
+          -DKINETALIS_BUILD_BATCH=OFF
+          -DKINETALIS_BUILD_VIEWER=OFF
+          -DKINETALIS_BUILD_TESTS=ON
+          -DKINETALIS_ENABLE_CLANG_TIDY=OFF
+
+      - name: Configure Windows
+        if: runner.os == 'Windows'
+        run: >
+          cmake -S . -B build/ci -G Ninja
+          -DCMAKE_BUILD_TYPE=Debug
+          -DKINETALIS_BUILD_BATCH=OFF
+          -DKINETALIS_BUILD_VIEWER=OFF
+          -DKINETALIS_BUILD_TESTS=ON
+          -DKINETALIS_ENABLE_CLANG_TIDY=OFF
+
+      - name: Build
+        run: cmake --build build/ci --target kinetalis_tests --parallel 2
+
+      - name: Run tests
+        run: ctest --test-dir build/ci --output-on-failure
