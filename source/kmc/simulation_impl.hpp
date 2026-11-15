@@ -13,7 +13,6 @@ namespace kmc
         rate_tree_ = rate_tree::make_entry(lattice_.sites().size());
         site_rates_.resize(lattice_.sites().size());
         processes_.resize(lattice_.sites().size() + lattice_.neighbors().size());
-        changed_blocks_.reserve(2 * (lattice::max_coordination + 1));
         block_updates_.reserve(2 * (lattice::max_coordination + 1));
     }
 
@@ -56,24 +55,24 @@ namespace kmc
 
                 process.execute(lattice_);
 
-                changed_blocks_.clear();
+                block_updates_.clear();
                 for (auto site : process.path.sites())
                 {
                     update_neighbors(*site);
                     update(*site);
                 }
 
-                if (changed_blocks_.size() == 1)
+                if (block_updates_.size() == 1)
                 {
-                    auto const index{ changed_blocks_.front() };
-                    rate_tree_->update_rate(index, block_rate(lattice_.sites().at(index)));
+                    auto& update{ block_updates_.front() };
+                    update.rate = block_rate(lattice_.sites().at(update.index));
+                    rate_tree_->update_rate(update.index, update.rate);
                 }
-                else if (not changed_blocks_.empty())
+                else if (not block_updates_.empty())
                 {
-                    std::ranges::sort(changed_blocks_);
-                    block_updates_.clear();
-                    for (auto index : changed_blocks_)
-                        block_updates_.push_back({ index, block_rate(lattice_.sites().at(index)) });
+                    std::ranges::sort(block_updates_, {}, &rate_tree::BlockUpdate::index);
+                    for (auto& update : block_updates_)
+                        update.rate = block_rate(lattice_.sites().at(update.index));
                     rate_tree_->update_rates(block_updates_);
                 }
 
@@ -159,8 +158,9 @@ namespace kmc
             };
             auto const block_start{ site.index() & ~block_mask };
 
-            if (std::ranges::find(changed_blocks_, block_start) == changed_blocks_.end())
-                changed_blocks_.push_back(block_start);
+            if (std::ranges::find(block_updates_, block_start, &rate_tree::BlockUpdate::index)
+                == block_updates_.end())
+                block_updates_.push_back({ block_start, {} });
         }
         site.set_dirty(false);
     }
@@ -295,7 +295,7 @@ namespace kmc
 
         // A full-rate refresh bypasses per-event block collection. Rebuild each
         // block once after all site rates have been recalculated.
-        changed_blocks_.clear();
+        block_updates_.clear();
         for (auto& site : lattice_.sites())
         {
             site_rates_.at(site.index()) = rate_sum(site);
