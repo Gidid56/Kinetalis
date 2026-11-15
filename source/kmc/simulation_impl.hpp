@@ -14,6 +14,7 @@ namespace kmc
         site_rates_.resize(lattice_.sites().size());
         processes_.resize(lattice_.sites().size() + lattice_.neighbors().size());
         changed_blocks_.reserve(2 * (lattice::max_coordination + 1));
+        block_updates_.reserve(2 * (lattice::max_coordination + 1));
     }
 
     template <class Rules>
@@ -62,8 +63,19 @@ namespace kmc
                     update(*site);
                 }
 
-                for (auto block_start : changed_blocks_)
-                    rate_tree_->update_rate(block_start, block_rate(lattice_.sites().at(block_start)));
+                if (changed_blocks_.size() == 1)
+                {
+                    auto const index{ changed_blocks_.front() };
+                    rate_tree_->update_rate(index, block_rate(lattice_.sites().at(index)));
+                }
+                else if (not changed_blocks_.empty())
+                {
+                    std::ranges::sort(changed_blocks_);
+                    block_updates_.clear();
+                    for (auto index : changed_blocks_)
+                        block_updates_.push_back({ index, block_rate(lattice_.sites().at(index)) });
+                    rate_tree_->update_rates(block_updates_);
+                }
 
                 analysis_plan.observe_processed(process);
             }
