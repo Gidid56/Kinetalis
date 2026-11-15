@@ -154,9 +154,11 @@ Rate RejectionTreeSimulation<Rules>::rate_sum(lattice::Site& site)
 
     lattice::Index index{ site.process_index() };
     Rate sum{};
+    bool has_processes{};
 
     auto add_process = [&](process::Key key) {
         set_process(index++, key);
+        has_processes |= key != process::Key{};
         sum += process_rates_.at(key).second;
     };
 
@@ -168,6 +170,7 @@ Rate RejectionTreeSimulation<Rules>::rate_sum(lattice::Site& site)
         for (std::size_t i{}; i < site.max_neighbors(); ++i)
             set_process(index++, {});
 
+        site.set_active(has_processes);
         return sum;
     }
 
@@ -177,6 +180,7 @@ Rate RejectionTreeSimulation<Rules>::rate_sum(lattice::Site& site)
         add_process(process_key(make_process(path, rules_.path)));
     }
 
+    site.set_active(has_processes);
     return sum;
 }
 
@@ -306,12 +310,17 @@ void RejectionTreeSimulation<Rules>::set_process(lattice::Index index, process::
 template <class Rules>
 void RejectionTreeSimulation<Rules>::clear_processes(lattice::Site& site)
 {
+    if (not site.is_active())
+        return;
+
     auto index{ site.process_index() };
 
     set_process(index++, {});
 
     for (std::size_t i{}; i < site.max_neighbors(); ++i)
         set_process(index++, {});
+
+    site.set_active(false);
 }
 
 }
