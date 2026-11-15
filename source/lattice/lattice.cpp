@@ -5,6 +5,8 @@
 #include "cells.h"
 #include "simulation/engine.h"
 
+#include <cstdint>
+
 using namespace lattice;
 
 Lattice::Lattice(UnitCell const& unit_cell, Indices miller_indices)
@@ -47,7 +49,7 @@ void Lattice::construct_sites()
         throw std::overflow_error{ "Increase lattice::Index size." };
 
     rotate_up();
-    sort_sites();
+    sort_sites_by_hilbert();
 }
 
 void Lattice::rotate_up()
@@ -64,15 +66,90 @@ void Lattice::rotate_up()
     shape_.set_vectors(math::Matrix<3>::identity() * shape_.parameters());
 }
 
-void Lattice::sort_sites()
+// Order sites along a 3D Hilbert curve to improve locality of neighborhood updates.
+void Lattice::sort_sites_by_hilbert()
 {
-    std::ranges::sort(sites_, std::ranges::less{}, &Site::position);
+    if (sites_.empty())
+        return;
+
+    std::array<double, 3> lower{}, upper{};
+    for (std::size_t axis{}; axis < 3; ++axis)
+        lower[axis] = upper[axis] = sites_.front().position()[axis].value();
+
+    for (auto const& site : sites_)
+        for (std::size_t axis{}; axis < 3; ++axis)
+        {
+            const auto value{ site.position()[axis].value() };
+            lower[axis] = std::min(lower[axis], value);
+            upper[axis] = std::max(upper[axis], value);
+        }
+
+    // Quantize to 21 bits per axis, using a common scale to preserve physical distance ratios.
+    // Unlike per-axis normalization, this does not stretch shorter dimensions.
+    constexpr std::uint64_t max_coordinate{ (1ull << 21) - 1 };
+    const auto extent{ std::max({ upper[0] - lower[0], upper[1] - lower[1], upper[2] - lower[2] }) };
+    const auto scale{ extent > 0 ? static_cast<double>(max_coordinate) / extent : 0.0 };
+
+    auto hilbert_key = [&](Site const& site) {
+        std::array<std::uint64_t, 3> xyz{};
+        for (std::size_t axis{}; axis < 3; ++axis)
+        {
+            const auto value{ (site.position()[axis].value() - lower[axis]) * scale };
+            xyz[axis] = static_cast<std::uint64_t>(
+                std::clamp(value, 0.0, static_cast<double>(max_coordinate)));
+        }
+
+        // Convert quantized coordinates to Hilbert-transposed axes (Skilling).
+        constexpr auto highest_bit{ 1ull << 20 };
+        for (auto bit{ highest_bit }; bit > 1; bit >>= 1)
+        {
+            const auto mask{ bit - 1 };
+            for (auto& coordinate : xyz)
+            {
+                if (coordinate & bit)
+                    xyz[0] ^= mask;
+                else
+                {
+                    const auto exchange{ (xyz[0] ^ coordinate) & mask };
+                    xyz[0] ^= exchange;
+                    coordinate ^= exchange;
+                }
+            }
+        }
+
+        xyz[1] ^= xyz[0];
+        xyz[2] ^= xyz[1];
+
+        std::uint64_t correction{};
+        for (auto bit{ highest_bit }; bit > 1; bit >>= 1)
+            if (xyz[2] & bit)
+                correction ^= bit - 1;
+        for (auto& coordinate : xyz)
+            coordinate ^= correction;
+
+        // Interleave the transformed bits into a 63-bit Hilbert key.
+        std::uint64_t key{};
+        for (int bit{ 20 }; bit >= 0; --bit)
+            for (auto coordinate : xyz)
+                key = (key << 1) | ((coordinate >> bit) & 1ull);
+        return key;
+    };
+
+    std::vector<std::pair<std::uint64_t, Index>> order;
+    order.reserve(sites_.size());
+    for (Index index{}; index < sites_.size(); ++index)
+        order.emplace_back(hilbert_key(sites_[index]), index);
+    // Preserve deterministic ordering when quantization produces identical Hilbert keys.
+    std::ranges::sort(order);
+
+    Sites sorted;
+    sorted.reserve(sites_.size());
+    for (auto [key, index] : order)
+        sorted.push_back(std::move(sites_[index]));
+    sites_ = std::move(sorted);
 
     for (Index index{}; auto& site : sites_)
-    {
         site.set_index(index++);
-        //site.resetOriginal();
-    }
 }
 
 // This function implements the periodic boundary conditions for a given set of axes.

@@ -13,6 +13,7 @@ namespace kmc
         rate_tree_ = rate_tree::make_entry(lattice_.sites().size());
         site_rates_.resize(lattice_.sites().size());
         processes_.resize(lattice_.sites().size() + lattice_.neighbors().size());
+        changed_blocks_.reserve(2 * (lattice::max_coordination + 1));
     }
 
     template <class Rules>
@@ -54,11 +55,15 @@ namespace kmc
 
                 process.execute(lattice_);
 
+                changed_blocks_.clear();
                 for (auto site : process.path.sites())
                 {
                     update_neighbors(*site);
                     update(*site);
                 }
+
+                for (auto block_start : changed_blocks_)
+                    rate_tree_->update_rate(block_start, block_rate(lattice_.sites().at(block_start)));
 
                 analysis_plan.observe_processed(process);
             }
@@ -137,7 +142,13 @@ namespace kmc
         {
             old_rate = new_rate;
 
-            rate_tree_->update_rate(site.index(), block_rate(site));
+            constexpr lattice::Index block_mask{
+                (lattice::Index{ 1 } << rate_tree::baseLevel) - 1
+            };
+            auto const block_start{ site.index() & ~block_mask };
+
+            if (std::ranges::find(changed_blocks_, block_start) == changed_blocks_.end())
+                changed_blocks_.push_back(block_start);
         }
         site.set_dirty(false);
     }
@@ -270,11 +281,19 @@ namespace kmc
         else
             update_dynamic_rates();
 
+        // A full-rate refresh bypasses per-event block collection. Rebuild each
+        // block once after all site rates have been recalculated.
+        changed_blocks_.clear();
         for (auto& site : lattice_.sites())
         {
-            site.set_dirty(true);
-            update(site);
+            site_rates_.at(site.index()) = rate_sum(site);
+            site.set_dirty(false);
         }
+
+        constexpr auto block_size{ std::size_t{ 1 } << rate_tree::baseLevel };
+        for (std::size_t index{}; index < site_rates_.size(); index += block_size)
+            rate_tree_->update_rate(
+                static_cast<lattice::Index>(index), block_rate(lattice_.sites().at(index)));
     }
 
     template <class Rules>

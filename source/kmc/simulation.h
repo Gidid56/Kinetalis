@@ -82,6 +82,7 @@ private:
     std::unique_ptr<rate_tree::Interface> rate_tree_;
     Rates site_rates_;
     process::Keys processes_;
+    std::vector<lattice::Index> changed_blocks_;
 
     std::unordered_map<Process, process::Key> dynamic_keys_;
 

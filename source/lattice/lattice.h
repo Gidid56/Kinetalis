@@ -41,7 +41,7 @@ public:
 
 private:
     void rotate_up();
-    void sort_sites();
+    void sort_sites_by_hilbert();
     void make_periodic();
     Layers::iterator get_layer(physics::quantity::Displacement);
 
