@@ -2,6 +2,7 @@ add_executable(
     kinetalis_tests
     main.cpp
     kmc.cpp
+    kmc/simulation.cpp
     kmc/rate_tree.cpp
     lattice.cpp
     lattice/geometry.cpp

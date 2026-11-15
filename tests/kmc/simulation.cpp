@@ -1,0 +1,371 @@
+#include "kmc/simulation.h"
+#include "kmc/analysis_plan.h"
+#include "lattice/lattice.h"
+
+#include <algorithm>
+#include <array>
+#include <bit>
+#include <boost/ut.hpp>
+#include <cmath>
+#include <cstddef>
+#include <cstdint>
+#include <memory>
+#include <numeric>
+#include <ranges>
+#include <string>
+#include <string_view>
+#include <vector>
+
+namespace ut = boost::ut;
+using namespace boost::ut::literals;
+using namespace physics::unit::literals;
+
+namespace
+{
+    using namespace kmc;
+    using lattice::Site;
+    using lattice::Path;
+
+    struct SiteRule
+    {
+        static constexpr Event event{ Event::dissolution };
+        bool enabled{ true };
+
+        bool active(Site const& site) const
+        {
+            return enabled and site.element() == Element::Ag and
+                   site.coordination() < lattice::max_coordination;
+        }
+
+        bool allowed(Site const& site) const { return active(site) and site.coordination() <= 8; }
+
+        bool supports(Process const& process) const
+        {
+            return process.event() == event and process.element() == Element::Ag;
+        }
+
+        std::string settings() const { return "test site rule"; }
+    };
+
+    struct PathRule
+    {
+        static constexpr Event event{ Event::diffusion };
+        bool enabled{ true };
+
+        bool source_active(Site const& site) const
+        {
+            return enabled and site.is_occupied() and
+                   site.coordination() < lattice::max_coordination;
+        }
+
+        bool active(Path const& path) const
+        {
+            return source_active(path.front()) and path.back().is_vacant();
+        }
+
+        bool allowed(Path const& path) const
+        {
+            return active(path) and path.back().coordination() >= 9;
+        }
+
+        bool supports(Process const& process) const
+        {
+            return process.event() == event and process.element() != Element::none;
+        }
+
+        std::string settings() const { return "test path rule"; }
+    };
+
+    using Rules = EventRules<SiteRule, PathRule>;
+    using TestSimulation = RejectionTreeSimulation<Rules>;
+
+    class TestModel final : public Model
+    {
+    private:
+        Ratio transmission_coefficient(Process const&) const override { return 1; }
+
+        Energy activation_gibbs_energy(Process const& process) const override
+        {
+            auto const base{ process.event() == Event::dissolution ? 0.24_eV : 0.30_eV };
+            return base + 0.005_eV * static_cast<double>(process.coordination());
+        }
+    };
+
+    Setup<Rules> make_setup()
+    {
+        Setup<Rules> setup;
+        setup.name = "KMC incremental update integration test";
+        setup.seed = simulation::Seed{ 1, 2, 3, 4, 5, 6, 7, 8 };
+        setup.make_model = [] { return std::make_unique<TestModel>(); };
+        setup.make_lattice = [] {
+            auto cell{ lattice::UnitCell::conventional<lattice::Bravais::cF>(400_pm)
+                .fill(chemistry::Atom{ Element::Au }) };
+            lattice::Lattice lattice{ cell };
+            lattice.scale_shape(lattice::Parameters::all(1600_pm));
+            using enum math::Axis;
+            lattice.set_periodic_boundaries(x | y | z);
+            lattice.construct_sites();
+            lattice.construct_neighbor_list();
+            lattice.set_fill_function([](lattice::Lattice& lattice, simulation::Engine&) {
+                for (auto& site : lattice.sites())
+                {
+                    if (site.index() % 9 == 0)
+                        site.set_element(lattice, Element::none);
+                    else if (site.index() % 3 == 1)
+                        site.set_element(lattice, Element::Ag);
+                }
+            });
+            return lattice;
+        };
+        return setup;
+    }
+
+    void expect_reference_state(TestSimulation const& simulation, Rules const& rules, Step step)
+    {
+        auto const& lattice{ simulation.lattice() };
+        auto const& rates{ simulation.process_rates() };
+        auto const& counts{ simulation.process_counts() };
+        constexpr auto block_size{ std::size_t{ 1 } << rate_tree::baseLevel };
+        std::vector<Rate> block_sums((lattice.sites().size() + block_size - 1) / block_size);
+        std::vector<std::size_t> expected_counts(counts.size());
+
+        auto add = [&](Rate& site_sum, Process const& process) {
+            auto const key{ process.static_key() };
+            ut::expect(ut::that % key > 0) << "active process has nonzero key, step " << step;
+            ut::expect(ut::that % key < rates.size()) << "process key within table, step " << step;
+            if (key == 0 or key >= rates.size())
+                return;
+            ut::expect(rates[key].first == process)
+                << "stored static-key process matches rebuilt process, step " << step;
+            ut::expect(ut::eq(rates[key].second.value(), simulation.model()->rate(process).value()))
+                << "cached model rate, step " << step;
+            ++expected_counts[key];
+            site_sum += simulation.model()->rate(process);
+        };
+
+        for (auto const& site : lattice.sites())
+        {
+            Rate site_sum{};
+            auto has_processes{ false };
+            if (rules.site.active(site))
+            {
+                add(site_sum, Process{ SiteRule::event, site });
+                has_processes = true;
+            }
+            if (rules.path.source_active(site))
+                for (auto const* target : lattice.neighbors(site))
+                {
+                    auto const path{ Path{ const_cast<Site*>(&site), const_cast<Site*>(target) } };
+                    if (rules.path.active(path))
+                    {
+                        add(site_sum, Process{ PathRule::event, path });
+                        has_processes = true;
+                    }
+                }
+
+            block_sums[site.index() / block_size] += site_sum;
+            ut::expect(ut::eq(site.is_active(), has_processes))
+                << "site active flag, step " << step << ", site " << site.index();
+            ut::expect(not site.is_dirty())
+                << "site clean after rate update, step " << step << ", site " << site.index();
+            auto const actual_occupied{ std::ranges::count_if(lattice.neighbors(site),
+                [](auto const* other) { return other->is_occupied(); }) };
+            ut::expect(ut::eq(static_cast<std::size_t>(site.coordination()),
+                static_cast<std::size_t>(actual_occupied)))
+                << "coordination after event, step " << step;
+        }
+
+        ut::expect(ut::eq(counts.size(), expected_counts.size()));
+        for (std::size_t key{}; key < counts.size(); ++key)
+            ut::expect(ut::eq(counts[key], expected_counts[key]))
+                << "process count key " << key << ", step " << step;
+
+        auto const& tree{ *simulation.rate_tree() };
+        for (std::size_t i{}; i < block_sums.size(); ++i)
+            ut::expect(ut::eq(tree.block_rate(static_cast<lattice::Index>(i * block_size)).value(),
+                block_sums[i].value()))
+                << "block rate, block " << i << ", step " << step;
+
+        // Independent full bottom-up reduction using the production tree's
+        // summation order, rather than its recursive update implementation.
+        std::vector<Rate> level(std::bit_ceil(block_sums.size()));
+        std::ranges::copy(block_sums, level.begin());
+        for (auto count{ level.size() }; count > 1; count /= 2)
+            for (std::size_t i{}; i < count / 2; ++i)
+                level[i] = level[2 * i] + level[2 * i + 1];
+        ut::expect(ut::eq(tree.rate_sum().value(), level.front().value()))
+            << "root rate matches full reconstruction at step " << step;
+    }
+
+    class CheckingObserver final : public Observer
+    {
+    public:
+        explicit CheckingObserver(Step target, Rules rules = {}, Step initial_step = 0)
+            : Observer{ Resolution{ 1, 1.0 } }, target_{ target },
+              last_step_{ initial_step }, rules_{ rules }
+        { }
+
+        std::string_view name() const override { return "kmc-integration-test"; }
+        bool stop_requested() const override { return last_step_ >= target_; }
+
+        void observe_started(Simulation const& simulation) override
+        {
+            expect_reference_state(dynamic_cast<TestSimulation const&>(simulation), rules_, simulation.step());
+        }
+
+        void observe_selected(process::Record const& record) override
+        {
+            ++selections_;
+            bool allowed{};
+            if (&record.path.front() == &record.path.back())
+            {
+                ++site_selections_;
+                allowed = rules_.site.allowed(record.path.front());
+                ut::expect(rules_.site.active(record.path.front()))
+                    << "selected site process was active";
+                ut::expect(record.process == Process{ SiteRule::event, record.path.front() });
+            }
+            else
+            {
+                ++path_selections_;
+                allowed = rules_.path.allowed(record.path);
+                ut::expect(rules_.path.active(record.path))
+                    << "selected path process was active";
+                ut::expect(record.process == Process{ PathRule::event, record.path });
+            }
+            ut::expect(ut::eq(record.outcome == process::Outcome::accepted, allowed))
+                << "selected process's rejection result matches rule";
+            if (record.outcome == process::Outcome::rejected)
+                ++rejections_;
+        }
+
+        void observe_processed(process::Record const& record) override
+        {
+            ut::expect(record.outcome == process::Outcome::accepted);
+            ++processed_;
+            if (&record.path.front() == &record.path.back())
+                ++accepted_site_events_;
+            else
+                ++accepted_path_events_;
+        }
+
+        void take_snapshot(Simulation const& simulation) override
+        {
+            if (simulation.step() == last_step_)
+                return;
+            ut::expect(ut::eq(simulation.step(), last_step_ + 1))
+                << "one accepted event per validated snapshot";
+            last_step_ = simulation.step();
+            expect_reference_state(dynamic_cast<TestSimulation const&>(simulation),
+                rules_, last_step_);
+        }
+
+        Step last_step() const { return last_step_; }
+        std::size_t selected_count() const { return selections_; }
+        std::size_t rejected_count() const { return rejections_; }
+        std::size_t processed_count() const { return processed_; }
+        std::size_t site_selections() const { return site_selections_; }
+        std::size_t accepted_site_events() const { return accepted_site_events_; }
+        std::size_t accepted_path_events() const { return accepted_path_events_; }
+        std::size_t path_selections() const { return path_selections_; }
+
+    private:
+        Step target_{};
+        Step last_step_{};
+        Rules rules_;
+        std::size_t selections_{};
+        std::size_t rejections_{};
+        std::size_t processed_{};
+        std::size_t site_selections_{};
+        std::size_t path_selections_{};
+        std::size_t accepted_site_events_{};
+        std::size_t accepted_path_events_{};
+    };
+
+    void expect_same_state(TestSimulation const& a, TestSimulation const& b)
+    {
+        ut::expect(ut::eq(a.step(), b.step())) << "step after resume";
+        ut::expect(ut::eq(a.time().value(), b.time().value())) << "time after resume";
+        ut::expect(a.rng().state() == b.rng().state()) << "RNG state after resume";
+        ut::expect(ut::eq(a.rejection_fraction(), b.rejection_fraction()))
+            << "rejection fraction after resume";
+        ut::expect(ut::eq(a.rate_tree()->rate_sum().value(), b.rate_tree()->rate_sum().value()))
+            << "total rate after resume";
+        ut::expect(a.process_counts() == b.process_counts()) << "process counts after resume";
+        for (std::size_t i{}; i < a.lattice().sites().size(); ++i)
+        {
+            ut::expect(a.lattice().sites()[i].element() ==
+                b.lattice().sites()[i].element()) << "occupancy after resume, site " << i;
+            ut::expect(ut::eq(a.lattice().sites()[i].coordination(),
+                b.lattice().sites()[i].coordination())) << "coordination after resume, site " << i;
+        }
+    }
+
+    ut::suite<"kmc.simulation"> simulation_tests = [] {
+        "no active processes exhausts without selecting an event"_test = [] {
+            auto setup{ make_setup() };
+            setup.rules.site.enabled = false;
+            setup.rules.path.enabled = false;
+            TestSimulation simulation{ setup };
+            expect_reference_state(simulation, setup.rules, 0);
+            ut::expect(ut::eq(simulation.rate_tree()->rate_sum().value(), 0.0));
+            AnalysisPlan plan;
+            ut::expect(simulation.run(plan) == simulation::Status::exhausted);
+            ut::expect(ut::eq(simulation.step(), Step{}));
+            ut::expect(ut::eq(simulation.rejection_fraction(), 0.0));
+        };
+
+        "initial static process tables and block rates match a full reconstruction"_test = [] {
+            auto setup{ make_setup() };
+            TestSimulation simulation{ setup };
+            expect_reference_state(simulation, setup.rules, 0);
+            ut::expect(ut::that % simulation.rate_tree()->rate_sum().value() > 0.0)
+                << "simulation has selectable processes";
+        };
+
+        "reconstruction matches every accepted event and validates rejected selections"_test = [] {
+            auto setup{ make_setup() };
+            TestSimulation simulation{ setup };
+            AnalysisPlan plan;
+            auto& checker{ plan.add<CheckingObserver>(120, setup.rules) };
+            auto const status{ simulation.run(plan) };
+            ut::expect(status == simulation::Status::analysed) << "stopped at target step";
+            ut::expect(ut::eq(simulation.step(), Step{ 120 }));
+            ut::expect(ut::eq(checker.last_step(), simulation.step()));
+            ut::expect(ut::eq(checker.processed_count(), std::size_t{ 120 }));
+            ut::expect(ut::eq(checker.selected_count(),
+                checker.processed_count() + checker.rejected_count()));
+            ut::expect(ut::that % checker.site_selections() > 0) << "site processes selected";
+            ut::expect(ut::that % checker.path_selections() > 0) << "path processes selected";
+            ut::expect(ut::that % checker.rejected_count() > 0) << "rejection path exercised";
+            ut::expect(ut::that % checker.accepted_site_events() > 0)
+                << "site update path exercised";
+            ut::expect(ut::that % checker.accepted_path_events() > 0)
+                << "diffusion update path exercised";
+        };
+
+        "split and uninterrupted runs yield exactly the same final state"_test = [] {
+            auto setup{ make_setup() };
+            TestSimulation uninterrupted{ setup }, resumed{ setup };
+            AnalysisPlan one_pass;
+            auto& full_check{ one_pass.add<CheckingObserver>(160, setup.rules) };
+            auto const full_status{ uninterrupted.run(one_pass) };
+            ut::expect(full_status == simulation::Status::analysed);
+            ut::expect(ut::eq(full_check.last_step(), Step{ 160 }));
+
+            AnalysisPlan first_phase;
+            auto& first_check{ first_phase.add<CheckingObserver>(50, setup.rules) };
+            auto const first_status{ resumed.run(first_phase) };
+            ut::expect(first_status == simulation::Status::analysed);
+            ut::expect(ut::eq(first_check.last_step(), Step{ 50 }));
+
+            AnalysisPlan second_phase;
+            auto& second_check{ second_phase.add<CheckingObserver>(160, setup.rules, Step{ 50 }) };
+            auto const second_status{ resumed.run(second_phase) };
+            ut::expect(second_status == simulation::Status::analysed);
+            ut::expect(ut::eq(second_check.last_step(), Step{ 160 }));
+            ut::expect(ut::eq(second_check.processed_count(), std::size_t{ 110 }));
+            expect_same_state(uninterrupted, resumed);
+        };
+    };
+}
