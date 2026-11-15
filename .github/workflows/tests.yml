@@ -2,7 +2,7 @@ name: C++ Tests
 
 on:
   push:
-    branches: [main]
+    branches: [main, 'test/**', 'perf/**']
   pull_request:
   workflow_dispatch:
 
