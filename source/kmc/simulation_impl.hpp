@@ -26,6 +26,9 @@ namespace kmc
 
         status_ = simulation::Status::running;
 
+        std::vector<lattice::Index> changed_blocks;
+        changed_blocks.reserve(2 * (lattice::max_coordination + 1));
+
         while (not analysis_plan.stop_requested())
         {
             if (token.stop_requested())
@@ -54,11 +57,15 @@ namespace kmc
 
                 process.execute(lattice_);
 
+                changed_blocks.clear();
                 for (auto site : process.path.sites())
                 {
-                    update_neighbors(*site);
-                    update(*site);
+                    update_neighbors(*site, &changed_blocks);
+                    update(*site, &changed_blocks);
                 }
+
+                for (auto block_start : changed_blocks)
+                    rate_tree_->update_rate(block_start, block_rate(lattice_.sites().at(block_start)));
 
                 analysis_plan.observe_processed(process);
             }
@@ -108,14 +115,16 @@ namespace kmc
     }
 
     template <class Rules>
-    void RejectionTreeSimulation<Rules>::update_neighbors(lattice::Site& site)
+    void RejectionTreeSimulation<Rules>::update_neighbors(
+        lattice::Site& site, std::vector<lattice::Index>* changed_blocks)
     {
         for (auto neighbor : lattice_.neighbors(site))
-            update(*neighbor);
+            update(*neighbor, changed_blocks);
     }
 
     template <class Rules>
-    void RejectionTreeSimulation<Rules>::update(lattice::Site& site)
+    void RejectionTreeSimulation<Rules>::update(
+        lattice::Site& site, std::vector<lattice::Index>* changed_blocks)
     {
         //site.setClassification(lattice_.classification(site));
 
@@ -137,7 +146,20 @@ namespace kmc
         {
             old_rate = new_rate;
 
-            rate_tree_->update_rate(site.index(), block_rate(site));
+            if (changed_blocks)
+            {
+                constexpr lattice::Index block_mask{
+                    (lattice::Index{ 1 } << rate_tree::baseLevel) - 1
+                };
+                auto const block_start{ site.index() & ~block_mask };
+
+                if (std::ranges::find(*changed_blocks, block_start) == changed_blocks->end())
+                    changed_blocks->push_back(block_start);
+            }
+            else
+            {
+                rate_tree_->update_rate(site.index(), block_rate(site));
+            }
         }
         site.set_dirty(false);
     }
