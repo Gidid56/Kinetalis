@@ -26,11 +26,10 @@ function(kinetalis_target_defaults target)
     endif()
 
     if(KINETALIS_ENABLE_CLANG_TIDY)
-        set_property(
-            TARGET ${target}
-            PROPERTY CXX_CLANG_TIDY
-                "${KINETALIS_CLANG_TIDY}"
-                "--extra-arg=/EHsc"
-        )
+        set(clang_tidy_command "${KINETALIS_CLANG_TIDY}")
+        if(MSVC)
+            list(APPEND clang_tidy_command "--extra-arg=/EHsc")
+        endif()
+        set_property(TARGET ${target} PROPERTY CXX_CLANG_TIDY ${clang_tidy_command})
     endif()
 endfunction()

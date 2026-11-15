@@ -3,8 +3,8 @@
 #include <fstream>
 
 // Excecute from project root:
-// cmake --preset tests-debug
-// cmake --build build/tests-debug --target generate_physics_literals
+// cmake --preset windows-tests-debug
+// cmake --build build/windows-tests-debug --target generate_physics_literals
 
 int main()
 {

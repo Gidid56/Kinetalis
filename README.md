@@ -15,7 +15,7 @@ The dealloying study in [`studies/dealloying/`](studies/dealloying/) is a workin
 - **CMake 3.25+**, **Ninja**, and **Git**.
 - No separately installed C++ libraries for the core or batch application.
 
-The optional viewer needs an OpenGL-capable system and the repository's graphical Git submodules. Unit tests use the header-only Boost.UT library, expected at `external/boost/ut.hpp`. Static analysis with `clang-tidy` is optional; some debug presets enable it.
+The optional viewer needs an OpenGL-capable system and the repository's graphical Git submodules. Unit tests use the header-only Boost.UT library, expected at `external/boost/ut.hpp`. Static analysis with `clang-tidy` is optional; the Windows analysis preset enables it.
 
 ## Get started
 
@@ -30,14 +30,14 @@ cd Kinetalis
 
 In **Visual Studio Installer**, select **Desktop development with C++**. Check that the individual components include **MSVC x64/x86 build tools**, a **Windows SDK**, and **C++ CMake tools for Windows**. Also select **C++ Clang tools for Windows** if you intend to use the static-analysis-enabled debug presets.
 
-Open the repository using **File → Open → Folder**, select the **`batch-release`** CMake preset, and build the **`kinetalis_batch`** target. No Visual Studio solution file is needed.
+Open the repository using **File → Open → Folder**, select the **`windows-batch-release`** CMake preset, and build the **`kinetalis_batch`** target. No Visual Studio solution file is needed.
 
 Alternatively, from an **MSVC Developer PowerShell**:
 
 ~~~powershell
-cmake --preset batch-release
-cmake --build --preset build-batch-release
-.\build\batch-release\Release\bin\kinetalis_batch.exe --help
+cmake --preset windows-batch-release
+cmake --build --preset build-windows-batch-release
+.\build\windows-batch-release\Release\bin\kinetalis_batch.exe --help
 ~~~
 
 ### Linux — GCC 14+
@@ -46,7 +46,7 @@ With GCC 14, CMake, Ninja, and Git installed, use the Linux preset:
 
 ~~~sh
 cmake --preset ubuntu-batch-release
-cmake --build build/ubuntu-batch-release --target kinetalis_batch --parallel
+cmake --build --preset build-ubuntu-batch-release --parallel
 ./build/ubuntu-batch-release/Release/bin/kinetalis_batch --help
 ~~~
 
@@ -96,31 +96,37 @@ The optional critical-potential fitting script, [`tools/fit_critical_potential.p
 
 The `kinetalis_tests` target uses **Boost.UT**, a header-only testing framework distinct from Boost.Test. Its header belongs at `external/boost/ut.hpp` in the repository; there is no separate Boost installation or Visual Studio Boost.Test adapter to configure.
 
-On Windows, the `tests-debug` preset enables `clang-tidy`:
+On Windows, the `windows-tests-debug` preset builds tests without clang-tidy:
 
 ~~~powershell
-cmake --preset tests-debug
-cmake --build --preset build-tests-debug
-ctest --preset test-tests-debug
+cmake --preset windows-tests-debug
+cmake --build --preset build-windows-tests-debug
+ctest --preset test-windows-tests-debug
 ~~~
 
-If CMake cannot find `clang-tidy`, check the **C++ Clang tools for Windows** installation. You can supply its full path using `-DKINETALIS_CLANG_TIDY="C:/path/to/clang-tidy.exe"`, or configure the preset without analysis:
+The `kinetalis_tests` target **builds all test executables** without running them.
+The `test_all` target builds and **runs the entire CTest suite**:
 
 ~~~powershell
-cmake --preset tests-debug -DKINETALIS_ENABLE_CLANG_TIDY=OFF
+cmake --build build/windows-tests-debug --target test_all
 ~~~
 
-On Linux, a test-only build can be configured as follows:
+For optional checks, select `windows-tests-analysis` (clang-tidy enabled) or
+`windows-tests-no-pch` (precompiled headers disabled). Both have matching
+`build-windows-*` and `test-windows-*` presets. If CMake cannot find clang-tidy,
+install **C++ Clang tools for Windows**, or pass
+`-DKINETALIS_CLANG_TIDY="C:/path/to/clang-tidy.exe"`.
+
+On Linux, the GCC 14 test presets are:
 
 ~~~sh
-cmake -S . -B build/tests -G Ninja \
-  -DCMAKE_BUILD_TYPE=Debug \
-  -DKINETALIS_BUILD_BATCH=OFF \
-  -DKINETALIS_BUILD_VIEWER=OFF \
-  -DKINETALIS_BUILD_TESTS=ON
-cmake --build build/tests --target kinetalis_tests --parallel
-ctest --test-dir build/tests --output-on-failure
+cmake --preset ubuntu-tests-debug
+cmake --build --preset build-ubuntu-tests-debug --parallel
+ctest --preset test-ubuntu-tests-debug
 ~~~
+
+To run a single module, pass a CTest filter, such as
+`ctest --test-dir build/windows-tests-debug -R kmc --output-on-failure`.
 
 ### Interactive viewer
 
@@ -128,14 +134,14 @@ The viewer uses **Corrade, Magnum, Magnum Integration, SDL2, Dear ImGui, and ImP
 
 ~~~powershell
 git submodule update --init --recursive
-cmake --preset viewer-release
-cmake --build --preset build-viewer-release
+cmake --preset windows-viewer-release
+cmake --build --preset build-windows-viewer-release
 ~~~
 
 Start the Windows executable from its output directory so that the fonts and shaders are found:
 
 ~~~powershell
-Push-Location .\build\viewer-release\Release\bin
+Push-Location .\build\windows-viewer-release\Release\bin
 .\kinetalis_viewer.exe
 Pop-Location
 ~~~

@@ -28,9 +28,9 @@ add_custom_target(kinetalis_tests DEPENDS ${test_executables})
 
 # Build and execute the full test suite with a single build target.
 add_custom_target(test_all
-    COMMAND "${CMAKE_CTEST_COMMAND}" --output-on-failure
-    WORKING_DIRECTORY "${PROJECT_BINARY_DIR}"
+    COMMAND "${CMAKE_CTEST_COMMAND}" --test-dir "${PROJECT_BINARY_DIR}" --output-on-failure
     DEPENDS kinetalis_tests
     USES_TERMINAL
+    VERBATIM
     COMMENT "Running all Kinetalis tests"
 )

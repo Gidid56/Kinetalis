@@ -45,9 +45,32 @@
       }
     },
     {
-      "name": "batch-release",
-      "displayName": "Windows | Batch | Release",
+      "name": "batch-base",
       "inherits": "base",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "KINETALIS_BUILD_BATCH": "ON",
+        "KINETALIS_BUILD_VIEWER": "OFF",
+        "KINETALIS_BUILD_TESTS": "OFF"
+      },
+      "hidden": true
+    },
+    {
+      "name": "tests-base",
+      "inherits": "base",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "KINETALIS_BUILD_BATCH": "OFF",
+        "KINETALIS_BUILD_VIEWER": "OFF",
+        "KINETALIS_BUILD_TESTS": "ON",
+        "KINETALIS_ENABLE_CLANG_TIDY": "OFF"
+      },
+      "hidden": true
+    },
+    {
+      "name": "windows-batch-release",
+      "displayName": "Windows | Batch | Release",
+      "inherits": "batch-base",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Release",
         "KINETALIS_BUILD_BATCH": "ON",
@@ -56,7 +79,7 @@
       }
     },
     {
-      "name": "viewer-release",
+      "name": "windows-viewer-release",
       "displayName": "Windows | Viewer | Release",
       "inherits": "base",
       "cacheVariables": {
@@ -67,7 +90,7 @@
       }
     },
     {
-      "name": "viewer-debug",
+      "name": "windows-viewer-debug",
       "displayName": "Windows | Viewer | Debug",
       "inherits": "base",
       "cacheVariables": {
@@ -79,9 +102,9 @@
       }
     },
     {
-      "name": "tests-debug",
+      "name": "windows-tests-debug",
       "displayName": "Windows | Tests | Debug",
-      "inherits": "base",
+      "inherits": "tests-base",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Debug",
         "KINETALIS_BUILD_BATCH": "OFF",
@@ -91,34 +114,34 @@
       }
     },
     {
-      "name": "tests-analysis",
-      "displayName": "Tests with clang-tidy",
-      "inherits": "tests-debug",
+      "name": "windows-tests-analysis",
+      "displayName": "Windows | Tests | Analysis",
+      "inherits": "windows-tests-debug",
       "cacheVariables": {
         "KINETALIS_ENABLE_CLANG_TIDY": "ON"
       }
     },
     {
-      "name": "tests-no-pch",
-      "displayName": "Tests without PCH",
-      "inherits": "tests-debug",
+      "name": "windows-tests-no-pch",
+      "displayName": "Windows | Tests | No PCH",
+      "inherits": "windows-tests-debug",
       "cacheVariables": {
         "KINETALIS_ENABLE_PCH": "OFF"
       }
     },
     {
-      "name": "ubuntu-tests-debug",
-      "displayName": "Ubuntu tests GCC 14",
+      "name": "ubuntu-batch-release",
+      "displayName": "Ubuntu | Batch | Release",
       "inherits": [
-        "tests-debug",
+        "batch-base",
         "ubuntu"
       ]
     },
     {
-      "name": "ubuntu-batch-release",
-      "displayName": "Ubuntu | Batch | Release",
+      "name": "ubuntu-tests-debug",
+      "displayName": "Ubuntu | Tests | Debug",
       "inherits": [
-        "batch-release",
+        "tests-base",
         "ubuntu"
       ]
     },
@@ -126,63 +149,113 @@
       "name": "tuhh-hpc-batch-release",
       "displayName": "TUHH HPC | Batch | Release",
       "inherits": [
-        "batch-release",
+        "batch-base",
         "tuhh-hpc"
       ]
     }
   ],
   "buildPresets": [
     {
-      "name": "build-batch-release",
+      "name": "build-windows-batch-release",
       "displayName": "Windows | Batch | Release",
-      "configurePreset": "batch-release",
+      "configurePreset": "windows-batch-release",
       "targets": [
         "kinetalis_batch"
       ]
     },
     {
-      "name": "build-viewer-release",
+      "name": "build-windows-viewer-release",
       "displayName": "Windows | Viewer | Release",
-      "configurePreset": "viewer-release",
+      "configurePreset": "windows-viewer-release",
       "targets": [
         "kinetalis_viewer"
       ]
     },
     {
-      "name": "build-viewer-debug",
+      "name": "build-windows-viewer-debug",
       "displayName": "Windows | Viewer | Debug",
-      "configurePreset": "viewer-debug",
+      "configurePreset": "windows-viewer-debug",
       "targets": [
         "kinetalis_viewer"
       ]
     },
     {
-      "name": "build-tests-debug",
+      "name": "build-windows-tests-debug",
       "displayName": "Windows | Tests | Debug",
-      "configurePreset": "tests-debug",
+      "configurePreset": "windows-tests-debug",
       "targets": [
         "kinetalis_tests"
+      ]
+    },
+    {
+      "name": "build-windows-tests-analysis",
+      "displayName": "Windows | Tests | Analysis",
+      "configurePreset": "windows-tests-analysis",
+      "targets": [
+        "kinetalis_tests"
+      ]
+    },
+    {
+      "name": "build-windows-tests-no-pch",
+      "displayName": "Windows | Tests | No PCH",
+      "configurePreset": "windows-tests-no-pch",
+      "targets": [
+        "kinetalis_tests"
+      ]
+    },
+    {
+      "name": "build-ubuntu-batch-release",
+      "displayName": "Ubuntu | Batch | Release",
+      "configurePreset": "ubuntu-batch-release",
+      "targets": [
+        "kinetalis_batch"
       ]
     },
     {
       "name": "build-ubuntu-tests-debug",
+      "displayName": "Ubuntu | Tests | Debug",
       "configurePreset": "ubuntu-tests-debug",
       "targets": [
         "kinetalis_tests"
+      ]
+    },
+    {
+      "name": "build-tuhh-hpc-batch-release",
+      "displayName": "TUHH HPC | Batch | Release",
+      "configurePreset": "tuhh-hpc-batch-release",
+      "targets": [
+        "kinetalis_batch"
       ]
     }
   ],
   "testPresets": [
     {
-      "name": "test-tests-debug",
+      "name": "test-windows-tests-debug",
       "displayName": "Windows | Tests | Debug",
-      "configurePreset": "tests-debug",
+      "configurePreset": "windows-tests-debug",
+      "output": {
+        "outputOnFailure": true
+      }
+    },
+    {
+      "name": "test-windows-tests-analysis",
+      "displayName": "Windows | Tests | Analysis",
+      "configurePreset": "windows-tests-analysis",
+      "output": {
+        "outputOnFailure": true
+      }
+    },
+    {
+      "name": "test-windows-tests-no-pch",
+      "displayName": "Windows | Tests | No PCH",
+      "configurePreset": "windows-tests-no-pch",
       "output": {
         "outputOnFailure": true
       }
     },
     {
       "name": "test-ubuntu-tests-debug",
+      "displayName": "Ubuntu | Tests | Debug",
       "configurePreset": "ubuntu-tests-debug",
       "output": {
         "outputOnFailure": true
