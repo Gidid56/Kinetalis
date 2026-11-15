@@ -4,6 +4,9 @@ add_executable(
     kmc.cpp
     kmc/rate_tree.cpp
     lattice.cpp
+    lattice/geometry.cpp
+    lattice/ordering.cpp
+    lattice/site.cpp
 )
 
 add_subdirectory(chemistry)
