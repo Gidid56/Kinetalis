@@ -5,6 +5,8 @@
 
 #include "utility/timer.h"
 
+#include <atomic>
+
 class simulation::Base
 {
 public:
