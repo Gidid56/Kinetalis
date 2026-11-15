@@ -70,13 +70,7 @@
     {
       "name": "windows-batch-release",
       "displayName": "Windows | Batch | Release",
-      "inherits": "batch-base",
-      "cacheVariables": {
-        "CMAKE_BUILD_TYPE": "Release",
-        "KINETALIS_BUILD_BATCH": "ON",
-        "KINETALIS_BUILD_VIEWER": "OFF",
-        "KINETALIS_BUILD_TESTS": "OFF"
-      }
+      "inherits": "batch-base"
     },
     {
       "name": "windows-viewer-release",
@@ -104,14 +98,7 @@
     {
       "name": "windows-tests-debug",
       "displayName": "Windows | Tests | Debug",
-      "inherits": "tests-base",
-      "cacheVariables": {
-        "CMAKE_BUILD_TYPE": "Debug",
-        "KINETALIS_BUILD_BATCH": "OFF",
-        "KINETALIS_BUILD_VIEWER": "OFF",
-        "KINETALIS_BUILD_TESTS": "ON",
-        "KINETALIS_ENABLE_CLANG_TIDY": "OFF"
-      }
+      "inherits": "tests-base"
     },
     {
       "name": "windows-tests-analysis",

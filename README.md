@@ -130,6 +130,10 @@ ctest --preset test-ubuntu-tests-debug
 To run a single module, pass a CTest filter, such as
 `ctest --test-dir build/windows-tests-debug -R kmc --output-on-failure`.
 
+GitHub Actions validates Debug tests on GCC 14 and MSVC, a GCC 14 build without
+precompiled headers, and Release Batch builds with a `--help` smoke test on
+both platforms. The smoke test does not run a simulation campaign.
+
 ### Interactive viewer
 
 The viewer uses **Corrade, Magnum, Magnum Integration, SDL2, Dear ImGui, and ImPlot**. These are tracked as Git submodules and built from source when the viewer is enabled.
