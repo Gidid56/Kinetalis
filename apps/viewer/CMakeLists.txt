@@ -28,7 +28,6 @@ add_custom_command(
         "$<TARGET_FILE_DIR:kinetalis_viewer>/resources/shaders"
     COMMAND "${CMAKE_COMMAND}" -E copy_if_different
         "${PROJECT_SOURCE_DIR}/resources/fonts/Inter Regular.ttf"
-        "${PROJECT_SOURCE_DIR}/resources/fonts/IBM Plex Sans Regular.ttf"
         "$<TARGET_FILE_DIR:kinetalis_viewer>/resources/fonts/"
     VERBATIM
 )

@@ -40,6 +40,16 @@ cmake --build --preset build-windows-batch-release
 .\build\windows-batch-release\Release\bin\kinetalis_batch.exe --help
 ~~~
 
+If Windows PowerShell blocks a trusted local project script because it is not digitally
+signed, you can temporarily allow it in the **current PowerShell session**:
+
+~~~powershell
+Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
+~~~
+
+Review scripts before running them. This setting is session-scoped; it does not
+change the machine-wide execution policy. It is not needed for ordinary CMake builds.
+
 ### Linux — GCC 14+
 
 With GCC 14, CMake, Ninja, and Git installed, use the Linux preset:
@@ -88,7 +98,7 @@ Each campaign run creates a new directory under `results/` by default. Key files
 
 The batch runner derives separate random seeds for each replicate, independently of worker scheduling. For scientific reproducibility, retain the output together with the **exact source revision** and the campaign definition. The sampling and classification criteria can be inspected in [`studies/dealloying/analysis_plans.h`](studies/dealloying/analysis_plans.h).
 
-The optional critical-potential fitting script, [`tools/fit_critical_potential.py`](tools/fit_critical_potential.py), runs separately from the C++ application and requires Python with NumPy, pandas, and `firthmodels`.
+The optional critical-potential fitting script, [`tools/fit_critical_potential.py`](tools/fit_critical_potential.py), runs separately from the C++ application and requires Python with NumPy, pandas, and `firthmodels`. Supply your own `regimes.csv` in the working directory when running it; the script writes `critical_potential_fits.csv` there. Analysis CSV and Excel files under `tools/` are local inputs or outputs and are not tracked in Git.
 
 ## Optional components
 
