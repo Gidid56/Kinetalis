@@ -49,6 +49,24 @@ namespace
             }));
         };
 
+        "ordered binary alloy cells preserve their stoichiometry"_test = [] {
+            auto au3_cu{ UnitCell::conventional<Bravais::cF>(405_pm)
+                .fill(Atom{ Au })
+                .set(Index{ 0 }, Atom{ Cu }) };
+            auto cu3_au{ UnitCell::conventional<Bravais::cF>(377_pm)
+                .fill(Atom{ Cu })
+                .set(Index{ 0 }, Atom{ Au }) };
+
+            ut::expect(ut::eq(au3_cu.size(), std::size_t{ 4 }));
+            ut::expect(ut::eq(cu3_au.size(), std::size_t{ 4 }));
+            ut::expect(ut::eq(std::ranges::count_if(au3_cu.sites(), [](auto const& site) {
+                return site.atom == Atom{ Cu };
+            }), std::ptrdiff_t{ 1 }));
+            ut::expect(ut::eq(std::ranges::count_if(cu3_au.sites(), [](auto const& site) {
+                return site.atom == Atom{ Au };
+            }), std::ptrdiff_t{ 1 }));
+        };
+
         "ionic and compound unit cells preserve site counts and charges"_test = [] {
             auto cs_cl{ UnitCell::conventional<Bravais::cI>(421_pm)
                 .set(Index{ 0 }, Atom{ Cs, 1 })
