@@ -3,21 +3,15 @@
 #include <array>
 #include <boost/ut.hpp>
 
-using boost::ut::suite;
-using boost::ut::expect;
+namespace ut = boost::ut;
+using namespace physics::unit::literals;
 using namespace boost::ut::literals;
-
-namespace lattice::parameters
-{
-    constexpr math::Vector<2> graphite{ std::numbers::sqrt3, 2. };
-    constexpr auto diamond{ 4 * std::numbers::inv_sqrt3 };
-}
 
 namespace lattice
 {
-    suite<"lattice"> lattice_tests = [] {
-        "unitcell"_test = [] {
-            expect(boost::ut::nothrow([] {
+    ut::suite<"lattice.unitcell"> unitcell_tests = [] {
+        "constructing representative unit cells"_test = [] {
+            ut::expect(ut::nothrow([] {
                 using chemistry::Atom;
                 using enum Element;
 
@@ -76,6 +70,5 @@ namespace lattice
             }));
         };
 
-        // TODO: Add shape tests once expected shape behavior is specified.
     };
 }

@@ -114,14 +114,14 @@ cmake --build --preset build-windows-tests-debug
 ctest --preset test-windows-tests-debug
 ~~~
 
-The `kinetalis_tests` target **builds all six test executables** without running them: five individual modules and `test_all.exe`. In Visual Studio, select `test_all.exe` as the **Startup Item** and run it to execute every suite. The test sources are compiled once and shared between the module executables and `test_all.exe`.
+The `kinetalis_tests` target **builds all eight test executables** without running them: seven individual modules (`chemistry`, `kmc`, `lattice`, `math`, `models`, `physics`, and `simulation`) and `test_all.exe`. In Visual Studio, select `test_all.exe` as the **Startup Item** and run it to execute every suite. The test sources are compiled once and shared between the module executables and `test_all.exe`.
 
 ~~~powershell
 cmake --build build/windows-tests-debug --target test_all
 .\build\windows-tests-debug\Debug\bin\test_all.exe
 ~~~
 
-`ctest --preset test-windows-tests-debug` also runs all tests, reporting results separately for each of the five modules.
+`ctest --preset test-windows-tests-debug` also runs all tests, reporting results separately for each of the seven modules.
 
 For optional checks, select `windows-tests-analysis` (clang-tidy enabled) or
 `windows-tests-no-pch` (precompiled headers disabled). Both have matching

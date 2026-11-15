@@ -14,6 +14,9 @@
 
 #include "kmc/rate_tree.h"
 
+static_assert(kmc::rate_tree::baseLevel <= kmc::rate_tree::maxHeight);
+static_assert(kmc::rate_tree::allocationBlockLevels > 0);
+
 namespace ut = boost::ut;
 using namespace boost::ut::literals;
 

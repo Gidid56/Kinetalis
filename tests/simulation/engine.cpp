@@ -1,22 +1,18 @@
-#include "models/composition_dependent.h"
 #include "simulation/engine.h"
-#include "kmc/rate_tree.h"
 
 #include <array>
 #include <bit>
 #include <boost/ut.hpp>
+#include <cstddef>
 #include <cstdint>
-#include <stdexcept>
 #include <string_view>
 
-using boost::ut::suite;
-using boost::ut::expect;
-using boost::ut::eq;
+namespace ut = boost::ut;
 using namespace boost::ut::literals;
 
-namespace kmc
+namespace
 {
-    suite<"kmc"> kmc_tests = [] {
+    ut::suite<"simulation.engine"> engine_tests = [] {
         "rng"_test = [] {
             constexpr std::string_view seed{ "00000000-00000001-00000002-00000003-"
                                              "00000004-00000005-00000006-00000007" };
@@ -31,7 +27,7 @@ namespace kmc
             };
 
             for (auto expected_bits : expected)
-                expect(eq(std::bit_cast<std::uint64_t>(rng.probability()), expected_bits));
+                ut::expect(ut::eq(std::bit_cast<std::uint64_t>(rng.probability()), expected_bits));
 
             simulation::Engine first{ seed }, second{ seed };
 
@@ -43,7 +39,7 @@ namespace kmc
                     break;
                 }
 
-            expect(reproducible) << "RNG reproducibility";
+            ut::expect(reproducible) << "RNG reproducibility";
 
             auto bounded{ true };
             for (std::size_t i{}; i < 10'000; ++i)
@@ -55,27 +51,8 @@ namespace kmc
                     break;
                 }
 
-            expect(bounded) << "RNG bounded integer";
+            ut::expect(bounded) << "RNG bounded integer";
         };
 
-        "model"_test = [] {
-            using enum Element;
-
-            static_assert(models::bond_pair(Ag, Au) == models::bond_pair(Au, Ag));
-
-            auto construct_model = [] {
-                models::CompositionDependent model;
-                model.set_potential(1.0_V);
-                model.set_temperature(300_K);
-            };
-
-            if constexpr (lattice::element_specific_neighbors)
-                expect(boost::ut::nothrow(construct_model));
-            else
-                expect(boost::ut::throws<std::logic_error>(construct_model));
-        };
     };
-
-    static_assert(rate_tree::baseLevel <= rate_tree::maxHeight);
-    static_assert(rate_tree::allocationBlockLevels > 0);
 }

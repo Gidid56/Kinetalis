@@ -18,17 +18,18 @@ function(kinetalis_add_test_suite suite)
 endfunction()
 
 kinetalis_add_test_suite(kmc
-    kmc.cpp
     kmc/rate_tree.cpp
     kmc/simulation.cpp
 )
 kinetalis_add_test_suite(lattice
-    lattice.cpp
+    lattice/unitcell.cpp
     lattice/geometry.cpp
     lattice/ordering.cpp
     lattice/site.cpp
 )
 add_subdirectory(chemistry)
+add_subdirectory(models)
+add_subdirectory(simulation)
 add_subdirectory(math)
 add_subdirectory(physics)
 
