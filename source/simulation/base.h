@@ -3,6 +3,8 @@
 #include "engine.h"
 #include "lattice/lattice.h"
 
+#include "utility/timer.h"
+
 class simulation::Base
 {
 public:

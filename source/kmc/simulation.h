@@ -5,6 +5,8 @@
 #include "rate_tree.h"
 #include "setup.h"
 
+#include <stop_token>
+
 class kmc::Simulation : public simulation::Base
 {
 public:
