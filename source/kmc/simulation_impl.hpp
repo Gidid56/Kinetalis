@@ -146,13 +146,25 @@ Rate RejectionTreeSimulation<Rules>::rate_sum(lattice::Site& site)
     const bool site_active{ rules_.site.active(site) };
     const bool path_active{ rules_.path.source_active(site) };
 
+    lattice::Index index{ site.process_index() };
+
+    auto clear_site = [&] { set_process(index++, {}); };
+    auto clear_paths = [&] {
+        for (std::size_t i{}; i < site.max_neighbors(); ++i)
+            set_process(index++, {});
+    };
+
     if (not site_active and not path_active)
     {
-        clear_processes(site);
+        if (site.is_active())
+        {
+            clear_site();
+            clear_paths();
+            site.set_active(false);
+        }
         return {};
     }
 
-    lattice::Index index{ site.process_index() };
     Rate sum{};
     bool has_processes{};
 
@@ -162,14 +174,14 @@ Rate RejectionTreeSimulation<Rules>::rate_sum(lattice::Site& site)
         sum += process_rates_.at(key).second;
     };
 
-    add_process(
-        site_active ? process_key(Process{ decltype(rules_.site)::event, site }) : process::Key{});
+    if (site_active)
+        add_process(process_key(Process{ decltype(rules_.site)::event, site }));
+    else
+        clear_site();
 
     if (not path_active)
     {
-        for (std::size_t i{}; i < site.max_neighbors(); ++i)
-            set_process(index++, {});
-
+        clear_paths();
         site.set_active(has_processes);
         return sum;
     }
@@ -305,22 +317,6 @@ void RejectionTreeSimulation<Rules>::set_process(lattice::Index index, process::
 
     if (new_key != process::Key{})
         ++process_counts_.at(new_key);
-}
-
-template <class Rules>
-void RejectionTreeSimulation<Rules>::clear_processes(lattice::Site& site)
-{
-    if (not site.is_active())
-        return;
-
-    auto index{ site.process_index() };
-
-    set_process(index++, {});
-
-    for (std::size_t i{}; i < site.max_neighbors(); ++i)
-        set_process(index++, {});
-
-    site.set_active(false);
 }
 
 }
