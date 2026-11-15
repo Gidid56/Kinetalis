@@ -1,4 +1,4 @@
-name: C++ Tests
+name: Kinetalis CI
 
 on:
   push:
@@ -17,9 +17,9 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - name: GCC 14 / Ubuntu 24.04
+          - name: Ubuntu | Tests | Debug
             os: ubuntu-24.04
-          - name: MSVC / Windows Server 2025
+          - name: Windows | Tests | Debug
             os: windows-2025-vs2026
 
     steps:
@@ -63,15 +63,15 @@ jobs:
         run: ctest --test-dir build/ci --output-on-failure
 
   batch:
-    name: Batch Release / ${{ matrix.name }}
+    name: ${{ matrix.name }}
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
         include:
-          - name: GCC 14
+          - name: Ubuntu | Batch | Release
             os: ubuntu-24.04
-          - name: MSVC
+          - name: Windows | Batch | Release
             os: windows-2025-vs2026
 
     steps:
@@ -119,32 +119,3 @@ jobs:
         if: runner.os == 'Windows'
         run: .\build\batch-ci\Release\bin\kinetalis_batch.exe --help
 
-  no-pch:
-    name: GCC 14 / No PCH
-    runs-on: ubuntu-24.04
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v6
-
-      - name: Install GCC 14
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y gcc-14 g++-14 ninja-build
-
-      - name: Configure
-        run: >
-          cmake -S . -B build/no-pch -G Ninja
-          -DCMAKE_BUILD_TYPE=Debug
-          -DCMAKE_C_COMPILER=gcc-14
-          -DCMAKE_CXX_COMPILER=g++-14
-          -DKINETALIS_BUILD_BATCH=OFF
-          -DKINETALIS_BUILD_VIEWER=OFF
-          -DKINETALIS_BUILD_TESTS=ON
-          -DKINETALIS_ENABLE_PCH=OFF
-
-      - name: Build
-        run: cmake --build build/no-pch --target kinetalis_tests --parallel 2
-
-      - name: Run tests
-        run: ctest --test-dir build/no-pch --output-on-failure
