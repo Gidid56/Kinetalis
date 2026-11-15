@@ -58,8 +58,8 @@ Seed Engine::generate_seed() noexcept
 
 math::Vector<3> Engine::direction()
 {
-    const double polar_angle{ 2 * std::numbers::pi * probability() };
-    const double z_projection{ 2 * probability() - 1 };
+    const double polar_angle{ 2 * std::numbers::pi * probability().value() };
+    const double z_projection{ 2 * probability().value() - 1 };
     const double r2d_projection{ std::sqrt(std::max(0.0, 1 - math::square(z_projection))) };
 
     return {
