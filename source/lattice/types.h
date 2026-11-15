@@ -5,7 +5,11 @@
 #include "utility/enums.h"
 #include "utility/storage.h"
 
+#include <array>
+#include <cstddef>
+#include <cstdint>
 #include <functional>
+#include <iterator>
 #include <map>
 #include <vector>
 

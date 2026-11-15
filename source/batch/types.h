@@ -1,5 +1,9 @@
 #pragma once
 
+#include <chrono>
+#include <filesystem>
+#include <functional>
+
 namespace batch
 {
     template <class Rules>

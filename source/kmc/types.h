@@ -2,8 +2,11 @@
 #include "chemistry/element.h"
 #include "physics/physics.h"
 
+#include <cstdint>
 #include <filesystem>
 #include <functional>
+#include <memory>
+#include <vector>
 
 namespace kmc
 {
