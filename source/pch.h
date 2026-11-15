@@ -39,6 +39,7 @@
 #include <stdexcept>
 #include <string>
 #include <string_view>
+#include <stop_token>
 #include <thread>
 #include <unordered_map>
 #include <utility>

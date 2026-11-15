@@ -1,4 +1,4 @@
-target_sources(kinetalis_tests PRIVATE
+kinetalis_add_test_suite(physics
     arithmetic.cpp
     catalogue.cpp
     constants.cpp

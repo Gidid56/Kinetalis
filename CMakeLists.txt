@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.22)
+cmake_minimum_required(VERSION 3.25)
 
 project(
     Kinetalis
@@ -9,7 +9,7 @@ project(
 
 option(KINETALIS_BUILD_BATCH "Build the batch application" ON)
 option(KINETALIS_BUILD_VIEWER "Build the interactive Magnum viewer" OFF)
-option(KINETALIS_BUILD_TESTS "Build the Kinetalis test executable" ON)
+option(KINETALIS_BUILD_TESTS "Build Kinetalis test executables" ON)
 option(KINETALIS_ENABLE_PCH "Use precompiled headers" ON)
 option(KINETALIS_ENABLE_CLANG_TIDY "Run clang-tidy on Kinetalis sources" OFF)
 option(KINETALIS_WARNINGS_AS_ERRORS "Treat compiler warnings as errors" OFF)

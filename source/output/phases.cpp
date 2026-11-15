@@ -115,12 +115,16 @@ void Phases::observe_processed(kmc::process::Record const& process)
 
 std::string Phases::settings() const
 {
-    auto text = std::format(
-        "active_phases = {}\n"
-        "max_coordination = {}\n",
-        active_phases,
-        max_coordination);
-
+    std::string text{ "active_phases = [" };
+    bool first{ true };
+    for (auto phase : active_phases)
+    {
+        if (not first)
+            text += ", ";
+        first = false;
+        std::format_to(std::back_inserter(text), "{}", phase);
+    }
+    std::format_to(std::back_inserter(text), "]\nmax_coordination = {}\n", max_coordination);
     return text;
 }
 
