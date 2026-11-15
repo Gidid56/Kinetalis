@@ -76,8 +76,8 @@ private:
 
     void update_dynamic_rates();
 
-    void update(lattice::Site&, std::vector<lattice::Index>* changed_blocks = nullptr);
-    void update_neighbors(lattice::Site&, std::vector<lattice::Index>* changed_blocks = nullptr);
+    void update(lattice::Site&);
+    void update_neighbors(lattice::Site&);
 
     std::unique_ptr<rate_tree::Interface> rate_tree_;
     Rates site_rates_;
