@@ -13,6 +13,7 @@ namespace kmc
         rate_tree_ = rate_tree::make_entry(lattice_.sites().size());
         site_rates_.resize(lattice_.sites().size());
         processes_.resize(lattice_.sites().size() + lattice_.neighbors().size());
+        changed_blocks_.reserve(2 * (lattice::max_coordination + 1));
     }
 
     template <class Rules>
@@ -25,9 +26,6 @@ namespace kmc
             analysis_plan.observe_started(*this);
 
         status_ = simulation::Status::running;
-
-        std::vector<lattice::Index> changed_blocks;
-        changed_blocks.reserve(2 * (lattice::max_coordination + 1));
 
         while (not analysis_plan.stop_requested())
         {
@@ -57,14 +55,14 @@ namespace kmc
 
                 process.execute(lattice_);
 
-                changed_blocks.clear();
+                changed_blocks_.clear();
                 for (auto site : process.path.sites())
                 {
-                    update_neighbors(*site, &changed_blocks);
-                    update(*site, &changed_blocks);
+                    update_neighbors(*site, &changed_blocks_);
+                    update(*site, &changed_blocks_);
                 }
 
-                for (auto block_start : changed_blocks)
+                for (auto block_start : changed_blocks_)
                     rate_tree_->update_rate(block_start, block_rate(lattice_.sites().at(block_start)));
 
                 analysis_plan.observe_processed(process);
