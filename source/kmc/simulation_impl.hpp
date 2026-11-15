@@ -7,311 +7,320 @@
 
 namespace kmc
 {
-template <class Rules>
-void RejectionTreeSimulation<Rules>::initialize_rates()
-{
-    rate_tree_ = rate_tree::make_entry(lattice_.sites().size());
-    site_rates_.resize(lattice_.sites().size());
-    processes_.resize(lattice_.sites().size() + lattice_.neighbors().size());
-}
-
-template <class Rules>
-simulation::Status RejectionTreeSimulation<Rules>::run(AnalysisPlan& analysis_plan, std::stop_token token)
-{
-    utility::Guard guard{ timer_ };
-
-    if (status_ == simulation::Status::created)
-        analysis_plan.observe_started(*this);
-
-    status_ = simulation::Status::running;
-
-    while (not analysis_plan.stop_requested())
+    template <class Rules>
+    void RejectionTreeSimulation<Rules>::initialize_rates()
     {
-        if (token.stop_requested())
-            return status_ = simulation::Status::paused;
+        rate_tree_ = rate_tree::make_entry(lattice_.sites().size());
+        site_rates_.resize(lattice_.sites().size());
+        processes_.resize(lattice_.sites().size() + lattice_.neighbors().size());
+    }
 
-        const auto total_rate{ rate_tree_->rate_sum() };
-        if (total_rate <= Rate{})
+    template <class Rules>
+    simulation::Status
+    RejectionTreeSimulation<Rules>::run(AnalysisPlan& analysis_plan, std::stop_token token)
+    {
+        utility::Guard guard{ timer_ };
+
+        if (status_ == simulation::Status::created)
+            analysis_plan.observe_started(*this);
+
+        status_ = simulation::Status::running;
+
+        while (not analysis_plan.stop_requested())
         {
-            analysis_plan.observe_completed(*this);
-            return status_ = simulation::Status::exhausted;
-        }
+            if (token.stop_requested())
+                return status_ = simulation::Status::paused;
 
-        const auto escape_time{ 1.0 / total_rate };
-        if constexpr (stochasticResidenceTime)
-            time_ += -std::log1p(-rng_.probability()) * escape_time;
-        else
-            time_ += escape_time;
-
-        auto process{ select_random_process() };
-
-        analysis_plan.observe_selected(process);
-
-        if (process.outcome == process::Outcome::accepted)
-        {
-            ++step_;
-
-            process.execute(lattice_);
-
-            for (auto site : process.path.sites())
+            const auto total_rate{ rate_tree_->rate_sum() };
+            if (total_rate <= Rate{})
             {
-                update_neighbors(*site);
-                update(*site);
+                analysis_plan.observe_completed(*this);
+                return status_ = simulation::Status::exhausted;
             }
 
-            analysis_plan.observe_processed(process);
+            const auto escape_time{ 1.0 / total_rate };
+            if constexpr (stochasticResidenceTime)
+                time_ += -std::log1p(-rng_.probability()) * escape_time;
+            else
+                time_ += escape_time;
+
+            auto process{ select_random_process() };
+
+            analysis_plan.observe_selected(process);
+
+            if (process.outcome == process::Outcome::accepted)
+            {
+                ++step_;
+
+                process.execute(lattice_);
+
+                for (auto site : process.path.sites())
+                {
+                    update_neighbors(*site);
+                    update(*site);
+                }
+
+                analysis_plan.observe_processed(process);
+            }
+            else if (process.outcome == process::Outcome::rejected)
+            {
+                ++rejections_;
+            }
+
+            analysis_plan.observe_step(*this);
         }
-        else if (process.outcome == process::Outcome::rejected)
+
+        analysis_plan.observe_completed(*this);
+        return status_ = simulation::Status::analysed;
+    }
+
+    template <class Rules>
+    process::Record RejectionTreeSimulation<Rules>::select_random_process()
+    {
+        auto selected_rate{ rate_tree_->rate_sum() * rng_.probability() };
+
+        auto site_index{ rate_tree_->index(selected_rate) };
+
+        while (selected_rate >= site_rates_.at(site_index))
+            selected_rate -= site_rates_.at(site_index++);
+
+        if constexpr (utility::is_debug)
+            if (site_index >= site_rates_.size())
+                throw std::runtime_error{ "tree not updated correctly" };
+
+        auto& site{ lattice_.sites().at(site_index) };
+        auto process_index{ site.process_index() };
+
+        while (selected_rate >= process_rates_.at(processes_.at(process_index)).second)
+            selected_rate -= process_rates_.at(processes_.at(process_index++)).second;
+
+        if constexpr (utility::is_debug)
+            if (process_index > site.process_index() + site.max_neighbors())
+                throw std::runtime_error{ "tree not updated correctly" };
+
+        if (process_index == site.process_index())
+            return process::Record{ site, decltype(rules_.site)::event, rules_.site.allowed(site) };
+
+        auto const path{ lattice::Path{ &site,
+            lattice_.neighbor(process_index - site_index - 1) } };
+
+        return process::Record{ path, decltype(rules_.path)::event, rules_.path.allowed(path) };
+    }
+
+    template <class Rules>
+    void RejectionTreeSimulation<Rules>::update_neighbors(lattice::Site& site)
+    {
+        for (auto neighbor : lattice_.neighbors(site))
+            update(*neighbor);
+    }
+
+    template <class Rules>
+    void RejectionTreeSimulation<Rules>::update(lattice::Site& site)
+    {
+        //site.setClassification(lattice_.classification(site));
+
+        if (not site.is_dirty())
+            return;
+
+        auto& old_rate{ site_rates_.at(site.index()) };
+
+        //if constexpr (results::processesStats)
+        //	if (results_ and oldRate > Rate{})
+        //		results_->setActive(processRates_[processes_[site.processIndex()]].first, false);
+
+        Rate new_rate{ rate_sum(site) };
+
+        //if constexpr (results::processesStats) if (results_ and newRate > Rate{})
+        //	results_->setActive(processRates_[processes_[site.processIndex()]].first, true);
+
+        if (new_rate != old_rate)
         {
-            ++rejections_;
+            old_rate = new_rate;
+
+            rate_tree_->update_rate(site.index(), block_rate(site));
+        }
+        site.set_dirty(false);
+    }
+
+    template <class Rules>
+    Rate RejectionTreeSimulation<Rules>::rate_sum(lattice::Site& site)
+    {
+        const bool site_active{ rules_.site.active(site) };
+        const bool path_active{ rules_.path.source_active(site) };
+
+        lattice::Index index{ site.process_index() };
+
+        auto clear_site = [&] {
+            set_process(index++, {});
+        };
+        auto clear_paths = [&] {
+            for (std::size_t i{}; i < site.max_neighbors(); ++i)
+                set_process(index++, {});
+        };
+
+        if (not site_active and not path_active)
+        {
+            if (site.is_active())
+            {
+                clear_site();
+                clear_paths();
+                site.set_active(false);
+            }
+            return {};
         }
 
-        analysis_plan.observe_step(*this);
-    }
+        Rate sum{};
+        bool has_processes{};
 
-    analysis_plan.observe_completed(*this);
-    return status_ = simulation::Status::analysed;
-}
+        auto add_process = [&](process::Key key) {
+            set_process(index++, key);
+            has_processes |= key != process::Key{};
+            sum += process_rates_.at(key).second;
+        };
 
-template <class Rules>
-process::Record RejectionTreeSimulation<Rules>::select_random_process()
-{
-    auto selected_rate{ rate_tree_->rate_sum() * rng_.probability() };
+        if (site_active)
+            add_process(process_key(Process{ decltype(rules_.site)::event, site }));
+        else
+            clear_site();
 
-    auto site_index{ rate_tree_->index(selected_rate) };
+        if (not path_active)
+        {
+            clear_paths();
+            site.set_active(has_processes);
+            return sum;
+        }
 
-    while (selected_rate >= site_rates_.at(site_index))
-        selected_rate -= site_rates_.at(site_index++);
+        for (auto neighbor : lattice_.neighbors(site))
+        {
+            auto const path{ lattice::Path{ &site, neighbor } };
+            add_process(process_key(make_process(path, rules_.path)));
+        }
 
-    if constexpr (utility::is_debug)
-        if (site_index >= site_rates_.size())
-            throw std::runtime_error{ "tree not updated correctly" };
-
-    auto& site{ lattice_.sites().at(site_index) };
-    auto process_index{ site.process_index() };
-
-    while (selected_rate >= process_rates_.at(processes_.at(process_index)).second)
-        selected_rate -= process_rates_.at(processes_.at(process_index++)).second;
-
-    if constexpr (utility::is_debug)
-        if (process_index > site.process_index() + site.max_neighbors())
-            throw std::runtime_error{ "tree not updated correctly" };
-
-    if (process_index == site.process_index())
-        return process::Record{ site, decltype(rules_.site)::event, rules_.site.allowed(site) };
-
-    auto const path{ lattice::Path{ &site, lattice_.neighbor(process_index - site_index - 1) } };
-
-    return process::Record{ path, decltype(rules_.path)::event, rules_.path.allowed(path) };
-}
-
-template <class Rules>
-void RejectionTreeSimulation<Rules>::update_neighbors(lattice::Site& site)
-{
-    for (auto neighbor : lattice_.neighbors(site))
-        update(*neighbor);
-}
-
-template <class Rules>
-void RejectionTreeSimulation<Rules>::update(lattice::Site& site)
-{
-    //site.setClassification(lattice_.classification(site));
-
-    if (not site.is_dirty())
-        return;
-
-    auto& old_rate{ site_rates_.at(site.index()) };
-
-    //if constexpr (results::processesStats)
-    //	if (results_ and oldRate > Rate{})
-    //		results_->setActive(processRates_[processes_[site.processIndex()]].first, false);
-
-    Rate new_rate{ rate_sum(site) };
-
-    //if constexpr (results::processesStats) if (results_ and newRate > Rate{})
-    //	results_->setActive(processRates_[processes_[site.processIndex()]].first, true);
-
-    if (new_rate != old_rate)
-    {
-        old_rate = new_rate;
-
-        rate_tree_->update_rate(site.index(), block_rate(site));
-    }
-    site.set_dirty(false);
-}
-
-template <class Rules>
-Rate RejectionTreeSimulation<Rules>::rate_sum(lattice::Site& site)
-{
-    const bool site_active{ rules_.site.active(site) };
-    const bool path_active{ rules_.path.source_active(site) };
-
-    if (not site_active and not path_active)
-    {
-        clear_processes(site);
-        return {};
-    }
-
-    lattice::Index index{ site.process_index() };
-    Rate sum{};
-
-    auto add_process = [&](process::Key key) {
-        set_process(index++, key);
-        sum += process_rates_.at(key).second;
-    };
-
-    add_process(
-        site_active ? process_key(Process{ decltype(rules_.site)::event, site }) : process::Key{});
-
-    if (not path_active)
-    {
-        for (std::size_t i{}; i < site.max_neighbors(); ++i)
-            set_process(index++, {});
-
+        site.set_active(has_processes);
         return sum;
     }
 
-    for (auto neighbor : lattice_.neighbors(site))
+    template <class Rules>
+    void RejectionTreeSimulation<Rules>::set_process(lattice::Index index, process::Key new_key)
     {
-        auto const path{ lattice::Path{ &site, neighbor } };
-        add_process(process_key(make_process(path, rules_.path)));
+        auto& old_key{ processes_.at(index) };
+
+        if (old_key == new_key)
+            return;
+
+        // key 0 is the empty / invalid process for static process keys
+        if (old_key != process::Key{})
+            --process_counts_.at(old_key);
+
+        old_key = new_key;
+
+        if (new_key != process::Key{})
+            ++process_counts_.at(new_key);
     }
 
-    return sum;
-}
-
-template <class Rules>
-Rate RejectionTreeSimulation<Rules>::block_rate(lattice::Site& site)
-{
-    constexpr auto block_size{ std::size_t{ 1 } << rate_tree::baseLevel };
-
-    auto const block_start{ site.index() & ~(block_size - 1) };
-
-    Rate sum{};
-
-    for (auto index{ block_start }; index < std::min(block_start + block_size, site_rates_.size());
-        ++index)
+    template <class Rules>
+    Rate RejectionTreeSimulation<Rules>::block_rate(lattice::Site& site)
     {
-        sum += site_rates_.at(index);
+        constexpr auto block_size{ std::size_t{ 1 } << rate_tree::baseLevel };
+
+        auto const block_start{ site.index() & ~(block_size - 1) };
+
+        Rate sum{};
+
+        for (auto index{ block_start };
+            index < std::min(block_start + block_size, site_rates_.size());
+            ++index)
+        {
+            sum += site_rates_.at(index);
+        }
+        return sum;
     }
-    return sum;
-}
 
-template <class Rules>
-process::Key RejectionTreeSimulation<Rules>::process_key(Process process)
-{
-    if (not process.is_active())
-        return {};
-
-    if constexpr (staticProcessKeys)
-        return process.static_key();
-
-    if (auto it{ dynamic_keys_.find(process) }; it != dynamic_keys_.end())
-        return it->second;
-
-    if (process_rates_.size() > std::numeric_limits<process::Key>::max())
-        throw std::overflow_error{ "Increase process::Key size." };
-
-    auto const key{ static_cast<process::Key>(process_rates_.size()) };
-
-    auto const rate{ model_->rate(process) };
-
-    dynamic_keys_.emplace(process, key);
-    process_rates_.emplace_back(process, rate);
-    process_counts_.emplace_back(0);
-
-    return key;
-}
-
-template <class Rules>
-void RejectionTreeSimulation<Rules>::update_rates()
-{
-    if constexpr (staticProcessKeys)
-        update_static_rates();
-    else
-        update_dynamic_rates();
-
-    for (auto& site : lattice_.sites())
+    template <class Rules>
+    process::Key RejectionTreeSimulation<Rules>::process_key(Process process)
     {
-        site.set_dirty(true);
-        update(site);
+        if (not process.is_active())
+            return {};
+
+        if constexpr (staticProcessKeys)
+            return process.static_key();
+
+        if (auto it{ dynamic_keys_.find(process) }; it != dynamic_keys_.end())
+            return it->second;
+
+        if (process_rates_.size() > std::numeric_limits<process::Key>::max())
+            throw std::overflow_error{ "Increase process::Key size." };
+
+        auto const key{ static_cast<process::Key>(process_rates_.size()) };
+
+        auto const rate{ model_->rate(process) };
+
+        dynamic_keys_.emplace(process, key);
+        process_rates_.emplace_back(process, rate);
+        process_counts_.emplace_back(0);
+
+        return key;
     }
-}
 
-template <class Rules>
-void RejectionTreeSimulation<Rules>::update_static_rates()
-{
-    process_rates_.clear();
-    process_rates_.reserve(Process::number_keys());
-    process_rates_.emplace_back(Process{}, Rate{});
+    template <class Rules>
+    void RejectionTreeSimulation<Rules>::update_rates()
+    {
+        if constexpr (staticProcessKeys)
+            update_static_rates();
+        else
+            update_dynamic_rates();
 
-    constexpr auto elements{ utility::prepend(Element::none, lattice::active_elements) };
+        for (auto& site : lattice_.sites())
+        {
+            site.set_dirty(true);
+            update(site);
+        }
+    }
 
-    auto add_rule = [&](auto const& rule) {
-        using Rule = std::remove_cvref_t<decltype(rule)>;
+    template <class Rules>
+    void RejectionTreeSimulation<Rules>::update_static_rates()
+    {
+        process_rates_.clear();
+        process_rates_.reserve(Process::number_keys());
+        process_rates_.emplace_back(Process{}, Rate{});
 
-        for (auto element : elements)
-            for (lattice::Coordination coordination{}; coordination < lattice::max_coordination;
-                ++coordination)
-            {
-                Process process{ Rule::event, element, coordination };
+        constexpr auto elements{ utility::prepend(Element::none, lattice::active_elements) };
 
-                if (not rule.supports(process))
-                    continue;
+        auto add_rule = [&](auto const& rule) {
+            using Rule = std::remove_cvref_t<decltype(rule)>;
 
-                auto const key{ process.static_key() };
-                auto const rate{ model_->rate(process) };
+            for (auto element : elements)
+                for (lattice::Coordination coordination{}; coordination < lattice::max_coordination;
+                    ++coordination)
+                {
+                    Process process{ Rule::event, element, coordination };
 
-                if (key >= process_rates_.size())
-                    process_rates_.resize(key + 1);
+                    if (not rule.supports(process))
+                        continue;
 
-                process_rates_.at(key) = { process, rate };
-            }
-    };
+                    auto const key{ process.static_key() };
+                    auto const rate{ model_->rate(process) };
 
-    add_rule(rules_.site);
-    add_rule(rules_.path);
+                    if (key >= process_rates_.size())
+                        process_rates_.resize(key + 1);
 
-    if (process_counts_.size() == 1)
-        process_counts_.resize(process_rates_.size());
-    else if (process_counts_.size() != process_rates_.size())
-        throw std::logic_error{ "Process key space changed after initialization." };
-}
+                    process_rates_.at(key) = { process, rate };
+                }
+        };
 
-template <class Rules>
-void RejectionTreeSimulation<Rules>::update_dynamic_rates()
-{
-    for (auto& [process, rate] : process_rates_ | std::views::drop(1))
-        rate = model_->rate(process);
-}
+        add_rule(rules_.site);
+        add_rule(rules_.path);
 
-template <class Rules>
-void RejectionTreeSimulation<Rules>::set_process(lattice::Index index, process::Key new_key)
-{
-    auto& old_key{ processes_.at(index) };
+        if (process_counts_.size() == 1)
+            process_counts_.resize(process_rates_.size());
+        else if (process_counts_.size() != process_rates_.size())
+            throw std::logic_error{ "Process key space changed after initialization." };
+    }
 
-    if (old_key == new_key)
-        return;
-
-    // key 0 is the empty / invalid process for static process keys
-    if (old_key != process::Key{})
-        --process_counts_.at(old_key);
-
-    old_key = new_key;
-
-    if (new_key != process::Key{})
-        ++process_counts_.at(new_key);
-}
-
-template <class Rules>
-void RejectionTreeSimulation<Rules>::clear_processes(lattice::Site& site)
-{
-    auto index{ site.process_index() };
-
-    set_process(index++, {});
-
-    for (std::size_t i{}; i < site.max_neighbors(); ++i)
-        set_process(index++, {});
-}
-
+    template <class Rules>
+    void RejectionTreeSimulation<Rules>::update_dynamic_rates()
+    {
+        for (auto& [process, rate] : process_rates_ | std::views::drop(1))
+            rate = model_->rate(process);
+    }
 }

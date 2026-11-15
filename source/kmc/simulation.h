@@ -66,7 +66,6 @@ private:
     Rate block_rate(lattice::Site&);
     process::Key process_key(Process);
     void set_process(lattice::Index, process::Key);
-    void clear_processes(lattice::Site&);
 
     Rate rate_sum(lattice::Site&);
     process::Record select_random_process();
