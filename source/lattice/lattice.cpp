@@ -87,24 +87,48 @@ void Lattice::sort_sites()
     const auto extent{ std::max({ upper[0] - lower[0], upper[1] - lower[1], upper[2] - lower[2] }) };
     const auto scale{ extent > 0 ? static_cast<double>(max_coordinate) / extent : 0.0 };
 
-    auto spread = [](std::uint64_t x) {
-        x = (x | x << 32) & 0x1f00000000ffffull;
-        x = (x | x << 16) & 0x1f0000ff0000ffull;
-        x = (x | x << 8) & 0x100f00f00f00f00full;
-        x = (x | x << 4) & 0x10c30c30c30c30c3ull;
-        x = (x | x << 2) & 0x1249249249249249ull;
-        return x;
-    };
-
     auto code = [&](Site const& site) {
-        auto quantize = [&](std::size_t axis) {
+        std::array<std::uint64_t, 3> xyz{};
+        for (std::size_t axis{}; axis < 3; ++axis)
+        {
             const auto value{ (site.position()[axis].value() - lower[axis]) * scale };
-            return static_cast<std::uint64_t>(
+            xyz[axis] = static_cast<std::uint64_t>(
                 std::clamp(value, 0.0, static_cast<double>(max_coordinate)));
-        };
+        }
 
-        return spread(quantize(0)) | (spread(quantize(1)) << 1) |
-               (spread(quantize(2)) << 2);
+        // Skilling's axes-to-transpose transform for a 3D Hilbert curve.
+        constexpr auto highest_bit{ 1ull << 20 };
+        for (auto bit{ highest_bit }; bit > 1; bit >>= 1)
+        {
+            const auto mask{ bit - 1 };
+            for (auto& coordinate : xyz)
+            {
+                if (coordinate & bit)
+                    xyz[0] ^= mask;
+                else
+                {
+                    const auto exchange{ (xyz[0] ^ coordinate) & mask };
+                    xyz[0] ^= exchange;
+                    coordinate ^= exchange;
+                }
+            }
+        }
+
+        xyz[1] ^= xyz[0];
+        xyz[2] ^= xyz[1];
+
+        std::uint64_t correction{};
+        for (auto bit{ highest_bit }; bit > 1; bit >>= 1)
+            if (xyz[2] & bit)
+                correction ^= bit - 1;
+        for (auto& coordinate : xyz)
+            coordinate ^= correction;
+
+        std::uint64_t key{};
+        for (int bit{ 20 }; bit >= 0; --bit)
+            for (auto coordinate : xyz)
+                key = (key << 1) | ((coordinate >> bit) & 1ull);
+        return key;
     };
 
     std::vector<std::pair<std::uint64_t, Index>> order;
