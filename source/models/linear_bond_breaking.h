@@ -15,7 +15,7 @@ public:
     auto& set_bond_energy(this auto& self, Energy bond_energy)
     {
         ensure_range(bond_energy);
-        self.constants_ = bond_energy;
+        self.constants_.bond_energy = bond_energy;
         return self;
     }
 
