@@ -5,6 +5,8 @@
 #include "cells.h"
 #include "simulation/engine.h"
 
+#include <cstdint>
+
 using namespace lattice;
 
 Lattice::Lattice(UnitCell const& unit_cell, Indices miller_indices)
@@ -66,13 +68,59 @@ void Lattice::rotate_up()
 
 void Lattice::sort_sites()
 {
-    std::ranges::sort(sites_, std::ranges::less{}, &Site::position);
+    if (sites_.empty())
+        return;
+
+    std::array<double, 3> lower{}, upper{};
+    for (std::size_t axis{}; axis < 3; ++axis)
+        lower[axis] = upper[axis] = sites_.front().position()[axis].value();
+
+    for (auto const& site : sites_)
+        for (std::size_t axis{}; axis < 3; ++axis)
+        {
+            const auto value{ site.position()[axis].value() };
+            lower[axis] = std::min(lower[axis], value);
+            upper[axis] = std::max(upper[axis], value);
+        }
+
+    constexpr std::uint64_t max_coordinate{ (1ull << 21) - 1 };
+    const auto extent{ std::max({ upper[0] - lower[0], upper[1] - lower[1], upper[2] - lower[2] }) };
+    const auto scale{ extent > 0 ? static_cast<double>(max_coordinate) / extent : 0.0 };
+
+    auto spread = [](std::uint64_t x) {
+        x = (x | x << 32) & 0x1f00000000ffffull;
+        x = (x | x << 16) & 0x1f0000ff0000ffull;
+        x = (x | x << 8) & 0x100f00f00f00f00full;
+        x = (x | x << 4) & 0x10c30c30c30c30c3ull;
+        x = (x | x << 2) & 0x1249249249249249ull;
+        return x;
+    };
+
+    auto code = [&](Site const& site) {
+        auto quantize = [&](std::size_t axis) {
+            const auto value{ (site.position()[axis].value() - lower[axis]) * scale };
+            return static_cast<std::uint64_t>(
+                std::clamp(value, 0.0, static_cast<double>(max_coordinate)));
+        };
+
+        return spread(quantize(0)) | (spread(quantize(1)) << 1) |
+               (spread(quantize(2)) << 2);
+    };
+
+    std::vector<std::pair<std::uint64_t, Index>> order;
+    order.reserve(sites_.size());
+    for (Index index{}; index < sites_.size(); ++index)
+        order.emplace_back(code(sites_[index]), index);
+    std::ranges::sort(order);
+
+    Sites sorted;
+    sorted.reserve(sites_.size());
+    for (auto [key, index] : order)
+        sorted.push_back(std::move(sites_[index]));
+    sites_ = std::move(sorted);
 
     for (Index index{}; auto& site : sites_)
-    {
         site.set_index(index++);
-        //site.resetOriginal();
-    }
 }
 
 // This function implements the periodic boundary conditions for a given set of axes.
