@@ -13,7 +13,7 @@ namespace kmc
         rate_tree_ = rate_tree::make_entry(lattice_.sites().size());
         site_rates_.resize(lattice_.sites().size());
         processes_.resize(lattice_.sites().size() + lattice_.neighbors().size());
-        changed_blocks_.reserve(2 * (lattice::max_coordination + 1));
+        block_updates_.reserve(2 * (lattice::max_coordination + 1));
     }
 
     template <class Rules>
@@ -55,15 +55,7 @@ namespace kmc
 
                 process.execute(lattice_);
 
-                changed_blocks_.clear();
-                for (auto site : process.path.sites())
-                {
-                    update_neighbors(*site);
-                    update(*site);
-                }
-
-                for (auto block_start : changed_blocks_)
-                    rate_tree_->update_rate(block_start, block_rate(lattice_.sites().at(block_start)));
+                update_affected_rates(process);
 
                 analysis_plan.observe_processed(process);
             }
@@ -77,6 +69,31 @@ namespace kmc
 
         analysis_plan.observe_completed(*this);
         return status_ = simulation::Status::analysed;
+    }
+
+    template <class Rules>
+    void RejectionTreeSimulation<Rules>::update_affected_rates(process::Record const& process)
+    {
+        block_updates_.clear();
+        for (auto site : process.path.sites())
+        {
+            update_neighbors(*site);
+            update(*site);
+        }
+
+        if (block_updates_.size() == 1)
+        {
+            auto& update{ block_updates_.front() };
+            update.rate = block_rate(lattice_.sites().at(update.index));
+            rate_tree_->update_rate(update.index, update.rate);
+        }
+        else if (not block_updates_.empty())
+        {
+            std::ranges::sort(block_updates_, {}, &rate_tree::BlockUpdate::index);
+            for (auto& update : block_updates_)
+                update.rate = block_rate(lattice_.sites().at(update.index));
+            rate_tree_->update_rates(block_updates_);
+        }
     }
 
     template <class Rules>
@@ -147,8 +164,9 @@ namespace kmc
             };
             auto const block_start{ site.index() & ~block_mask };
 
-            if (std::ranges::find(changed_blocks_, block_start) == changed_blocks_.end())
-                changed_blocks_.push_back(block_start);
+            if (std::ranges::find(block_updates_, block_start, &rate_tree::BlockUpdate::index)
+                == block_updates_.end())
+                block_updates_.push_back({ block_start, {} });
         }
         site.set_dirty(false);
     }
@@ -283,7 +301,7 @@ namespace kmc
 
         // A full-rate refresh bypasses per-event block collection. Rebuild each
         // block once after all site rates have been recalculated.
-        changed_blocks_.clear();
+        block_updates_.clear();
         for (auto& site : lattice_.sites())
         {
             site_rates_.at(site.index()) = rate_sum(site);

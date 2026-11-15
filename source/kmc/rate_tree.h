@@ -4,6 +4,12 @@ namespace kmc::rate_tree
 {
     using Index = lattice::Index;
 
+    struct BlockUpdate
+    {
+        Index index;
+        Rate rate;
+    };
+
     inline constexpr std::size_t baseLevel{ 4 };
     inline constexpr std::size_t allocationBlockLevels{ 8 };
     inline constexpr std::size_t maxHeight{ 32 };
@@ -61,6 +67,21 @@ namespace kmc::rate_tree
             rate_sum_ = branch(Direction::left).rate_sum() + branch(Direction::right).rate_sum();
         }
 
+        void update_rates(std::span<const BlockUpdate> updates)
+        {
+            if (updates.empty())
+                return;
+
+            auto const middle{ std::ranges::partition_point(updates, [&](auto const& update) {
+                return not direction(update.index);
+            }) };
+            auto const split{ static_cast<std::size_t>(middle - updates.begin()) };
+
+            branch(Direction::left).update_rates(updates.first(split));
+            branch(Direction::right).update_rates(updates.subspan(split));
+            rate_sum_ = branch(Direction::left).rate_sum() + branch(Direction::right).rate_sum();
+        }
+
         Rate block_rate(Index index) const { return branch(direction(index)).block_rate(index); }
 
         Index index(Rate& selected_rate) const
@@ -100,6 +121,12 @@ namespace kmc::rate_tree
 
         void update_rate(Index, Rate new_rate) { rate_sum_ = new_rate; }
 
+        void update_rates(std::span<const BlockUpdate> updates)
+        {
+            if (not updates.empty())
+                rate_sum_ = updates.front().rate;
+        }
+
         Rate block_rate(Index) const { return rate_sum_; }
 
         Index index(Rate&) const { return {}; }
@@ -112,6 +139,7 @@ namespace kmc::rate_tree
         virtual Rate rate_sum() const = 0;
         virtual Rate block_rate(Index) const = 0;
         virtual void update_rate(Index, Rate) = 0;
+        virtual void update_rates(std::span<const BlockUpdate>) = 0;
         virtual Index index(Rate&) const = 0;
     };
 
@@ -127,6 +155,11 @@ namespace kmc::rate_tree
         void update_rate(Index index, Rate new_rate) override
         {
             branch.update_rate(index, new_rate);
+        }
+
+        void update_rates(std::span<const BlockUpdate> updates) override
+        {
+            branch.update_rates(updates);
         }
 
         Index index(Rate& selected_rate) const override { return branch.index(selected_rate); }

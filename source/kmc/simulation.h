@@ -75,6 +75,7 @@ private:
     void update_static_rates();
 
     void update_dynamic_rates();
+    void update_affected_rates(process::Record const&);
 
     void update(lattice::Site&);
     void update_neighbors(lattice::Site&);
@@ -82,7 +83,7 @@ private:
     std::unique_ptr<rate_tree::Interface> rate_tree_;
     Rates site_rates_;
     process::Keys processes_;
-    std::vector<lattice::Index> changed_blocks_;
+    std::vector<rate_tree::BlockUpdate> block_updates_;
 
     std::unordered_map<Process, process::Key> dynamic_keys_;
 
