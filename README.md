@@ -40,16 +40,6 @@ cmake --build --preset build-windows-batch-release
 .\build\windows-batch-release\Release\bin\kinetalis_batch.exe --help
 ~~~
 
-If Windows PowerShell blocks a trusted local project script because it is not digitally
-signed, you can temporarily allow it in the **current PowerShell session**:
-
-~~~powershell
-Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
-~~~
-
-Review scripts before running them. This setting is session-scoped; it does not
-change the machine-wide execution policy. It is not needed for ordinary CMake builds.
-
 ### Linux — GCC 14+
 
 With GCC 14, CMake, Ninja, and Git installed, use the Linux preset:
@@ -163,6 +153,30 @@ Pop-Location
 ~~~
 
 The simulation shown is configured in [`apps/viewer/main.cpp`](apps/viewer/main.cpp). Use the same study setup and analysis-plan factories as the batch application.
+
+## Tools
+
+The [`tools/`](tools/) directory contains optional development and postprocessing tools.
+They are not required for ordinary Kinetalis builds or simulations.
+
+| Tool | Purpose |
+| --- | --- |
+| [`fit_critical_potential.py`](tools/fit_critical_potential.py) | Fit the porous/arrested outcome transition using Firth logistic regression; reads a local `regimes.csv` and writes `critical_potential_fits.csv`. Requires NumPy, pandas, and `firthmodels`. |
+| [`generate_physics_literals`](tools/literals_generator.cpp) | CMake target that regenerates `source/physics/literals.generated.h`; invoke only when the literal definitions change. |
+| [`setup_dependencies.ps1`](tools/setup_dependencies.ps1) | Windows helper for fetching viewer dependencies. For the repository's pinned versions, prefer `git submodule update --init --recursive`. |
+| [`render_results.ps1`](tools/render_results.ps1) | Render simulation XYZ trajectories with OVITO using [`render_script_ovito.py`](tools/render_script_ovito.py) and the [`rendering.ovito`](tools/rendering.ovito) session. Requires an OVITO installation with the configured renderer. |
+| [`make_movies.ps1`](tools/make_movies.ps1) | Assemble numbered PNG frames into MP4 movies using FFmpeg. |
+| [`git_version_release.ps1`](tools/git_version_release.ps1) | Create a versioned release from the CMake project version; use on a clean `main` branch. |
+
+If PowerShell prevents an inspected, trusted script from running because of its
+execution policy, the restriction can be relaxed **for the current session only**:
+
+~~~powershell
+Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
+~~~
+
+This is not required for normal CMake builds and does not change the machine-wide
+policy. Review scripts before executing them.
 
 ## Framework overview
 

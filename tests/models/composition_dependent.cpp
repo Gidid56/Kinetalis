@@ -10,13 +10,17 @@ using namespace physics::unit::literals;
 namespace
 {
     using namespace kmc;
+    using enum Element;
 
     ut::suite<"models.composition_dependent"> composition_dependent_tests = [] {
-        "model"_test = [] {
-            using enum Element;
-
+        "bond pair keys are symmetric and distinguish different pairs"_test = [] {
             static_assert(models::bond_pair(Ag, Au) == models::bond_pair(Au, Ag));
+            static_assert(models::bond_pair(Cu, Ag) == models::bond_pair(Ag, Cu));
+            static_assert(models::bond_pair(Ag, Ag) != models::bond_pair(Ag, Au));
+            static_assert(models::bond_pair(Ag, Au) != models::bond_pair(Cu, Au));
+        };
 
+        "construction requires element-specific neighbor tracking"_test = [] {
             auto construct_model = [] {
                 models::CompositionDependent model;
                 model.set_potential(1.0_V);
@@ -24,9 +28,9 @@ namespace
             };
 
             if constexpr (lattice::element_specific_neighbors)
-                ut::expect(boost::ut::nothrow(construct_model));
+                ut::expect(ut::nothrow(construct_model));
             else
-                ut::expect(boost::ut::throws<std::logic_error>(construct_model));
+                ut::expect(ut::throws<std::logic_error>(construct_model));
         };
     };
 }

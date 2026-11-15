@@ -1,6 +1,7 @@
 #include "chemistry/composition.h"
 
 #include <boost/ut.hpp>
+#include <stdexcept>
 
 namespace ut = boost::ut;
 using namespace boost::ut::literals;
@@ -20,7 +21,7 @@ namespace
             ut::expect(composition.quantity(Au) == 0);
         };
 
-        "element-list construction"_test = [] {
+        "element lists count repeated species"_test = [] {
             const Composition composition{ Ag, Au, Ag };
 
             ut::expect(composition.quantity(Ag) == 2);
@@ -29,7 +30,7 @@ namespace
             ut::expect(composition.size() == 2u);
         };
 
-        "weighted construction"_test = [] {
+        "weighted construction retains vacancy weights"_test = [] {
             const Composition vacancies{ { none, 25 }, { Ag, 75 } };
 
             ut::expect(vacancies.quantity(none) == 25);
@@ -57,7 +58,7 @@ namespace
             ut::expect(composition.size() == 2u);
         };
 
-        "addition"_test = [] {
+        "addition combines element counts"_test = [] {
             Composition composition{ { Ag, 25 } };
 
             composition += Composition::Component{ Ag, 50 };
@@ -68,5 +69,27 @@ namespace
             ut::expect(composition.quantity(none) == 5);
             ut::expect(composition.total_quantity() == 90);
         };
+        "fractions use total integer weights"_test = [] {
+            const Composition composition{ { Ag, 1 }, { Au, 3 } };
+
+            ut::expect(ut::eq(composition.fraction(Ag), 0.25));
+            ut::expect(ut::eq(composition.fraction(Au), 0.75));
+            ut::expect(ut::eq(composition.fraction(Cu), 0.0));
+        };
+
+        "subtraction decrements the chosen element and rejects missing entries"_test = [] {
+            Composition composition{ Ag, Ag, Au };
+
+            composition -= Ag;
+            ut::expect(ut::eq(composition.quantity(Ag), Composition::Quantity{ 1 }));
+            ut::expect(ut::eq(composition.total_quantity(), Composition::Quantity{ 2 }));
+
+            composition -= Ag;
+            ut::expect(ut::eq(composition.quantity(Ag), Composition::Quantity{ 0 }));
+            ut::expect(ut::eq(composition.total_quantity(), Composition::Quantity{ 1 }));
+            ut::expect(ut::throws<std::out_of_range>([&] { composition -= Ag; }));
+            ut::expect(ut::throws<std::out_of_range>([&] { composition -= Cu; }));
+        };
+
     };
 }
