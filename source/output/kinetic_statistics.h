@@ -10,8 +10,8 @@
 
 namespace output
 {
-    // The model owns its descriptor and kinetic equivalence relation. Only
-    // descriptor-independent event observations are handled by this writer.
+    // The model owns its descriptor and kinetic equivalence relation. The writer
+    // aggregates event observations and active kinetic-class populations.
     template <class ModelType>
     requires std::derived_from<ModelType, kmc::Model>
     class KineticStatistics : public Writer
@@ -41,7 +41,7 @@ namespace output
         void capture_init(kmc::Simulation const& simulation) override
         {
             simulation_ = &simulation;
-            model_ = dynamic_cast<ModelType*>(simulation.model().get());
+            model_ = dynamic_cast<ModelType const*>(simulation.model().get());
             if (not model_)
                 throw std::logic_error{ "KineticStatistics requires the selected model type." };
 
@@ -72,7 +72,7 @@ namespace output
         {
             auto& active{ counts_[kmc::event::Outcome::active] };
             active.clear();
-            auto const& counts{ simulation.process_counts() };
+            auto const& counts{ simulation.class_counts() };
             for (std::size_t i{ 1 }; i < counts.size(); ++i)
             {
                 if (counts[i] == 0)
@@ -114,7 +114,7 @@ namespace output
 
         bool output_transitions_{ false };
         kmc::Simulation const* simulation_{};
-        ModelType* model_{};
+        ModelType const* model_{};
         std::optional<Descriptor> last_descriptor_{};
         std::map<Descriptor, kmc::RateClassKey> keys_;
         std::map<kmc::event::Outcome, CountMap> counts_;
