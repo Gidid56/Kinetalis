@@ -43,10 +43,7 @@ namespace kmc
             }
 
             const auto escape_time{ 1.0 / total_rate };
-            if constexpr (stochasticResidenceTime)
-                time_ += -std::log1p(-rng_.probability()) * escape_time;
-            else
-                time_ += escape_time;
+            time_ += -std::log1p(-rng_.probability()) * escape_time;
 
             auto record{ evaluate_event(select_random_location()) };
 

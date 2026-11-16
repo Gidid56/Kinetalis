@@ -177,8 +177,5 @@ std::string global::settings()
         lattice::epsilon::length,
         lattice::epsilon::coordinate);
 
-    settings += std::format(
-        "\nSimulation Settings\n"
-        "stochasticResidenceTime = {}\n", kmc::stochasticResidenceTime);
     return settings;
 }

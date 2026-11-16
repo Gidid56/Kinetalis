@@ -12,11 +12,6 @@ namespace kmc
 {
     using chemistry::Element;
 
-    inline constexpr bool stochasticResidenceTime{ true };
-}
-
-namespace kmc
-{
     using Step = std::uint64_t;
     using Steps = std::vector<Step>;
 
