@@ -8,8 +8,6 @@ using namespace lattice;
 
 void Site::set_element(Lattice& lattice, Element element)
 {
-    this->set_dirty(true);
-
     if (element_ == element)
         return;
 
@@ -41,7 +39,6 @@ void Site::update_neighbors(Lattice& lattice, std::int_fast8_t delta)
 {
     for (auto neighbor : lattice.neighbors(*this))
     {
-        neighbor->set_dirty(true);
         neighbor->coordination_ += delta;
         if constexpr (element_specific_neighbors)
             if (element_ != Element::none)

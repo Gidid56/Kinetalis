@@ -160,21 +160,12 @@ namespace kmc
     template <class Rules>
     void RejectionTreeSimulation<Rules>::update(lattice::Site& site)
     {
-        //site.setClassification(lattice_.classification(site));
-
         if (not site.is_dirty())
             return;
 
         auto& old_rate{ site_rates_.at(site.index()) };
 
-        //if constexpr (results::processesStats)
-        //	if (results_ and oldRate > Rate{})
-        //		results_->setActive(processRates_[processes_[site.processIndex()]].first, false);
-
         Rate new_rate{ rate_sum(site) };
-
-        //if constexpr (results::processesStats) if (results_ and newRate > Rate{})
-        //	results_->setActive(processRates_[processes_[site.processIndex()]].first, true);
 
         if (new_rate != old_rate)
         {
