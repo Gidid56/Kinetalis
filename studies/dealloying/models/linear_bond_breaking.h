@@ -16,7 +16,7 @@ namespace studies::dealloying::models
             auto operator<=>(Descriptor const&) const = default;
         };
 
-        struct Modulation { Descriptor process; Ratio ratio; };
+        struct Modulation { Descriptor descriptor; Ratio ratio; };
         struct Constants { Energy bond_energy{ 0.15_eV }; };
 
         static void ensure_range(Energy);
