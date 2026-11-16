@@ -1,11 +1,12 @@
 #pragma once
 #include "batch/campaign.h"
+#include "kmc/event.h"
 #include "kmc/process.h"
 #include "kmc/setup.h"
 #include "lattice/path.h"
 #include "lattice/site.h"
 
-namespace studies::dealloying::rules
+namespace studies::dealloying::events
 {
     struct Dissolution
     {

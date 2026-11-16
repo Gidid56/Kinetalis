@@ -2,7 +2,7 @@
 #include "batch/campaign.h"
 #include "dealloying/analysis_plans.h"
 #include "dealloying/setups.h"
-#include "rules.h"
+#include "events.h"
 
 namespace studies::dealloying::postprocess
 {

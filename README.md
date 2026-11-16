@@ -191,7 +191,7 @@ Kinetalis separates **what to simulate** from **how to execute and analyze it**:
 | [`kmc::AnalysisPlan`](source/kmc/analysis_plan.h) and [`source/output/`](source/output/) | Collects measurements, snapshots, and stopping conditions |
 | [`batch::Campaign`](source/batch/campaign.h) and [`source/batch/`](source/batch/) | Runs parameter sweeps and replicates, then aggregates results |
 
-The KMC engine represents events such as diffusion and dissolution through [`kmc::Process`](source/kmc/process.h) and study-specific [event rules](studies/dealloying/rules.h). Event rates are maintained in a hierarchical rate-sum tree for efficient random selection. The rate model is independent of the event scheduler, so kinetic assumptions can be changed without rewriting the simulation machinery.
+The KMC engine represents events such as diffusion and dissolution through [`kmc::Process`](source/kmc/process.h) and study-specific [event rules](studies/dealloying/events.h). Event rates are maintained in a hierarchical rate-sum tree for efficient random selection. The rate model is independent of the event scheduler, so kinetic assumptions can be changed without rewriting the simulation machinery.
 
 The general-purpose libraries [`math`](source/math/), [`physics`](source/physics/), and [`chemistry`](source/chemistry/) provide numerical operations, dimension-aware physical quantities, and element/composition data. Parameters such as `300_K`, `0.15_eV`, and `30_nm` retain their units in C++ expressions.
 
