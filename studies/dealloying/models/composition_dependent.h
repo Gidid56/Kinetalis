@@ -25,8 +25,6 @@ namespace studies::dealloying::models
 
     protected:
         kmc::Element class_element(kmc::RateClassKey) const override;
-        lattice::Coordination class_coordination(kmc::RateClassKey) const override;
-        std::string class_details(kmc::RateClassKey) const override;
 
     private:
         Energy lattice_energy_barrier(kmc::RateClassKey) const override;
