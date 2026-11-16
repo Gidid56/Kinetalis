@@ -1,5 +1,8 @@
 #pragma once
 
+#include <string>
+#include <string_view>
+
 namespace output
 {
     // Study-owned specializations describe kinetic descriptors for CSV and labels.
