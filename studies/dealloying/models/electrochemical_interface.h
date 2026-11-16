@@ -51,11 +51,12 @@ namespace studies::dealloying::models
         auto& constants() const { return constants_; }
 
     protected:
+        virtual kmc::Element class_element(kmc::RateClassKey) const = 0;
         virtual Energy lattice_energy_barrier(kmc::RateClassKey) const = 0;
         virtual Ratio modulation_ratio(kmc::RateClassKey) const { return 1; }
 
     private:
-        Ratio transmission_coefficient(kmc::ClassInfo const&) const;
+        Ratio transmission_coefficient(kmc::RateClassKey) const;
         Energy activation_gibbs_energy(kmc::RateClassKey) const;
 
         ElectricPotential potential_{ Constants{}.reference_potential };

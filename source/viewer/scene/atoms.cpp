@@ -6,7 +6,7 @@
 
 #include "lattice/lattice.h"
 #include "dealloying/events.h"
-#include "dealloying/gtc_model.h"
+#include "dealloying/models/gtc.h"
 #include "viewer/bridge.h"
 
 using namespace viewer::scene;

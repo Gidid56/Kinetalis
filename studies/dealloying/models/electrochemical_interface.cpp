@@ -34,14 +34,14 @@ namespace
     }
 }
 
-Ratio ElectrochemicalInterface::transmission_coefficient(ClassInfo const& info) const
+Ratio ElectrochemicalInterface::transmission_coefficient(RateClassKey key) const
 {
-    switch (info.event())
+    switch (class_event(key))
     {
         case event::Type::diffusion:
         case event::Type::dissolution: return 1;
         case event::Type::deposition:
-            return physics::ensure_unit_interval(fcc_molar_volume(info.element()) * concentration_);
+            return physics::ensure_unit_interval(fcc_molar_volume(class_element(key)) * concentration_);
         default: return {};
     }
 }
@@ -49,11 +49,10 @@ Ratio ElectrochemicalInterface::transmission_coefficient(ClassInfo const& info) 
 Energy ElectrochemicalInterface::activation_gibbs_energy(RateClassKey key) const
 {
     using physics::constant::symbols::e;
-    const auto& info{ class_info(key) };
     const auto alpha{ constants_.charge_transfer_coefficient };
     const auto E_0{ constants_.reference_potential };
     const auto E{ potential_ };
-    switch (info.event())
+    switch (class_event(key))
     {
         case event::Type::diffusion: return lattice_energy_barrier(key);
         case event::Type::dissolution:
@@ -66,9 +65,8 @@ Energy ElectrochemicalInterface::activation_gibbs_energy(RateClassKey key) const
 
 Rate ElectrochemicalInterface::rate(RateClassKey key) const
 {
-    auto const& info{ class_info(key) };
     return physics::equations::kinetics::tst_rate(
-        transmission_coefficient(info),
+        transmission_coefficient(key),
         std::max<Energy>(0_eV, activation_gibbs_energy(key)),
         temperature()) * modulation_ratio(key);
 }

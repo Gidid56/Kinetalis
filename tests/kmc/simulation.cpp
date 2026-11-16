@@ -1,11 +1,14 @@
 #include "kmc/simulation.h"
 #include "dealloying/models/linear_bond_breaking.h"
+#include "dealloying/models/composition_dependent.h"
+#include "output/basics.h"
 #include "physics/equations/kinetics.h"
 #include "kmc/analysis_plan.h"
 #include "lattice/lattice.h"
 #include "output/kinetic_activity.h"
 #include "output/kinetic_statistics.h"
-#include "dealloying/analysis/site_population.h"
+#include "output/site_population.h"
+#include "dealloying/models/descriptor_format.h"
 #include "output/event_flux.h"
 
 #include <algorithm>
@@ -125,9 +128,9 @@ namespace
 
         Rate rate(RateClassKey key) const override
         {
-            auto const& info{ class_info(key) };
-            const auto base{ info.event() == event::Type::dissolution ? 0.24_eV : 0.30_eV };
-            const auto barrier{ base + 0.005_eV * static_cast<double>(info.coordination()) };
+            auto const& kinetic_class{ descriptor(key) };
+            const auto base{ kinetic_class.event == event::Type::dissolution ? 0.24_eV : 0.30_eV };
+            const auto barrier{ base + 0.005_eV * static_cast<double>(kinetic_class.coordination) };
             return physics::equations::kinetics::tst_rate(Ratio{ 1 }, barrier, temperature());
         }
 
@@ -179,11 +182,12 @@ namespace
             ut::expect(ut::that % key < rates.size()) << "class key within table, step " << step;
             if (key == 0 or key >= rates.size())
                 return;
-            auto const expected{ ClassInfo{ descriptor.event, descriptor.element,
-                descriptor.coordination, {} } };
-            ut::expect(rates[key].first == expected)
-                << "stored kinetic class matches rebuilt class, step " << step;
-            ut::expect(ut::eq(rates[key].second.value(), simulation.model()->rate(key).value()))
+            auto const* model{ dynamic_cast<ModelBase const*>(simulation.model().get()) };
+            ut::expect(model != nullptr and model->descriptor(key) == descriptor)
+                << "model descriptor matches rebuilt class, step " << step;
+            ut::expect(simulation.class_initialized(key))
+                << "kinetic class initialized, step " << step;
+            ut::expect(ut::eq(rates[key].value(), simulation.model()->rate(key).value()))
                 << "cached model rate, step " << step;
             ++expected_counts[key];
             site_sum += simulation.model()->rate(key);
@@ -286,6 +290,10 @@ namespace
                 rejected = rules_.cluster.is_rejected(record.location());
                 ut::expect(record.type == ClusterRule::event);
             }
+            auto const expected_key{ ModelBase::static_key(Descriptor{
+                record.type, source.element(), source.coordination() }) };
+            ut::expect(ut::eq(record.class_key, expected_key))
+                << "selected event carries the registered kinetic class";
             ut::expect(ut::eq(record.outcome == event::Outcome::rejected, rejected))
                 << "postselection rejection matches rule";
             if (record.outcome == event::Outcome::rejected)
@@ -382,35 +390,40 @@ namespace
             auto& first{ lattice.sites().at(0) };
             auto& second{ lattice.sites().at(1) };
 
-            event::Record site_record{ event::Location{ first }, SiteRule::event, false };
+            event::Record site_record{ event::Location{ first }, SiteRule::event, false, 65537 };
             ut::expect(ut::eq(site_record.sites().size(), std::size_t{ 1 }));
             ut::expect(site_record.sites()[0] == &first);
             ut::expect(site_record.type == SiteRule::event);
+            ut::expect(ut::eq(site_record.class_key, RateClassKey{ 65537 }));
 
             auto site_copy{ site_record };
             ut::expect(site_copy.sites().data() != site_record.sites().data())
                 << "a record copy owns its own pointer storage";
             ut::expect(ut::eq(site_copy.sites().size(), std::size_t{ 1 }));
             ut::expect(site_copy.sites()[0] == &first);
+            ut::expect(ut::eq(site_copy.class_key, site_record.class_key));
 
             Cluster<2> const cluster{ &first, &second };
-            event::Record cluster_record{ event::Location{ cluster }, ClusterRule::event, false };
+            event::Record cluster_record{ event::Location{ cluster }, ClusterRule::event, false, 65538 };
             ut::expect(ut::eq(cluster_record.sites().size(), std::size_t{ 2 }));
             ut::expect(cluster_record.sites()[0] == &first);
             ut::expect(cluster_record.sites()[1] == &second);
             ut::expect(cluster_record.type == ClusterRule::event);
+            ut::expect(ut::eq(cluster_record.class_key, RateClassKey{ 65538 }));
             ut::expect(std::ranges::equal(cluster_record.sites(), cluster));
 
             auto cluster_copy{ cluster_record };
             ut::expect(cluster_copy.sites().data() != cluster_record.sites().data())
                 << "a cluster record copy owns its own pointer storage";
             ut::expect(std::ranges::equal(cluster_copy.sites(), cluster));
+            ut::expect(ut::eq(cluster_copy.class_key, cluster_record.class_key));
 
             auto cluster_move{ std::move(cluster_copy) };
             ut::expect(ut::eq(cluster_move.sites().size(), std::size_t{ 2 }));
             ut::expect(cluster_move.sites().data() != cluster_record.sites().data());
             ut::expect(cluster_move.sites()[0] == &first);
             ut::expect(cluster_move.sites()[1] == &second);
+            ut::expect(ut::eq(cluster_move.class_key, cluster_record.class_key));
         };
 
         "site and cluster rules execute lattice transformations"_test = [] {
@@ -536,10 +549,11 @@ namespace
             auto const& counts{ simulation.class_counts() };
             ut::expect(ut::eq(rates.size(), simulation.model()->number_keys()));
             ut::expect(ut::eq(counts.size(), rates.size()));
-            for (auto const& [kinetic_class, rate] : rates)
+            for (std::size_t index{}; index < rates.size(); ++index)
             {
-                ut::expect(not kinetic_class.is_active()) << "unused class stays uninitialized";
-                ut::expect(rate == Rate{}) << "unused class has zero rate";
+                ut::expect(not simulation.class_initialized(static_cast<RateClassKey>(index)))
+                    << "unused class stays uninitialized";
+                ut::expect(rates[index] == Rate{}) << "unused class has zero rate";
             }
         };
 
@@ -548,22 +562,23 @@ namespace
             TestSimulation simulation{ setup };
             auto const& rates{ simulation.class_rates() };
 
-            auto const initialized{ std::ranges::count_if(rates, [](auto const& entry) {
-                return entry.first.is_active();
-            }) };
-            ut::expect(ut::that % initialized > 0) << "at least one class created";
-
+            std::size_t initialized{};
+            auto const* model{ dynamic_cast<ModelBase const*>(simulation.model().get()) };
+            ut::expect(model != nullptr);
             for (std::size_t i{}; i < rates.size(); ++i)
-                if (rates[i].first.is_active())
+                if (simulation.class_initialized(static_cast<RateClassKey>(i)))
                 {
+                    ++initialized;
                     ut::expect(ut::eq(static_cast<std::size_t>(
-                        ModelBase::static_key(Descriptor{ rates[i].first.event(), rates[i].first.element(), rates[i].first.coordination() })), i)) << "cached class owns its key";
-                    ut::expect(rates[i].second == simulation.model()->rate(static_cast<RateClassKey>(i)))
+                        ModelBase::static_key(model->descriptor(static_cast<RateClassKey>(i)))), i))
+                        << "cached class owns its key";
+                    ut::expect(rates[i] == simulation.model()->rate(static_cast<RateClassKey>(i)))
                         << "cached rate matches model";
                 }
                 else
-                    ut::expect(rates[i].second == Rate{})
+                    ut::expect(rates[i] == Rate{})
                         << "uninitialized rate remains zero";
+            ut::expect(ut::that % initialized > 0) << "at least one class created";
 
             expect_reference_state(simulation, setup.rules, 0);
         };
@@ -619,8 +634,8 @@ namespace
             auto& statistics{ plan.add<output::KineticStatistics<ModelBase>>(root)
                 .set_output_transitions(true)
                 .set_resolution({ .min_snapshot_step = 1, .snapshot_scale_factor = 1.0 }) };
-            plan.add<studies::dealloying::analysis::SitePopulation<ModelBase>>(root)
-                .set_resolution({ .min_snapshot_step = 1, .snapshot_scale_factor = 1.0 });
+            auto& site_population{ plan.add<output::SitePopulation>(root)
+                .set_resolution({ .min_snapshot_step = 1, .snapshot_scale_factor = 1.0 }) };
             plan.add<output::EventFlux>(root)
                 .set_resolution({ .min_snapshot_step = 1, .snapshot_scale_factor = 1.0 });
             plan.add<CheckingObserver>(32, setup.rules);
@@ -630,6 +645,17 @@ namespace
                 << "descriptor-based statistics record accepted kinetic events";
             ut::expect(not statistics.transitions().empty())
                 << "descriptor-based transitions are recorded";
+
+            std::map<output::SitePopulation::SiteKey, std::size_t> expected_sites;
+            for (auto const& site : simulation.lattice().sites())
+                if (site.is_occupied() and site.is_surface())
+                    ++expected_sites[{ site.element(), site.coordination() }];
+            for (auto const& [site, count] : expected_sites)
+                ut::expect(ut::eq(site_population.counts().at(site), count))
+                    << "physical site population matches complete lattice scan";
+            for (auto const& [site, count] : site_population.counts())
+                ut::expect(ut::eq(count, expected_sites[site]))
+                    << "incremental site population contains no spurious sites";
 
             auto read_csv = [&](std::string const& filename, std::size_t expected_columns) {
                 auto path{ root / filename };
@@ -666,9 +692,10 @@ namespace
             if (not lines.empty())
                 for (std::size_t key{ 1 }; key < rates.size(); ++key)
                 {
-                    auto const& kinetic_class{ rates[key].first };
-                    auto const label{ kinetic_class.is_active()
-                        ? kinetic_class.label()
+                    auto const label{ simulation.class_initialized(static_cast<RateClassKey>(key))
+                        ? output::DescriptorFormat<Descriptor>::label(
+                            dynamic_cast<ModelBase const&>(*simulation.model()).descriptor(
+                                static_cast<RateClassKey>(key)))
                         : std::format("not_encountered_{}", key) };
                     ut::expect(lines.front().find("," + label) != std::string::npos)
                         << "activity header includes final key label " << key;
@@ -678,6 +705,30 @@ namespace
             auto const flux_columns{ std::size_t{ 2 } +
                 2 * (enum_values<event::Type>().size() - 1) };
             read_csv("event_flux", flux_columns);
+        };
+
+        "site populations are independent of composition-dependent kinetic classes"_test = [] {
+            auto setup{ make_setup() };
+            setup.make_model = [] {
+                return std::make_unique<studies::dealloying::models::CompositionDependent>();
+            };
+            TestSimulation simulation{ setup };
+            AnalysisPlan plan;
+            auto& site_population{ plan.add<output::SitePopulation>() };
+            plan.add<control::StepLimit>(25);
+
+            ut::expect(simulation.run(plan) == simulation::Status::analysed);
+            std::map<output::SitePopulation::SiteKey, std::size_t> expected_sites;
+            for (auto const& site : simulation.lattice().sites())
+                if (site.is_occupied() and site.is_surface())
+                    ++expected_sites[{ site.element(), site.coordination() }];
+
+            for (auto const& [site, count] : expected_sites)
+                ut::expect(ut::eq(site_population.counts().at(site), count))
+                    << "composition-dependent classes do not change physical populations";
+            for (auto const& [site, count] : site_population.counts())
+                ut::expect(ut::eq(count, expected_sites[site]))
+                    << "all physical classes match direct enumeration";
         };
 
         "no active events exhausts without selecting an event"_test = [] {

@@ -1,5 +1,5 @@
 #include "pch.h"
-#include "gtc_model.h"
+#include "gtc.h"
 
 #include "lattice/lattice.h"
 #include "lattice/site.h"

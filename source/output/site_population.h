@@ -1,25 +1,24 @@
 #pragma once
-#include "output/writer.h"
+#include "writer.h"
 #include "kmc/simulation.h"
+#include "lattice/lattice.h"
 #include "utility/file.h"
 
-#include <concepts>
+#include <algorithm>
 #include <map>
-#include <set>
+#include <optional>
+#include <vector>
 
-namespace studies::dealloying::analysis
+namespace output
 {
-    // Site populations inferred from FCC coordination and eligible event-path
-    // multiplicities. These assumptions are specific to the dealloying study,
-    // not part of generic kinetic-class analysis.
-    template <class ModelType>
-    requires std::derived_from<ModelType, kmc::Model>
-    class SitePopulation : public output::Writer
+    // Physical populations of occupied surface sites, independent of the
+    // kinetic equivalence classes assigned by the model.
+    class SitePopulation : public Writer
     {
     public:
         using Writer::Writer;
-        using Descriptor = typename ModelType::Descriptor;
         using SiteKey = std::pair<lattice::Element, lattice::Coordination>;
+        using Counts = std::map<SiteKey, std::size_t>;
 
         struct Accumulation
         {
@@ -37,80 +36,46 @@ namespace studies::dealloying::analysis
         };
 
         auto const& last_data() const noexcept { return last_data_; }
+        auto const& counts() const noexcept { return counts_; }
 
     private:
         std::string_view name() const override { return "site_population"; }
 
-        static std::map<SiteKey, std::size_t> site_counts(
-            kmc::Simulation const& simulation, ModelType const& model)
+        static std::optional<SiteKey> classify_site(lattice::Site const& site)
         {
-            std::map<SiteKey, std::size_t> counts;
-            std::set<SiteKey> direct_counts;
-            auto const& class_counts{ simulation.class_counts() };
-
-            for (std::size_t index{ 1 }; index < class_counts.size(); ++index)
-            {
-                auto const count{ class_counts[index] };
-                if (count == 0)
-                    continue;
-
-                auto const key{ static_cast<kmc::RateClassKey>(index) };
-                auto const& descriptor{ model.descriptor(key) };
-                if (descriptor.event == kmc::event::Type::none or
-                    descriptor.element == lattice::Element::none)
-                    continue;
-
-                SiteKey site{ descriptor.element, descriptor.coordination };
-                if (descriptor.event != kmc::event::Type::diffusion)
-                {
-                    if (direct_counts.contains(site) and counts[site] != count)
-                        throw std::logic_error{ "Conflicting direct site-class counts." };
-                    counts[site] = count;
-                    direct_counts.insert(site);
-                    continue;
-                }
-
-                if (direct_counts.contains(site))
-                    continue;
-
-                auto const paths{ static_cast<std::size_t>(lattice::max_coordination) -
-                                  static_cast<std::size_t>(descriptor.coordination) };
-                if (paths == 0)
-                    continue;
-                if (count % paths != 0)
-                    throw std::logic_error{
-                        "Diffusion count is inconsistent with site-path multiplicity."
-                    };
-                counts[site] = count / paths;
-            }
-            return counts;
+            if (not site.is_occupied() or not site.is_surface())
+                return std::nullopt;
+            return SiteKey{ site.element(), site.coordination() };
         }
 
         void capture_init(kmc::Simulation const& simulation) override
         {
             simulation_ = &simulation;
-            model_ = dynamic_cast<ModelType*>(simulation.model().get());
-            if (not model_)
-                throw std::logic_error{ "SitePopulation requires the selected model type." };
             last_time_ = simulation.time();
             last_data_ = {};
             accumulation_ = {};
+            affected_.clear();
+            counts_.clear();
+
+            for (auto const& site : simulation.lattice().sites())
+                if (auto const key{ classify_site(site) })
+                    ++counts_[*key];
         }
 
-        void observe_selected(kmc::event::Record const&) override
+        void observe_selected(kmc::event::Record const& record) override
         {
             auto const delta{ simulation_->time() - last_time_ };
             last_time_ = simulation_->time();
 
-            auto const counts{ site_counts(*simulation_, *model_) };
             std::size_t total{};
-            for (auto const& [_, count] : counts)
+            for (auto const& [_, count] : counts_)
                 total += count;
-            if (total == 0)
-                return;
 
-            for (auto const& [site, count] : counts)
+            for (auto const& [site, count] : counts_)
             {
+                if (count == 0)
+                    continue;
+
                 auto const population{ static_cast<double>(count) / total };
                 auto& value{ accumulation_.sites[site] };
                 value.count += count;
@@ -118,9 +83,49 @@ namespace studies::dealloying::analysis
                 value.count_time += static_cast<double>(count) * delta;
                 value.population_time += population * delta;
             }
-
             accumulation_.residence_time += delta;
             ++accumulation_.samples;
+
+            affected_.clear();
+            if (record.outcome != kmc::event::Outcome::accepted)
+                return;
+
+            auto remember = [this](lattice::Site const& site) {
+                if (std::ranges::none_of(affected_, [&](auto const& entry) {
+                        return entry.first == &site;
+                    }))
+                    affected_.emplace_back(&site, classify_site(site));
+            };
+
+            // Execution can change the occupancy of event sites and the
+            // coordination of their direct neighbors, but not distant sites.
+            for (auto* site : record.sites())
+            {
+                remember(*site);
+                for (auto* neighbor : simulation_->lattice().neighbors(*site))
+                    remember(*neighbor);
+            }
+        }
+
+        void observe_processed(kmc::event::Record const&) override
+        {
+            for (auto const& [site, before] : affected_)
+            {
+                auto const after{ classify_site(*site) };
+                if (before == after)
+                    continue;
+
+                if (before)
+                {
+                    auto& count{ counts_.at(*before) };
+                    if (count == 0)
+                        throw std::logic_error{ "Site population counter underflow." };
+                    --count;
+                }
+                if (after)
+                    ++counts_[*after];
+            }
+            affected_.clear();
         }
 
         void capture_snapshot(kmc::Simulation const&) override
@@ -186,8 +191,9 @@ namespace studies::dealloying::analysis
         }
 
         kmc::Simulation const* simulation_{};
-        ModelType* model_{};
         kmc::Time last_time_{};
+        Counts counts_;
+        std::vector<std::pair<lattice::Site const*, std::optional<SiteKey>>> affected_;
         Data last_data_{}, accumulation_{};
     };
 }

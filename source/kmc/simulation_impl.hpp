@@ -16,6 +16,7 @@ namespace kmc
 
         // Each model decides whether to preallocate or register classes lazily.
         class_rates_.resize(model_->number_keys());
+        class_initialized_.resize(model_->number_keys());
         class_counts_.resize(model_->number_keys());
     }
 
@@ -45,7 +46,8 @@ namespace kmc
             const auto escape_time{ 1.0 / total_rate };
             time_ += -std::log1p(-rng_.probability()) * escape_time;
 
-            auto record{ evaluate_event(select_random_location()) };
+            auto [location, class_key]{ select_random_location() };
+            auto record{ evaluate_event(std::move(location), class_key) };
 
             analysis_plan.observe_selected(record);
 
@@ -109,7 +111,7 @@ namespace kmc
     }
 
     template <class Rules>
-    event::Location RejectionTreeSimulation<Rules>::select_random_location()
+    std::pair<event::Location, RateClassKey> RejectionTreeSimulation<Rules>::select_random_location()
     {
         auto selected_rate{ physics::ensure_non_negative(rate_tree_->rate_sum() * rng_.probability()) };
 
@@ -125,28 +127,30 @@ namespace kmc
         auto& site{ lattice_.sites().at(site_index) };
         auto event_offset{ site.event_offset() };
 
-        while (selected_rate >= class_rates_.at(event_class_keys_.at(event_offset)).second)
-            selected_rate -= class_rates_.at(event_class_keys_.at(event_offset++)).second;
+        while (selected_rate >= class_rates_.at(event_class_keys_.at(event_offset)))
+            selected_rate -= class_rates_.at(event_class_keys_.at(event_offset++));
 
         if constexpr (utility::is_debug)
             if (event_offset > site.event_offset() + site.max_neighbors())
                 throw std::runtime_error{ "tree not updated correctly" };
 
+        auto const key{ event_class_keys_.at(event_offset) };
         if (event_offset == site.event_offset())
-            return event::Location{ site };
+            return { event::Location{ site }, key };
 
-        return event::Location{ lattice::Cluster<2>{
-            &site, lattice_.neighbor(event_offset - site_index - 1) } };
+        return { event::Location{ lattice::Cluster<2>{
+            &site, lattice_.neighbor(event_offset - site_index - 1) } }, key };
     }
 
     template <class Rules>
-    event::Record RejectionTreeSimulation<Rules>::evaluate_event(event::Location location) const
+    event::Record RejectionTreeSimulation<Rules>::evaluate_event(
+        event::Location location, RateClassKey key) const
     {
         if (location.sites().size() == 1)
-            return { location, decltype(rules_.site)::event, rules_.site.is_rejected(location) };
+            return { location, decltype(rules_.site)::event, rules_.site.is_rejected(location), key };
 
         if (location.sites().size() == 2)
-            return { location, decltype(rules_.cluster)::event, rules_.cluster.is_rejected(location) };
+            return { location, decltype(rules_.cluster)::event, rules_.cluster.is_rejected(location), key };
 
         throw std::logic_error{ "Unsupported event location size." };
     }
@@ -226,7 +230,7 @@ namespace kmc
         auto add_event = [&](RateClassKey key) {
             set_class_key(index++, key);
             has_events |= key != RateClassKey{};
-            sum += class_rates_.at(key).second;
+            sum += class_rates_.at(key);
         };
 
         if (site_source_candidate and rules_.site.is_candidate(source))
@@ -301,18 +305,15 @@ namespace kmc
         if (key >= class_rates_.size())
         {
             class_rates_.resize(static_cast<std::size_t>(key) + 1);
+            class_initialized_.resize(static_cast<std::size_t>(key) + 1);
             class_counts_.resize(static_cast<std::size_t>(key) + 1);
         }
 
-        auto& [cached_info, cached_rate]{ class_rates_.at(key) };
-        auto const& info{ model_->class_info(key) };
-        if (not cached_info.is_active())
+        if (not class_initialized_[key])
         {
-            cached_rate = model_->rate(key);
-            cached_info = info;
+            class_rates_[key] = model_->rate(key);
+            class_initialized_[key] = true;
         }
-        else if (cached_info != info)
-            throw std::logic_error{ "Rate class key collision." };
 
         return key;
     }
@@ -322,8 +323,8 @@ namespace kmc
     {
         model_->refresh_rates();
         for (std::size_t key{ 1 }; key < class_rates_.size(); ++key)
-            if (class_rates_[key].first.is_active())
-                class_rates_[key].second = model_->rate(static_cast<RateClassKey>(key));
+            if (class_initialized_[key])
+                class_rates_[key] = model_->rate(static_cast<RateClassKey>(key));
 
         // A full-rate refresh bypasses per-event block collection. Rebuild each
         // block once after all site rates have been recalculated.

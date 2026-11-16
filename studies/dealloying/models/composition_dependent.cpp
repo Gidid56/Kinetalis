@@ -61,24 +61,23 @@ RateClassKey CompositionDependent::classify(
             ++desc.element_neighbors[lattice::elementKey(neighbor->element())];
     if (auto it{ keys_.find(desc) }; it != keys_.end()) return it->second;
 
-    if (infos_.size() > std::numeric_limits<RateClassKey>::max())
+    if (descriptors_.size() > std::numeric_limits<RateClassKey>::max())
         throw std::overflow_error{ "Increase RateClassKey size." };
 
-    auto const key{ static_cast<RateClassKey>(infos_.size()) };
-    std::string details;
-    for (auto&& [element, count] : std::views::zip(lattice::active_elements, desc.element_neighbors))
-        if (count) std::format_to(std::back_inserter(details), "{}x{};",
-            static_cast<unsigned>(count), element);
-
+    auto const key{ static_cast<RateClassKey>(descriptors_.size()) };
     keys_.emplace(desc, key);
     descriptors_.push_back(desc);
-    infos_.push_back(ClassInfo{ type, desc.element, desc.coordination, std::move(details) });
     return key;
 }
 
-ClassInfo const& CompositionDependent::class_info(RateClassKey key) const
+event::Type CompositionDependent::class_event(RateClassKey key) const
 {
-    return infos_.at(key);
+    return descriptor(key).event;
+}
+
+Element CompositionDependent::class_element(RateClassKey key) const
+{
+    return descriptor(key).element;
 }
 
 Energy CompositionDependent::lattice_energy_barrier(RateClassKey key) const

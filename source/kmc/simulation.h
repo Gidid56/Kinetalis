@@ -35,6 +35,7 @@ public:
 
     auto& class_rates() const { return class_rates_; }
     auto& class_counts() const { return class_counts_; }
+    bool class_initialized(RateClassKey key) const { return class_initialized_.at(key); }
 
 protected:
     std::unique_ptr<kmc::Model> model_;
@@ -42,7 +43,8 @@ protected:
     Time time_{};
     std::size_t rejections_{};
 
-    std::vector<std::pair<ClassInfo, Rate>> class_rates_{ { ClassInfo{}, Rate{} } };
+    Rates class_rates_{ Rate{} };
+    std::vector<bool> class_initialized_{ false };
     std::vector<std::size_t> class_counts_{ 0 };
 };
 
@@ -70,8 +72,8 @@ private:
     void set_class_key(lattice::Index, RateClassKey);
 
     Rate rate_sum(lattice::Site&);
-    event::Location select_random_location();
-    event::Record evaluate_event(event::Location) const;
+    std::pair<event::Location, RateClassKey> select_random_location();
+    event::Record evaluate_event(event::Location, RateClassKey) const;
 
     void initialize_rates();
     void update_all_rates();

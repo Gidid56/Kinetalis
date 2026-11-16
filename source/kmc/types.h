@@ -27,7 +27,7 @@ namespace kmc
 
     namespace rate_tree { struct Interface; }
 
-    using RateClassKey = std::uint8_t;
+    using RateClassKey = std::uint32_t;
     using RateClassKeys = std::vector<RateClassKey>;
 
     namespace event { class Record; }

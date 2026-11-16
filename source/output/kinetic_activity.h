@@ -1,5 +1,6 @@
 #pragma once
 #include "writer.h"
+#include "types.h"
 #include "kmc/simulation.h"
 #include "utility/file.h"
 
@@ -60,19 +61,19 @@ namespace output
             kmc::Rate total{};
 
             for (std::size_t i{ 1 }; i < counts.size(); ++i)
-                if (rates[i].first.is_active())
-                    total += counts[i] * rates[i].second;
+                if (counts[i] != 0)
+                    total += counts[i] * rates[i];
 
             if (total <= kmc::Rate{})
                 return;
 
             for (std::size_t i{ 1 }; i < counts.size(); ++i)
             {
-                if (counts[i] == 0 or not rates[i].first.is_active())
+                if (counts[i] == 0 or not simulation.class_initialized(static_cast<kmc::RateClassKey>(i)))
                     continue;
 
                 auto const key{ static_cast<kmc::RateClassKey>(i) };
-                auto const fraction{ counts[i] * rates[i].second / total };
+                auto const fraction{ counts[i] * rates[i] / total };
                 auto& value{ accumulation_.classes[model_->descriptor(key)] };
                 value.activity_fraction += fraction;
                 value.activity_time += fraction * delta;
@@ -87,15 +88,17 @@ namespace output
             last_data_ = std::exchange(accumulation_, {});
         }
 
-        static std::string header(kmc::Simulation const& simulation)
+        static std::string header(kmc::Simulation const& simulation, ModelType const& model)
         {
             std::string text{ Writer::default_header };
             auto const& rates{ simulation.class_rates() };
             for (std::size_t key{ 1 }; key < rates.size(); ++key)
             {
-                auto const& info{ rates[key].first };
-                if (info.is_active())
-                    std::format_to(std::back_inserter(text), ",{}", info.label());
+                if (simulation.class_initialized(static_cast<kmc::RateClassKey>(key)))
+                    std::format_to(std::back_inserter(text), ",{}",
+                        DescriptorFormat<Descriptor>::label(
+                            model.descriptor(
+                                static_cast<kmc::RateClassKey>(key))));
                 else
                     std::format_to(std::back_inserter(text), ",not_encountered_{}", key);
             }
@@ -131,7 +134,7 @@ namespace output
 
         void write_init(kmc::Simulation const& simulation) override
         {
-            class_header_ = header(simulation);
+            class_header_ = header(simulation, *model_);
             class_columns_ = simulation.class_rates().size() - 1;
             utility::file::write<utility::file::Type::csv>(
                 writer_path() / "activity", class_header_ + '\n');
@@ -145,7 +148,7 @@ namespace output
                 last_data_.residence_time <= physics::quantity::TimeDifference{})
                 return;
 
-            auto const new_header{ header(simulation) };
+            auto const new_header{ header(simulation, *model_) };
             if (new_header != class_header_)
             {
                 auto const new_columns{ simulation.class_rates().size() - 1 };
@@ -165,8 +168,7 @@ namespace output
 
             for (std::size_t i{ 1 }; i < simulation.class_rates().size(); ++i)
             {
-                auto const& info{ simulation.class_rates()[i].first };
-                if (not info.is_active())
+                if (not simulation.class_initialized(static_cast<kmc::RateClassKey>(i)))
                 {
                     activity += ',';
                     weighted += ',';

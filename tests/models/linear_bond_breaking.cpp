@@ -1,4 +1,5 @@
 #include "dealloying/models/linear_bond_breaking.h"
+#include "dealloying/models/descriptor_format.h"
 
 #include <boost/ut.hpp>
 #include <limits>
@@ -22,6 +23,8 @@ namespace
             model.set_bond_energy(0.20_eV);
             ut::expect(model.constants().bond_energy == 0.20_eV);
             ut::expect(model.output_text().find("Linear bond breaking") != std::string::npos);
+            ut::expect(output::DescriptorFormat<models::LinearBondBreaking::Descriptor>::header() ==
+                std::string_view{ "key:event,key:element,key:coordination,key:details" });
         };
 
         "nonfinite bond energies are rejected"_test = [] {

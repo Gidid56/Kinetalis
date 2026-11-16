@@ -95,18 +95,6 @@ private:
     bool save_bulk_{ false };
 };
 
-class output::Rates : public output::Writer
-{
-public:
-    using Writer::Writer;
-
-private:
-    std::string_view name() const override { return "rates"; }
-    bool uses_snapshot_resolution() const override { return false; }
-
-    void write_final(kmc::Simulation const&) override;
-};
-
 class output::Composition : public output::Writer
 {
 public:

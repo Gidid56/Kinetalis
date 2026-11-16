@@ -1,8 +1,10 @@
 #pragma once
 #include "writer.h"
+#include "types.h"
 #include "kmc/simulation.h"
 #include "utility/file.h"
 
+#include <algorithm>
 #include <concepts>
 #include <map>
 #include <stdexcept>
@@ -41,22 +43,20 @@ namespace output
         void capture_init(kmc::Simulation const& simulation) override
         {
             simulation_ = &simulation;
-            model_ = dynamic_cast<ModelType*>(simulation.model().get());
+            model_ = dynamic_cast<ModelType const*>(simulation.model().get());
             if (not model_)
                 throw std::logic_error{ "KineticStatistics requires the selected model type." };
 
             last_descriptor_.reset();
             counts_.clear();
             transitions_.clear();
-            keys_.clear();
         }
 
         void observe_selected(kmc::event::Record const& record) override
         {
-            // Observe before event execution, while the local configuration is unchanged.
-            auto key{ model_->classify(record.type, record.location(), simulation_->lattice()) };
+            // The selected event already carries its registered kinetic class.
+            auto const key{ record.class_key };
             Descriptor descriptor{ model_->descriptor(key) };
-            keys_[descriptor] = key;
             ++counts_[record.outcome][descriptor];
 
             if (record.outcome == kmc::event::Outcome::rejected)
@@ -79,23 +79,21 @@ namespace output
                     continue;
                 auto key{ static_cast<kmc::RateClassKey>(i) };
                 Descriptor descriptor{ model_->descriptor(key) };
-                keys_[descriptor] = key;
                 active[descriptor] += counts[i];
             }
         }
 
         void write_snapshot(kmc::Simulation const& simulation) override
         {
-            auto info = [&](Descriptor const& descriptor) -> kmc::ClassInfo const& {
-                return model_->class_info(keys_.at(descriptor));
+            auto row = [](Descriptor const& descriptor) {
+                return DescriptorFormat<Descriptor>::row(descriptor);
             };
 
             for (auto const& [outcome, counts] : counts_)
             {
-                std::string csv{ kmc::ClassInfo::header };
-                csv += ",count\n";
+                std::string csv{ std::format("{},count\n", DescriptorFormat<Descriptor>::header()) };
                 for (auto const& [descriptor, count] : counts)
-                    std::format_to(std::back_inserter(csv), "{},{}\n", info(descriptor), count);
+                    std::format_to(std::back_inserter(csv), "{},{}\n", row(descriptor), count);
                 utility::file::write<utility::file::Type::csv>(
                     writer_path() / enum_name(outcome) / snapshot_name(simulation.step()), csv);
             }
@@ -103,20 +101,25 @@ namespace output
             if (transitions_.empty() or not output_transitions_)
                 return;
 
-            std::string csv{ std::format("from,,,,to,,,,\n{0},{0},count\n", kmc::ClassInfo::header) };
+            auto const header{ DescriptorFormat<Descriptor>::header() };
+            auto const columns{ std::ranges::count(header, ',') + 1 };
+            std::string csv{ "from" };
+            csv.append(columns, ',');
+            csv += "to";
+            csv.append(columns, ',');
+            csv += std::format("\n{0},{0},count\n", header);
             for (auto const& [from, destinations] : transitions_)
                 for (auto const& [to, count] : destinations)
                     std::format_to(std::back_inserter(csv), "{},{},{}\n",
-                        info(from), info(to), count);
+                        row(from), row(to), count);
             utility::file::write<utility::file::Type::csv>(
                 writer_path() / "transitions" / snapshot_name(simulation.step()), csv);
         }
 
         bool output_transitions_{ false };
         kmc::Simulation const* simulation_{};
-        ModelType* model_{};
+        ModelType const* model_{};
         std::optional<Descriptor> last_descriptor_{};
-        std::map<Descriptor, kmc::RateClassKey> keys_;
         std::map<kmc::event::Outcome, CountMap> counts_;
         std::map<Descriptor, CountMap> transitions_;
     };

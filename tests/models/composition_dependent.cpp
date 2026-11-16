@@ -1,5 +1,6 @@
 #include "dealloying/models/composition_dependent.h"
 #include "dealloying/models/linear_bond_breaking.h"
+#include "dealloying/models/descriptor_format.h"
 #include "lattice/lattice.h"
 
 #include <boost/ut.hpp>
@@ -67,6 +68,13 @@ namespace
 
             ut::expect(first_composition != second_composition)
                 << "composition descriptor distinguishes changed neighbor chemistry";
+            ut::expect(composition.class_event(first_composition) == kmc::event::Type::diffusion);
+            ut::expect(output::DescriptorFormat<models::CompositionDependent::Descriptor>::label(composition.descriptor(first_composition)) !=
+                output::DescriptorFormat<models::CompositionDependent::Descriptor>::label(composition.descriptor(second_composition)))
+                << "model-owned class labels distinguish neighbor chemistry";
+            ut::expect(output::DescriptorFormat<models::CompositionDependent::Descriptor>::row(composition.descriptor(first_composition)) !=
+                output::DescriptorFormat<models::CompositionDependent::Descriptor>::row(composition.descriptor(second_composition)))
+                << "CSV metadata preserves model-specific descriptors";
             ut::expect(first_linear == second_linear)
                 << "coordination descriptor ignores irrelevant neighbor chemistry";
             ut::expect(ut::eq(composition.number_keys(), std::size_t{ 3 }));
