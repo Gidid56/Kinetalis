@@ -61,7 +61,7 @@ namespace output
 
             for (std::size_t i{ 1 }; i < counts.size(); ++i)
                 if (counts[i] != 0)
-                    total += counts[i] * rates[i].second;
+                    total += counts[i] * rates[i];
 
             if (total <= kmc::Rate{})
                 return;
@@ -72,7 +72,7 @@ namespace output
                     continue;
 
                 auto const key{ static_cast<kmc::RateClassKey>(i) };
-                auto const fraction{ counts[i] * rates[i].second / total };
+                auto const fraction{ counts[i] * rates[i] / total };
                 auto& value{ accumulation_.classes[model_->descriptor(key)] };
                 value.activity_fraction += fraction;
                 value.activity_time += fraction * delta;
