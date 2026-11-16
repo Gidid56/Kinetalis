@@ -60,7 +60,7 @@ namespace output
             kmc::Rate total{};
 
             for (std::size_t i{ 1 }; i < counts.size(); ++i)
-                if (rates[i].first.is_active())
+                if (counts[i] != 0)
                     total += counts[i] * rates[i].second;
 
             if (total <= kmc::Rate{})
@@ -68,7 +68,7 @@ namespace output
 
             for (std::size_t i{ 1 }; i < counts.size(); ++i)
             {
-                if (counts[i] == 0 or not rates[i].first.is_active())
+                if (counts[i] == 0 or not simulation.class_initialized(static_cast<kmc::RateClassKey>(i)))
                     continue;
 
                 auto const key{ static_cast<kmc::RateClassKey>(i) };
@@ -93,9 +93,9 @@ namespace output
             auto const& rates{ simulation.class_rates() };
             for (std::size_t key{ 1 }; key < rates.size(); ++key)
             {
-                auto const& info{ rates[key].first };
-                if (info.is_active())
-                    std::format_to(std::back_inserter(text), ",{}", info.label());
+                if (simulation.class_initialized(static_cast<kmc::RateClassKey>(key)))
+                    std::format_to(std::back_inserter(text), ",{}",
+                        simulation.model()->class_label(static_cast<kmc::RateClassKey>(key)));
                 else
                     std::format_to(std::back_inserter(text), ",not_encountered_{}", key);
             }
@@ -165,8 +165,7 @@ namespace output
 
             for (std::size_t i{ 1 }; i < simulation.class_rates().size(); ++i)
             {
-                auto const& info{ simulation.class_rates()[i].first };
-                if (not info.is_active())
+                if (not simulation.class_initialized(static_cast<kmc::RateClassKey>(i)))
                 {
                     activity += ',';
                     weighted += ',';
