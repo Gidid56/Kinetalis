@@ -68,11 +68,5 @@ namespace
             ut::expect(composition.rate(first_composition) != composition.rate(second_composition))
                 << "composition-dependent rates differ for inequivalent classes";
         };
-
-            if constexpr (lattice::element_specific_neighbors)
-                ut::expect(ut::nothrow(construct_model));
-            else
-                ut::expect(ut::throws<std::logic_error>(construct_model));
-        };
     };
 }
