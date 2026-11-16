@@ -167,8 +167,8 @@ namespace
     void expect_reference_state(TestSimulation const& simulation, Rules const& rules, Step step)
     {
         auto const& lattice{ simulation.lattice() };
-        auto const& rates{ simulation.process_rates() };
-        auto const& counts{ simulation.process_counts() };
+        auto const& rates{ simulation.class_rates() };
+        auto const& counts{ simulation.class_counts() };
         constexpr auto block_size{ std::size_t{ 1 } << rate_tree::baseLevel };
         std::vector<Rate> block_sums((lattice.sites().size() + block_size - 1) / block_size);
         std::vector<std::size_t> expected_counts(counts.size());
@@ -226,7 +226,7 @@ namespace
         ut::expect(ut::eq(counts.size(), expected_counts.size()));
         for (std::size_t key{}; key < counts.size(); ++key)
             ut::expect(ut::eq(counts[key], expected_counts[key]))
-                << "process count key " << key << ", step " << step;
+                << "kinetic_class count key " << key << ", step " << step;
 
         auto const& tree{ *simulation.rate_tree() };
         for (std::size_t i{}; i < block_sums.size(); ++i)
@@ -364,7 +364,7 @@ namespace
             << "rejection fraction after resume";
         ut::expect(ut::eq(a.rate_tree()->rate_sum().value(), b.rate_tree()->rate_sum().value()))
             << "total rate after resume";
-        ut::expect(a.process_counts() == b.process_counts()) << "process counts after resume";
+        ut::expect(a.class_counts() == b.class_counts()) << "kinetic_class counts after resume";
         for (std::size_t i{}; i < a.lattice().sites().size(); ++i)
         {
             ut::expect(a.lattice().sites()[i].element() ==
@@ -375,7 +375,7 @@ namespace
     }
 
     ut::suite<"kmc.simulation"> simulation_tests = [] {
-        "process records own their site-pointer storage"_test = [] {
+        "kinetic_class records own their site-pointer storage"_test = [] {
             auto setup{ make_setup() };
             TestSimulation simulation{ setup };
             auto& lattice{ simulation.mutable_lattice() };
@@ -526,27 +526,27 @@ namespace
             ut::expect(ut::eq(checker.last_step(), simulation.step()));
         };
 
-        "static process cache is lazy and only contains encountered classes"_test = [] {
+        "static kinetic_class cache is lazy and only contains encountered classes"_test = [] {
             auto setup{ make_setup() };
             setup.rules.site.enabled = false;
             setup.rules.cluster.enabled = false;
             TestSimulation simulation{ setup };
 
-            auto const& rates{ simulation.process_rates() };
-            auto const& counts{ simulation.process_counts() };
+            auto const& rates{ simulation.class_rates() };
+            auto const& counts{ simulation.class_counts() };
             ut::expect(ut::eq(rates.size(), simulation.model()->number_keys()));
             ut::expect(ut::eq(counts.size(), rates.size()));
-            for (auto const& [process, rate] : rates)
+            for (auto const& [kinetic_class, rate] : rates)
             {
-                ut::expect(not process.is_active()) << "unused class stays uninitialized";
+                ut::expect(not kinetic_class.is_active()) << "unused class stays uninitialized";
                 ut::expect(rate == Rate{}) << "unused class has zero rate";
             }
         };
 
-        "static process cache initializes encountered processes only once"_test = [] {
+        "static kinetic_class cache initializes encountered events only once"_test = [] {
             auto setup{ make_setup() };
             TestSimulation simulation{ setup };
-            auto const& rates{ simulation.process_rates() };
+            auto const& rates{ simulation.class_rates() };
 
             auto const initialized{ std::ranges::count_if(rates, [](auto const& entry) {
                 return entry.first.is_active();
@@ -568,7 +568,7 @@ namespace
             expect_reference_state(simulation, setup.rules, 0);
         };
 
-        "static process keys must distinguish different kinetic classes"_test = [] {
+        "static kinetic_class keys must distinguish different kinetic classes"_test = [] {
             Descriptor const silver{ event::Type::dissolution, Element::Ag, 5 };
             Descriptor const gold{ event::Type::dissolution, Element::Au, 5 };
             ut::expect(silver != gold);
@@ -576,13 +576,13 @@ namespace
                 << "current dissolution key intentionally omits element";
         };
 
-        "distinct process classes sharing a static key are rejected"_test = [] {
+        "distinct kinetic_class classes sharing a static key are rejected"_test = [] {
             auto setup{ make_setup() };
             setup.rules.site.allow_gold = true;
             setup.rules.cluster.enabled = false;
 
             // Give both Au and Ag source sites coordination 11, forcing
-            // their dissolution processes to collide on the same static key.
+            // their dissolution events to collide on the same static key.
             auto make_lattice{ setup.make_lattice };
             setup.make_lattice = [make_lattice] {
                 auto lattice{ make_lattice() };
@@ -600,7 +600,7 @@ namespace
             })) << "dissolution Au and Ag must not reuse the same static key";
         };
 
-        "kinetics and flux CSV columns stay stable as new process classes appear"_test = [] {
+        "kinetics and flux CSV columns stay stable as new kinetic_class classes appear"_test = [] {
             auto setup{ make_setup() };
             TestSimulation simulation{ setup };
             const auto root{ std::filesystem::temp_directory_path() /
@@ -659,16 +659,16 @@ namespace
             })
                 read_csv(file, site_columns);
 
-            auto const& rates{ simulation.process_rates() };
+            auto const& rates{ simulation.class_rates() };
             auto lines{ read_csv("kinetic_activity/activity", rates.size() + 1) };
             read_csv("kinetic_activity/time_weighted_activity", rates.size() + 1);
 
             if (not lines.empty())
                 for (std::size_t key{ 1 }; key < rates.size(); ++key)
                 {
-                    auto const& process{ rates[key].first };
-                    auto const label{ process.is_active()
-                        ? process.label()
+                    auto const& kinetic_class{ rates[key].first };
+                    auto const label{ kinetic_class.is_active()
+                        ? kinetic_class.label()
                         : std::format("not_encountered_{}", key) };
                     ut::expect(lines.front().find("," + label) != std::string::npos)
                         << "activity header includes final key label " << key;
@@ -680,7 +680,7 @@ namespace
             read_csv("event_flux", flux_columns);
         };
 
-        "no active processes exhausts without selecting an event"_test = [] {
+        "no active events exhausts without selecting an event"_test = [] {
             auto setup{ make_setup() };
             setup.rules.site.enabled = false;
             setup.rules.cluster.enabled = false;
@@ -693,12 +693,12 @@ namespace
             ut::expect(ut::eq(simulation.rejection_fraction(), 0.0));
         };
 
-        "initial static process tables and block rates match a full reconstruction"_test = [] {
+        "initial static kinetic_class tables and block rates match a full reconstruction"_test = [] {
             auto setup{ make_setup() };
             TestSimulation simulation{ setup };
             expect_reference_state(simulation, setup.rules, 0);
             ut::expect(ut::that % simulation.rate_tree()->rate_sum().value() > 0.0)
-                << "simulation has selectable processes";
+                << "simulation has selectable events";
         };
 
         "reconstruction matches every accepted event and validates rejected selections"_test = [] {
@@ -713,8 +713,8 @@ namespace
             ut::expect(ut::eq(checker.processed_count(), std::size_t{ 120 }));
             ut::expect(ut::eq(checker.selected_count(),
                 checker.processed_count() + checker.rejected_count()));
-            ut::expect(ut::that % checker.site_selections() > 0) << "site processes selected";
-            ut::expect(ut::that % checker.cluster_selections() > 0) << "cluster processes selected";
+            ut::expect(ut::that % checker.site_selections() > 0) << "site events selected";
+            ut::expect(ut::that % checker.cluster_selections() > 0) << "cluster events selected";
             ut::expect(ut::that % checker.rejected_count() > 0) << "rejection path exercised";
             ut::expect(ut::that % checker.accepted_site_events() > 0)
                 << "site update path exercised";
