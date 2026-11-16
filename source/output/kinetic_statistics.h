@@ -103,7 +103,12 @@ namespace output
                 return;
 
             auto const header{ model_->class_csv_header() };
-            std::string csv{ std::format("from,,,,to,,,,\n{0},{0},count\n", header) };
+            auto const columns{ std::ranges::count(header, ',') + 1 };
+            std::string csv{ "from" };
+            csv.append(columns, ',');
+            csv += "to";
+            csv.append(columns, ',');
+            csv += std::format("\n{0},{0},count\n", header);
             for (auto const& [from, destinations] : transitions_)
                 for (auto const& [to, count] : destinations)
                     std::format_to(std::back_inserter(csv), "{},{},{}\n",
