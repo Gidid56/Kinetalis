@@ -99,7 +99,7 @@ namespace kmc
     template <class Rules>
     process::Record RejectionTreeSimulation<Rules>::select_random_process()
     {
-        auto selected_rate{ rate_tree_->rate_sum() * rng_.probability() };
+        auto selected_rate{ physics::ensure_non_negative(rate_tree_->rate_sum() * rng_.probability()) };
 
         auto site_index{ rate_tree_->index(selected_rate) };
 
