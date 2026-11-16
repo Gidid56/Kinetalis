@@ -19,8 +19,6 @@ target_sources(
         output/phases.cpp
         output/surface.cpp
         output/event_flux.cpp
-        output/process_stats.cpp
-        output/process_kinetics.cpp
         utility/csv.cpp
 
         "simulation/engine.cpp"

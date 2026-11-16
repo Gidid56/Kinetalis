@@ -3,7 +3,9 @@
 #include "physics/equations/kinetics.h"
 #include "kmc/analysis_plan.h"
 #include "lattice/lattice.h"
-#include "output/process_kinetics.h"
+#include "output/kinetic_activity.h"
+#include "output/kinetic_statistics.h"
+#include "dealloying/analysis/site_population.h"
 #include "output/event_flux.h"
 
 #include <algorithm>
@@ -612,7 +614,9 @@ namespace
             } cleanup{ root };
 
             AnalysisPlan plan;
-            plan.add<output::process::Kinetics>(root)
+            plan.add<output::KineticActivity<ModelBase>>(root)
+                .set_resolution({ .min_snapshot_step = 1, .snapshot_scale_factor = 1.0 });
+            plan.add<studies::dealloying::analysis::SitePopulation<ModelBase>>(root)
                 .set_resolution({ .min_snapshot_step = 1, .snapshot_scale_factor = 1.0 });
             plan.add<output::process::EventFlux>(root)
                 .set_resolution({ .min_snapshot_step = 1, .snapshot_scale_factor = 1.0 });
@@ -641,16 +645,16 @@ namespace
                 std::size(lattice::active_elements) * lattice::max_coordination + 2
             };
             for (auto const* file : {
-                "process_kinetics/site_count",
-                "process_kinetics/population",
-                "process_kinetics/time_weighted_site_count",
-                "process_kinetics/time_weighted_population"
+                "site_population/site_count",
+                "site_population/population",
+                "site_population/time_weighted_site_count",
+                "site_population/time_weighted_population"
             })
                 read_csv(file, site_columns);
 
             auto const& rates{ simulation.process_rates() };
-            auto lines{ read_csv("process_kinetics/activity", rates.size() + 1) };
-            read_csv("process_kinetics/time_weighted_activity", rates.size() + 1);
+            auto lines{ read_csv("kinetic_activity/activity", rates.size() + 1) };
+            read_csv("kinetic_activity/time_weighted_activity", rates.size() + 1);
 
             if (not lines.empty())
                 for (std::size_t key{ 1 }; key < rates.size(); ++key)

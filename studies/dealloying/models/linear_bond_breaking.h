@@ -41,11 +41,11 @@ namespace studies::dealloying::models
         kmc::ClassInfo const& class_info(kmc::process::Key) const override;
         std::string output_text() const override;
         static kmc::process::Key static_key(Descriptor const&);
+        Descriptor const& descriptor(kmc::process::Key) const;
 
     protected:
         Energy lattice_energy_barrier(kmc::process::Key) const override;
         Ratio modulation_ratio(kmc::process::Key) const override;
-        Descriptor const& descriptor(kmc::process::Key) const;
 
     private:
         static constexpr std::size_t key_count{

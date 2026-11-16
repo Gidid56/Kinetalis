@@ -20,6 +20,7 @@ namespace studies::dealloying::models
         kmc::process::Key classify(kmc::event::Type, kmc::event::Location const&, lattice::Lattice const&) override;
         std::size_t number_keys() const noexcept override { return infos_.size(); }
         kmc::ClassInfo const& class_info(kmc::process::Key) const override;
+        Descriptor const& descriptor(kmc::process::Key key) const { return descriptors_.at(key); }
         std::string output_text() const override;
 
     private:
