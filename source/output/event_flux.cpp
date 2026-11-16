@@ -17,13 +17,10 @@ void process::EventFlux::capture_init(kmc::Simulation const& simulation)
     residence_time_ = {};
     data_.clear();
 
-    for (kmc::process::Key key{ 1 }; key < simulation.process_rates().size(); ++key)
-    {
-        auto const event{ simulation.process_rates()[key].first.event() };
-
+    // Event types are fixed independently of the lazy process rate cache.
+    for (auto event : enum_values<kmc::event::Type>())
         if (event != kmc::event::Type::none)
             data_.try_emplace(event);
-    }
 }
 
 void process::EventFlux::observe_selected(kmc::process::Record const& record)

@@ -48,4 +48,8 @@ private:
     physics::quantity::Time last_time_{};
 
     Data last_data_{}, accumulation_{};
+
+    // Header for the fixed key-indexed process columns; update on discovery.
+    std::string process_header_;
+    std::size_t process_columns_{};
 };
