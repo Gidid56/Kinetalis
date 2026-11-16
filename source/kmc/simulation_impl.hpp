@@ -12,11 +12,11 @@ namespace kmc
     {
         rate_tree_ = rate_tree::make_entry(lattice_.sites().size());
         site_rates_.resize(lattice_.sites().size());
-        processes_.resize(lattice_.sites().size() + lattice_.neighbors().size());
+        event_class_keys_.resize(lattice_.sites().size() + lattice_.neighbors().size());
 
         // Each model decides whether to preallocate or register classes lazily.
-        process_rates_.resize(model_->number_keys());
-        process_counts_.resize(model_->number_keys());
+        class_rates_.resize(model_->number_keys());
+        class_counts_.resize(model_->number_keys());
     }
 
     template <class Rules>
@@ -126,20 +126,20 @@ namespace kmc
                 throw std::runtime_error{ "tree not updated correctly" };
 
         auto& site{ lattice_.sites().at(site_index) };
-        auto process_index{ site.process_index() };
+        auto event_offset{ site.event_offset() };
 
-        while (selected_rate >= process_rates_.at(processes_.at(process_index)).second)
-            selected_rate -= process_rates_.at(processes_.at(process_index++)).second;
+        while (selected_rate >= class_rates_.at(event_class_keys_.at(event_offset)).second)
+            selected_rate -= class_rates_.at(event_class_keys_.at(event_offset++)).second;
 
         if constexpr (utility::is_debug)
-            if (process_index > site.process_index() + site.max_neighbors())
+            if (event_offset > site.event_offset() + site.max_neighbors())
                 throw std::runtime_error{ "tree not updated correctly" };
 
-        if (process_index == site.process_index())
+        if (event_offset == site.event_offset())
             return event::Location{ site };
 
         return event::Location{ lattice::Cluster<2>{
-            &site, lattice_.neighbor(process_index - site_index - 1) } };
+            &site, lattice_.neighbor(event_offset - site_index - 1) } };
     }
 
     template <class Rules>
@@ -202,14 +202,14 @@ namespace kmc
         const bool cluster_source_candidate{ rules_.cluster.is_source_candidate(site) };
         const event::Location source{ site };
 
-        lattice::Index index{ site.process_index() };
+        lattice::Index index{ site.event_offset() };
 
         auto clear_site = [&] {
-            set_process(index++, {});
+            set_class_key(index++, {});
         };
         auto clear_clusters = [&] {
             for (std::size_t i{}; i < site.max_neighbors(); ++i)
-                set_process(index++, {});
+                set_class_key(index++, {});
         };
 
         if (not site_source_candidate and not cluster_source_candidate)
@@ -224,23 +224,23 @@ namespace kmc
         }
 
         Rate sum{};
-        bool has_processes{};
+        bool has_events{};
 
-        auto add_process = [&](RateClassKey key) {
-            set_process(index++, key);
-            has_processes |= key != RateClassKey{};
-            sum += process_rates_.at(key).second;
+        auto add_event = [&](RateClassKey key) {
+            set_class_key(index++, key);
+            has_events |= key != RateClassKey{};
+            sum += class_rates_.at(key).second;
         };
 
         if (site_source_candidate and rules_.site.is_candidate(source))
-            add_process(process_key(decltype(rules_.site)::event, source));
+            add_event(class_key(decltype(rules_.site)::event, source));
         else
             clear_site();
 
         if (not cluster_source_candidate)
         {
             clear_clusters();
-            site.set_active(has_processes);
+            site.set_active(has_events);
             return sum;
         }
 
@@ -248,31 +248,31 @@ namespace kmc
         {
             const event::Location location{ lattice::Cluster<2>{ &site, neighbor } };
             if (rules_.cluster.is_candidate(location))
-                add_process(process_key(decltype(rules_.cluster)::event, location));
+                add_event(class_key(decltype(rules_.cluster)::event, location));
             else
-                add_process({});
+                add_event({});
         }
 
-        site.set_active(has_processes);
+        site.set_active(has_events);
         return sum;
     }
 
     template <class Rules>
-    void RejectionTreeSimulation<Rules>::set_process(lattice::Index index, RateClassKey new_key)
+    void RejectionTreeSimulation<Rules>::set_class_key(lattice::Index index, RateClassKey new_key)
     {
-        auto& old_key{ processes_.at(index) };
+        auto& old_key{ event_class_keys_.at(index) };
 
         if (old_key == new_key)
             return;
 
-        // key 0 is the empty / invalid process for static process keys
+        // Key zero denotes an inactive event slot.
         if (old_key != RateClassKey{})
-            --process_counts_.at(old_key);
+            --class_counts_.at(old_key);
 
         old_key = new_key;
 
         if (new_key != RateClassKey{})
-            ++process_counts_.at(new_key);
+            ++class_counts_.at(new_key);
     }
 
     template <class Rules>
@@ -294,20 +294,20 @@ namespace kmc
     }
 
     template <class Rules>
-    RateClassKey RejectionTreeSimulation<Rules>::process_key(
+    RateClassKey RejectionTreeSimulation<Rules>::class_key(
         event::Type type, event::Location const& location)
     {
         const auto key{ model_->classify(type, location, lattice_) };
         if (key == RateClassKey{})
             throw std::logic_error{ "Active event maps to reserved key zero." };
 
-        if (key >= process_rates_.size())
+        if (key >= class_rates_.size())
         {
-            process_rates_.resize(static_cast<std::size_t>(key) + 1);
-            process_counts_.resize(static_cast<std::size_t>(key) + 1);
+            class_rates_.resize(static_cast<std::size_t>(key) + 1);
+            class_counts_.resize(static_cast<std::size_t>(key) + 1);
         }
 
-        auto& [cached_info, cached_rate]{ process_rates_.at(key) };
+        auto& [cached_info, cached_rate]{ class_rates_.at(key) };
         auto const& info{ model_->class_info(key) };
         if (not cached_info.is_active())
         {
@@ -324,9 +324,9 @@ namespace kmc
     void RejectionTreeSimulation<Rules>::update_all_rates()
     {
         model_->refresh_rates();
-        for (std::size_t key{ 1 }; key < process_rates_.size(); ++key)
-            if (process_rates_[key].first.is_active())
-                process_rates_[key].second = model_->rate(static_cast<RateClassKey>(key));
+        for (std::size_t key{ 1 }; key < class_rates_.size(); ++key)
+            if (class_rates_[key].first.is_active())
+                class_rates_[key].second = model_->rate(static_cast<RateClassKey>(key));
 
         // A full-rate refresh bypasses per-event block collection. Rebuild each
         // block once after all site rates have been recalculated.
