@@ -297,7 +297,7 @@ namespace kmc
     process::Key RejectionTreeSimulation<Rules>::process_key(
         event::Type type, event::Location const& location)
     {
-        const auto key{ model_->classify(type, location) };
+        const auto key{ model_->classify(type, location, lattice_) };
         if (key == process::Key{})
             throw std::logic_error{ "Active event maps to reserved key zero." };
 

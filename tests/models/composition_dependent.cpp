@@ -21,12 +21,12 @@ namespace
             static_assert(models::bond_pair(Ag, Au) != models::bond_pair(Cu, Au));
         };
 
-        "construction requires element-specific neighbor tracking"_test = [] {
-            auto construct_model = [] {
-                models::CompositionDependent model;
-                model.set_potential(1.0_V);
-                model.set_temperature(300_K);
-            };
+        "composition model works without globally stored element neighbors"_test = [] {
+            models::CompositionDependent model;
+            model.set_potential(1.0_V);
+            model.set_temperature(300_K);
+            ut::expect(ut::eq(model.number_keys(), std::size_t{ 1 }));
+        };
 
             if constexpr (lattice::element_specific_neighbors)
                 ut::expect(ut::nothrow(construct_model));

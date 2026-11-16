@@ -39,7 +39,7 @@ namespace kmc
 
         // A model registers its own descriptor and returns its stable class key.
         // Key zero is reserved for an empty process slot.
-        virtual process::Key classify(event::Type, event::Location const&) = 0;
+        virtual process::Key classify(event::Type, event::Location const&, lattice::Lattice const&) = 0;
         virtual std::size_t number_keys() const noexcept = 0;
         virtual ClassInfo const& class_info(process::Key) const = 0;
         virtual Rate rate(process::Key) const = 0;

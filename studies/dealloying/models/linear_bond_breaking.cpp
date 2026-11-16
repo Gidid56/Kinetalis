@@ -35,7 +35,7 @@ process::Key LinearBondBreaking::static_key(Descriptor const& desc)
 }
 
 process::Key LinearBondBreaking::classify(
-    event::Type type, event::Location const& location)
+    event::Type type, event::Location const& location, lattice::Lattice const&)
 {
     const Descriptor desc{ type, location.source().element(), location.source().coordination() };
     const auto key{ static_key(desc) };

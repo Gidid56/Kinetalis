@@ -1,5 +1,6 @@
 #include "pch.h"
 #include "composition_dependent.h"
+#include "lattice/lattice.h"
 
 using namespace kmc;
 using namespace studies::dealloying::models;
@@ -48,17 +49,16 @@ namespace studies::dealloying::models::composition_dependent
 }
 
 
-CompositionDependent::CompositionDependent()
-{
-    if constexpr (not lattice::element_specific_neighbors)
-        throw std::logic_error{ "CompositionDependent requires element-specific neighbor tracking." };
-}
+CompositionDependent::CompositionDependent() = default;
 
-process::Key CompositionDependent::classify(event::Type type, event::Location const& location)
+process::Key CompositionDependent::classify(
+    event::Type type, event::Location const& location, lattice::Lattice const& lattice)
 {
     auto const& source{ location.source() };
     Descriptor desc{ type, source.element(), source.coordination(), {} };
-    std::ranges::copy(source.element_neighbors(), desc.element_neighbors.begin());
+    for (auto const* neighbor : lattice.neighbors(source))
+        if (neighbor->is_occupied())
+            ++desc.element_neighbors[lattice::elementKey(neighbor->element())];
     if (auto it{ keys_.find(desc) }; it != keys_.end()) return it->second;
 
     if (infos_.size() > std::numeric_limits<process::Key>::max())

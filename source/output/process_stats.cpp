@@ -21,7 +21,7 @@ void process::Statistics::capture_init(kmc::Simulation const& simulation)
 void process::Statistics::observe_selected(kmc::process::Record const& record)
 {
     // Use the model's kinetic identity while the location is still unchanged.
-    auto const key{ simulation_->model()->classify(record.type, record.location()) };
+    auto const key{ simulation_->model()->classify(record.type, record.location(), simulation_->lattice()) };
     ++counts_[record.outcome][key];
 
     if (record.outcome == kmc::process::Outcome::rejected)
