@@ -184,10 +184,11 @@ void Lattice::make_periodic()
         for (auto& site : sites_)
         {
             auto periodicity_fraction{ max_path_length_ / shape_.parameters()[axis] };
-            auto coordinate{ (shape_.coordinate(site.position()) - site::center)[axis] -
-                             epsilon::coordinate };
+            const auto coordinate{ (shape_.coordinate(site.position()) - site::center)[axis] };
 
-            if (abs(coordinate) >= 0.5 - periodicity_fraction)
+            // Include sites exactly one neighbor cutoff from a boundary, allowing
+            // for floating-point roundoff in the rotated supercell coordinates.
+            if (abs(coordinate) + epsilon::coordinate >= 0.5 - periodicity_fraction)
             {
                 translated.emplace_back(
                     site,
