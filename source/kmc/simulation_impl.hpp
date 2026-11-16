@@ -53,7 +53,10 @@ namespace kmc
             {
                 ++step_;
 
-                process.execute(lattice_);
+                if (&process.path.front() == &process.path.back())
+                    rules_.site.execute(process.path.front(), lattice_);
+                else
+                    rules_.path.execute(process.path, lattice_);
 
                 update_affected_rates(process);
 
@@ -121,12 +124,12 @@ namespace kmc
                 throw std::runtime_error{ "tree not updated correctly" };
 
         if (process_index == site.process_index())
-            return process::Record{ site, decltype(rules_.site)::event, rules_.site.allowed(site) };
+            return process::Record{ site, decltype(rules_.site)::event, rules_.site.is_rejected(site) };
 
         auto const path{ lattice::Path{ &site,
             lattice_.neighbor(process_index - site_index - 1) } };
 
-        return process::Record{ path, decltype(rules_.path)::event, rules_.path.allowed(path) };
+        return process::Record{ path, decltype(rules_.path)::event, rules_.path.is_rejected(path) };
     }
 
     template <class Rules>
@@ -174,8 +177,8 @@ namespace kmc
     template <class Rules>
     Rate RejectionTreeSimulation<Rules>::rate_sum(lattice::Site& site)
     {
-        const bool site_active{ rules_.site.active(site) };
-        const bool path_active{ rules_.path.source_active(site) };
+        const bool site_source_candidate{ rules_.site.is_source_candidate(site) };
+        const bool path_source_candidate{ rules_.path.is_source_candidate(site) };
 
         lattice::Index index{ site.process_index() };
 
@@ -187,7 +190,7 @@ namespace kmc
                 set_process(index++, {});
         };
 
-        if (not site_active and not path_active)
+        if (not site_source_candidate and not path_source_candidate)
         {
             if (site.is_active())
             {
@@ -207,12 +210,12 @@ namespace kmc
             sum += process_rates_.at(key).second;
         };
 
-        if (site_active)
+        if (site_source_candidate and rules_.site.is_candidate(site))
             add_process(process_key(Process{ decltype(rules_.site)::event, site }));
         else
             clear_site();
 
-        if (not path_active)
+        if (not path_source_candidate)
         {
             clear_paths();
             site.set_active(has_processes);

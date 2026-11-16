@@ -11,24 +11,6 @@ bool Path::is_open() const { return front().is_occupied() and back().is_vacant()
 
 bool Path::is_same_layer() const { return front().layer() == back().layer(); }
 
-void Path::execute_process(Lattice& lattice)
-{
-    if (back().is_occupied() and front().is_vacant())
-        std::swap(sites_[0], sites_[1]);
-
-    if (front().is_occupied() and back().is_vacant())
-    {
-        back().set_element(lattice, front().element());
-        front().set_element(lattice, Element::none);
-        //auto backOriginal{ back().original() };
-        //back().setOriginal(front().original());
-        //front().setOriginal(backOriginal);
-    }
-
-    if (front().is_occupied() and back().is_vacant())
-        std::swap(sites_[0], sites_[1]);
-}
-
 math::Vector<3, Displacement> Path::path_vector(Lattice const& lattice) const
 {
     return lattice.displacement(front(), back());

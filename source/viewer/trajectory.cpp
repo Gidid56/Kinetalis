@@ -11,23 +11,32 @@ using namespace viewer;
 
 void Trajectory::observe_selected(kmc::process::Record const& record)
 {
-    records_.emplace_back(record);
+    const std::array elements{ record.path.front().element(), record.path.back().element() };
+    records_.push_back({ record, elements, elements });
     playbackStep_ = records_.size();
 }
 
-void Trajectory::makeStep()
+void Trajectory::observe_processed(kmc::process::Record const& record)
 {
-    auto& record{ records_.at(playbackStep_) };
+    assert(not records_.empty());
+    records_.back().after = { record.path.front().element(), record.path.back().element() };
+}
+
+void Trajectory::applyStep(Direction direction)
+{
+    auto& entry{ records_.at(playbackStep_) };
+    auto& record{ entry.record };
 
     if (viewerBridge_)
         viewerBridge_->observe_selected(record);
 
     if (record.outcome == kmc::process::Outcome::accepted)
     {
-        if (&record.path.front() == &record.path.back())
-            record.path.front().execute_process(lattice_);
-        else
-            record.path.execute_process(lattice_);
+        // Replay recorded states without assuming the physical event type.
+        auto const& elements{ direction == Direction::Forwards ? entry.after : entry.before };
+        if (&record.path.front() != &record.path.back())
+            record.path.back().set_element(lattice_, elements[1]);
+        record.path.front().set_element(lattice_, elements[0]);
 
         if (viewerBridge_)
             viewerBridge_->observe_processed(record);
@@ -41,12 +50,12 @@ void Trajectory::makeStep(Direction direction)
         switch (direction)
         {
             case Direction::Forwards:
-                makeStep();
+                applyStep(Direction::Forwards);
                 ++playbackStep_;
                 break;
             case Direction::Backwards:
                 --playbackStep_;
-                makeStep();
+                applyStep(Direction::Backwards);
                 break;
         }
     }

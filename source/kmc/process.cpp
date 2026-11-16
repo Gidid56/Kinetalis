@@ -114,22 +114,14 @@ std::formatter<Process>::format(Process const& process, std::format_context& con
     return out;
 }
 
-process::Record::Record(Site& site, Event event, bool allowed)
-    : outcome{ allowed ? Outcome::accepted : Outcome::rejected },
+process::Record::Record(Site& site, Event event, bool rejected)
+    : outcome{ rejected ? Outcome::rejected : Outcome::accepted },
       process{ event, site },
       path{ &site, &site }
 { }
 
-process::Record::Record(Path const& path, Event event, bool allowed)
-    : outcome{ allowed ? Outcome::accepted : Outcome::rejected },
+process::Record::Record(Path const& path, Event event, bool rejected)
+    : outcome{ rejected ? Outcome::rejected : Outcome::accepted },
       process{ event, path },
       path{ path }
 { }
-
-void kmc::process::Record::execute(Lattice& lattice)
-{
-    if (&path.front() == &path.back())
-        path.front().execute_process(lattice);
-    else
-        path.execute_process(lattice);
-}

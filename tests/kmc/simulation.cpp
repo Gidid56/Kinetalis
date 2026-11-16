@@ -31,13 +31,19 @@ namespace
         static constexpr Event event{ Event::dissolution };
         bool enabled{ true };
 
-        bool active(Site const& site) const
+        bool is_source_candidate(Site const& site) const
         {
             return enabled and site.element() == Element::Ag and
                    site.coordination() < lattice::max_coordination;
         }
 
-        bool allowed(Site const& site) const { return active(site) and site.coordination() <= 8; }
+        bool is_candidate(Site const& site) const { return is_source_candidate(site); }
+        bool is_rejected(Site const& site) const { return site.coordination() > 8; }
+
+        void execute(Site& site, lattice::Lattice& lattice) const
+        {
+            site.set_element(lattice, Element::none);
+        }
 
         bool supports(Process const& process) const
         {
@@ -52,20 +58,27 @@ namespace
         static constexpr Event event{ Event::diffusion };
         bool enabled{ true };
 
-        bool source_active(Site const& site) const
+        bool is_source_candidate(Site const& site) const
         {
             return enabled and site.is_occupied() and
                    site.coordination() < lattice::max_coordination;
         }
 
-        bool active(Path const& path) const
+        bool is_candidate(Path const& path) const
         {
-            return source_active(path.front()) and path.back().is_vacant();
+            return is_source_candidate(path.front()) and path.back().is_vacant();
         }
 
-        bool allowed(Path const& path) const
+        bool is_rejected(Path const& path) const
         {
-            return active(path) and path.back().coordination() >= 9;
+            return path.back().coordination() < 9;
+        }
+
+        void execute(Path& path, lattice::Lattice& lattice) const
+        {
+            const auto element{ path.front().element() };
+            path.back().set_element(lattice, element);
+            path.front().set_element(lattice, Element::none);
         }
 
         bool supports(Process const& process) const
@@ -75,6 +88,9 @@ namespace
 
         std::string settings() const { return "test path rule"; }
     };
+
+    static_assert(Rule<SiteRule, Site>);
+    static_assert(Rule<PathRule, Path>);
 
     using Rules = EventRules<SiteRule, PathRule>;
     using TestSimulation = RejectionTreeSimulation<Rules>;
@@ -147,16 +163,16 @@ namespace
         {
             Rate site_sum{};
             auto has_processes{ false };
-            if (rules.site.active(site))
+            if (rules.site.is_source_candidate(site) and rules.site.is_candidate(site))
             {
                 add(site_sum, Process{ SiteRule::event, site });
                 has_processes = true;
             }
-            if (rules.path.source_active(site))
+            if (rules.path.is_source_candidate(site))
                 for (auto const* target : lattice.neighbors(site))
                 {
                     auto const path{ Path{ const_cast<Site*>(&site), const_cast<Site*>(target) } };
-                    if (rules.path.active(path))
+                    if (rules.path.is_candidate(path))
                     {
                         add(site_sum, Process{ PathRule::event, path });
                         has_processes = true;
@@ -216,25 +232,29 @@ namespace
         void observe_selected(process::Record const& record) override
         {
             ++selections_;
-            bool allowed{};
+            bool rejected{};
             if (&record.path.front() == &record.path.back())
             {
                 ++site_selections_;
-                allowed = rules_.site.allowed(record.path.front());
-                ut::expect(rules_.site.active(record.path.front()))
-                    << "selected site process was active";
+                ut::expect(rules_.site.is_source_candidate(record.path.front()))
+                    << "selected site has valid source";
+                ut::expect(rules_.site.is_candidate(record.path.front()))
+                    << "selected site is a candidate";
+                rejected = rules_.site.is_rejected(record.path.front());
                 ut::expect(record.process == Process{ SiteRule::event, record.path.front() });
             }
             else
             {
                 ++path_selections_;
-                allowed = rules_.path.allowed(record.path);
-                ut::expect(rules_.path.active(record.path))
-                    << "selected path process was active";
+                ut::expect(rules_.path.is_source_candidate(record.path.front()))
+                    << "selected path has valid source";
+                ut::expect(rules_.path.is_candidate(record.path))
+                    << "selected path is a candidate";
+                rejected = rules_.path.is_rejected(record.path);
                 ut::expect(record.process == Process{ PathRule::event, record.path });
             }
-            ut::expect(ut::eq(record.outcome == process::Outcome::accepted, allowed))
-                << "selected process's rejection result matches rule";
+            ut::expect(ut::eq(record.outcome == process::Outcome::rejected, rejected))
+                << "postselection rejection matches rule";
             if (record.outcome == process::Outcome::rejected)
                 ++rejections_;
         }
@@ -302,6 +322,57 @@ namespace
     }
 
     ut::suite<"kmc.simulation"> simulation_tests = [] {
+        "site and path rules execute lattice transformations"_test = [] {
+            auto setup{ make_setup() };
+            TestSimulation simulation{ setup };
+            auto& lattice{ simulation.mutable_lattice() };
+            SiteRule site_rule;
+            PathRule path_rule;
+
+            auto source_it{ std::ranges::find_if(lattice.sites(), [&](Site const& site) {
+                return site_rule.is_candidate(site);
+            }) };
+            ut::expect(source_it != lattice.sites().end()) << "site candidate exists";
+            if (source_it == lattice.sites().end())
+                return;
+
+            auto const atoms_before{ lattice.number_atoms() };
+            site_rule.execute(*source_it, lattice);
+            ut::expect(source_it->is_vacant()) << "site rule removes selected atom";
+            ut::expect(ut::eq(lattice.number_atoms(), atoms_before - 1));
+
+            Site* source{};
+            Site* destination{};
+            for (auto& site : lattice.sites())
+            {
+                for (auto* neighbor : lattice.neighbors(site))
+                {
+                    Path candidate{ &site, neighbor };
+                    if (path_rule.is_candidate(candidate))
+                    {
+                        source = &site;
+                        destination = neighbor;
+                        break;
+                    }
+                }
+                if (source)
+                    break;
+            }
+
+            ut::expect(source != nullptr) << "path candidate exists";
+            if (not source)
+                return;
+
+            auto const element{ source->element() };
+            auto const atoms_before_move{ lattice.number_atoms() };
+            Path path{ source, destination };
+            path_rule.execute(path, lattice);
+            ut::expect(source->is_vacant()) << "source becomes vacant";
+            ut::expect(destination->element() == element) << "destination receives atom";
+            ut::expect(ut::eq(lattice.number_atoms(), atoms_before_move))
+                << "path execution conserves atom count";
+        };
+
         "no active processes exhausts without selecting an event"_test = [] {
             auto setup{ make_setup() };
             setup.rules.site.enabled = false;

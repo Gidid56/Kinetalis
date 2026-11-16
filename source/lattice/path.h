@@ -25,8 +25,6 @@ public:
     bool is_open() const;
     bool is_same_layer() const;
 
-    void execute_process(Lattice&);
-
     math::Vector<3, Displacement> path_vector(Lattice const&) const;
     std::vector<Position> transition_states(Lattice const&) const;
 

@@ -67,7 +67,6 @@ public:
 
     void insert(Site*, Index);
 
-    void execute_process(Lattice&);
     void update_neighbors(Lattice&, std::int_fast8_t);
 
     physics::quantity::Displacement layer_position(math::Axis) const;

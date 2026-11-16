@@ -23,12 +23,23 @@ namespace studies::dealloying::rules
                 static_cast<unsigned>(max_coordination));
         }
 
-        bool active(lattice::Site const& site) const
+        bool is_source_candidate(lattice::Site const& site) const
         {
             return site.element() == element and site.coordination() <= max_coordination;
         }
 
-        bool allowed(lattice::Site const& site) const { return active(site); }
+        bool is_candidate(lattice::Site const& site) const
+        {
+            return is_source_candidate(site);
+        }
+
+        // No postselection rejection in the dissolution model.
+        bool is_rejected(lattice::Site const&) const { return false; }
+
+        void execute(lattice::Site& site, lattice::Lattice& lattice) const
+        {
+            site.set_element(lattice, kmc::Element::none);
+        }
 
         bool supports(kmc::Process const& process) const
         {
@@ -42,20 +53,28 @@ namespace studies::dealloying::rules
 
         lattice::Coordination max_source_coordination{ 9 }, min_target_coordination{ 2 };
 
-        bool source_active(lattice::Site const& site) const
+        bool is_source_candidate(lattice::Site const& site) const
         {
             return site.is_occupied() and site.coordination() <= max_source_coordination;
         }
 
-        bool active(lattice::Path const& path) const
+        bool is_candidate(lattice::Path const& path) const
         {
-            return source_active(path.front()) and path.back().is_vacant();
+            return is_source_candidate(path.front()) and path.back().is_vacant();
         }
 
-        bool allowed(lattice::Path const& path) const
+        // A selected candidate can still be rejected by the target constraint.
+        bool is_rejected(lattice::Path const& path) const
         {
-            return active(path) and (path.back().coordination() > min_target_coordination or
-                                        path.front().coordination() == 0);
+            return path.back().coordination() <= min_target_coordination and
+                   path.front().coordination() != 0;
+        }
+
+        void execute(lattice::Path& path, lattice::Lattice& lattice) const
+        {
+            const auto element{ path.front().element() };
+            path.back().set_element(lattice, element);
+            path.front().set_element(lattice, kmc::Element::none);
         }
 
         bool supports(kmc::Process const& process) const

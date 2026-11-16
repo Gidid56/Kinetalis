@@ -37,14 +37,6 @@ void Site::insert(Site* neighbor, Index neighbor_index)
     ++max_neighbors_;
 }
 
-void Site::execute_process(Lattice& lattice)
-{
-    if (is_occupied())
-        set_element(lattice, Element::none);
-    else
-        set_element(lattice, Element::Ag);
-}
-
 void Site::update_neighbors(Lattice& lattice, std::int_fast8_t delta)
 {
     for (auto neighbor : lattice.neighbors(*this))
