@@ -22,9 +22,5 @@ namespace output
 	class Composition;
 	class Phases;
     class Surface;
-
-	namespace process
-	{
-        class EventFlux;
-	}
+    class EventFlux;
 }

@@ -29,15 +29,15 @@ void Surface::update(lattice::Site const& site, int change)
     bonds_ += change * (site.vacant_neighbors() - site.coordination());
 }
 
-void Surface::observe_selected(kmc::process::Record const& process)
+void Surface::observe_selected(kmc::event::Record const& process)
 {
-    if (process.outcome != kmc::process::Outcome::accepted)
+    if (process.outcome != kmc::event::Outcome::accepted)
         return;
 
     update(*process.sites()[0], kmc::event::neighbor_change(process.type, true));
 }
 
-void Surface::observe_processed(kmc::process::Record const& process)
+void Surface::observe_processed(kmc::event::Record const& process)
 {
     if (process.type != kmc::event::Type::diffusion)
         return;

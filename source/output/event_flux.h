@@ -1,8 +1,8 @@
 #pragma once
-#include "kmc/process.h"
+#include "kmc/event.h"
 #include "writer.h"
 
-class output::process::EventFlux : public output::Writer
+class output::EventFlux : public output::Writer
 {
 public:
     struct FluxData
@@ -16,7 +16,7 @@ public:
 
     using Writer::Writer;
 
-    void observe_selected(kmc::process::Record const&) override;
+    void observe_selected(kmc::event::Record const&) override;
 
     void capture_init(kmc::Simulation const&) override;
     void capture_snapshot(kmc::Simulation const&) override;

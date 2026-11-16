@@ -10,7 +10,7 @@ using enum file::Type;
 
 using namespace output;
 
-void process::EventFlux::capture_init(kmc::Simulation const& simulation)
+void EventFlux::capture_init(kmc::Simulation const& simulation)
 {
     simulation_ = &simulation;
     last_time_ = simulation.time();
@@ -23,9 +23,9 @@ void process::EventFlux::capture_init(kmc::Simulation const& simulation)
             data_.try_emplace(event);
 }
 
-void process::EventFlux::observe_selected(kmc::process::Record const& record)
+void EventFlux::observe_selected(kmc::event::Record const& record)
 {
-    if (record.outcome != kmc::process::Outcome::accepted)
+    if (record.outcome != kmc::event::Outcome::accepted)
         return;
 
     auto const& simulation{ *simulation_ };
@@ -37,7 +37,7 @@ void process::EventFlux::observe_selected(kmc::process::Record const& record)
     auto const& process_counts{ simulation.process_counts() };
     auto const& process_rates{ simulation.process_rates() };
 
-    for (kmc::process::Key key{ 1 }; key < process_counts.size(); ++key)
+    for (std::size_t key{ 1 }; key < process_counts.size(); ++key)
     {
         auto const count{ process_counts[key] };
 
@@ -52,7 +52,7 @@ void process::EventFlux::observe_selected(kmc::process::Record const& record)
     }
 }
 
-void process::EventFlux::capture_snapshot(kmc::Simulation const&)
+void EventFlux::capture_snapshot(kmc::Simulation const&)
 {
     for (auto& [_, flux] : data_)
         flux.value.reset();
@@ -70,7 +70,7 @@ void process::EventFlux::capture_snapshot(kmc::Simulation const&)
     residence_time_ = {};
 }
 
-std::optional<double> process::EventFlux::relative_flux(kmc::event::Type event) const
+std::optional<double> EventFlux::relative_flux(kmc::event::Type event) const
 {
     auto const iterator{ data_.find(event) };
 
@@ -85,7 +85,7 @@ std::optional<double> process::EventFlux::relative_flux(kmc::event::Type event) 
     return *flux.value / flux.maximum;
 }
 
-void process::EventFlux::write_init(kmc::Simulation const&)
+void EventFlux::write_init(kmc::Simulation const&)
 {
     std::string header{ Writer::default_header };
 
@@ -101,7 +101,7 @@ void process::EventFlux::write_init(kmc::Simulation const&)
     file::write<csv>(writer_path(), header);
 }
 
-void process::EventFlux::write_snapshot(kmc::Simulation const& simulation)
+void EventFlux::write_snapshot(kmc::Simulation const& simulation)
 {
     if (data_.empty() or not data_.begin()->second.value)
         return;

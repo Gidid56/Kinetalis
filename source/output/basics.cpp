@@ -122,9 +122,9 @@ void output::Composition::capture_init(kmc::Simulation const& kmc)
             ++element_counts_[site.element()];
 }
 
-void output::Composition::observe_selected(kmc::process::Record const& record)
+void output::Composition::observe_selected(kmc::event::Record const& record)
 {
-    if (record.outcome != kmc::process::Outcome::accepted)
+    if (record.outcome != kmc::event::Outcome::accepted)
         return;
 
     auto const delta{ kmc::event::solid_change(record.type) };

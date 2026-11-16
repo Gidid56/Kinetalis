@@ -51,7 +51,7 @@ namespace output
             keys_.clear();
         }
 
-        void observe_selected(kmc::process::Record const& record) override
+        void observe_selected(kmc::event::Record const& record) override
         {
             // Observe before event execution, while the local configuration is unchanged.
             auto key{ model_->classify(record.type, record.location(), simulation_->lattice()) };
@@ -59,7 +59,7 @@ namespace output
             keys_[descriptor] = key;
             ++counts_[record.outcome][descriptor];
 
-            if (record.outcome == kmc::process::Outcome::rejected)
+            if (record.outcome == kmc::event::Outcome::rejected)
                 return;
 
             if (last_descriptor_)
@@ -70,14 +70,14 @@ namespace output
 
         void capture_snapshot(kmc::Simulation const& simulation) override
         {
-            auto& active{ counts_[kmc::process::Outcome::active] };
+            auto& active{ counts_[kmc::event::Outcome::active] };
             active.clear();
             auto const& counts{ simulation.process_counts() };
             for (std::size_t i{ 1 }; i < counts.size(); ++i)
             {
                 if (counts[i] == 0)
                     continue;
-                auto key{ static_cast<kmc::process::Key>(i) };
+                auto key{ static_cast<kmc::RateClassKey>(i) };
                 Descriptor descriptor{ model_->descriptor(key) };
                 keys_[descriptor] = key;
                 active[descriptor] += counts[i];
@@ -116,8 +116,8 @@ namespace output
         kmc::Simulation const* simulation_{};
         ModelType* model_{};
         std::optional<Descriptor> last_descriptor_{};
-        std::map<Descriptor, kmc::process::Key> keys_;
-        std::map<kmc::process::Outcome, CountMap> counts_;
+        std::map<Descriptor, kmc::RateClassKey> keys_;
+        std::map<kmc::event::Outcome, CountMap> counts_;
         std::map<Descriptor, CountMap> transitions_;
     };
 }

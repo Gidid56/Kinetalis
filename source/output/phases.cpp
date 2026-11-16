@@ -60,9 +60,9 @@ void Phases::capture_snapshot(kmc::Simulation const& kmc)
     }
 }
 
-void Phases::observe_selected(kmc::process::Record const& process)
+void Phases::observe_selected(kmc::event::Record const& process)
 {
-    if (process.outcome != kmc::process::Outcome::accepted)
+    if (process.outcome != kmc::event::Outcome::accepted)
         return;
 
     const auto& site{ *process.sites()[0] };
@@ -94,7 +94,7 @@ void Phases::observe_selected(kmc::process::Record const& process)
 //		phasesByLayers_[Phase::pristine][site.layer()] += delta;
 //}
 
-void Phases::observe_processed(kmc::process::Record const& process)
+void Phases::observe_processed(kmc::event::Record const& process)
 {
     if (process.type != kmc::event::Type::diffusion)
         return;

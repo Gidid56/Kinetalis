@@ -49,9 +49,9 @@ namespace output
             process_columns_ = {};
         }
 
-        void observe_selected(kmc::process::Record const& record) override
+        void observe_selected(kmc::event::Record const& record) override
         {
-            if (record.outcome != kmc::process::Outcome::accepted)
+            if (record.outcome != kmc::event::Outcome::accepted)
                 return;
 
             auto const& simulation{ *simulation_ };
@@ -74,7 +74,7 @@ namespace output
                 if (counts[i] == 0 or not rates[i].first.is_active())
                     continue;
 
-                auto const key{ static_cast<kmc::process::Key>(i) };
+                auto const key{ static_cast<kmc::RateClassKey>(i) };
                 auto const fraction{ counts[i] * rates[i].second / total };
                 auto& value{ accumulation_.classes[model_->descriptor(key)] };
                 value.activity_fraction += fraction;
@@ -177,7 +177,7 @@ namespace output
                 }
 
                 Accumulation value{};
-                auto const& descriptor{ model_->descriptor(static_cast<kmc::process::Key>(i)) };
+                auto const& descriptor{ model_->descriptor(static_cast<kmc::RateClassKey>(i)) };
                 if (auto it{ last_data_.classes.find(descriptor) };
                     it != last_data_.classes.end())
                     value = it->second;
