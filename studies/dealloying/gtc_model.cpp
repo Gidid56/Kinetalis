@@ -10,7 +10,7 @@ std::vector<Position> studies::dealloying::gtc::transition_states(Cluster<2> con
 {
     //	// TODO: Replace this direct midpoint placeholder with
     //	// the geometric transition-state coordination model.
-    //	return{ *cluster[0].position() + pathVector(lattice) / 2 };
+    //	return{ cluster[0]->position() + pathVector(lattice) / 2 };
 
     /*
 		Temporary dynamic construction of minimal GTC path proposals.
@@ -342,7 +342,7 @@ std::vector<Position> studies::dealloying::gtc::transition_states(Cluster<2> con
         }
 
     for (Position& transition_state : transition_states)
-        transition_state += *cluster[0].position();
+        transition_state += cluster[0]->position();
 
     return transition_states;
 }
