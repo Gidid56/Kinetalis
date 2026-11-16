@@ -64,7 +64,7 @@ void Regime::capture_init(kmc::Simulation const& kmc)
     history_.clear();
 }
 
-void Regime::observe_selected(kmc::process::Record const& process)
+void Regime::observe_selected(kmc::event::Record const& process)
 {
     phases_.observe_selected(process);
 
@@ -75,7 +75,7 @@ void Regime::observe_selected(kmc::process::Record const& process)
         event_flux_.observe_selected(process);
 }
 
-void Regime::observe_processed(kmc::process::Record const& process)
+void Regime::observe_processed(kmc::event::Record const& process)
 {
     phases_.observe_processed(process);
 

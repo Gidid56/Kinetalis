@@ -31,7 +31,7 @@ void viewer::gui::Sample::appendData(kmc::Observer const& observer)
         phasesData = regime->phases().last_data();
     }
 
-    if (auto const* eventFlux{ dynamic_cast<output::process::EventFlux const*>(&observer) })
+    if (auto const* eventFlux{ dynamic_cast<output::EventFlux const*>(&observer) })
     {
         eventFluxData = eventFlux->last_data();
     }

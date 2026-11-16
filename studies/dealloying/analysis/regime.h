@@ -74,8 +74,8 @@ private:
     std::string settings() const override;
 
     void capture_init(kmc::Simulation const&) override;
-    void observe_selected(kmc::process::Record const&) override;
-    void observe_processed(kmc::process::Record const&) override;
+    void observe_selected(kmc::event::Record const&) override;
+    void observe_processed(kmc::event::Record const&) override;
     void capture_snapshot(kmc::Simulation const&) override;
     void capture_final(kmc::Simulation const&) override;
 
@@ -102,7 +102,7 @@ private:
 
     output::Phases phases_;
     output::Surface surface_;
-    output::process::EventFlux event_flux_;
+    output::EventFlux event_flux_;
 
     Condition stop_conditions_{}, marker_conditions_{},
         observer_conditions_{}, reached_conditions_{};

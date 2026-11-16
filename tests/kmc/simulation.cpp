@@ -123,7 +123,7 @@ namespace
 
         std::size_t invalidation_radius() const noexcept override { return radius_; }
 
-        Rate rate(process::Key key) const override
+        Rate rate(RateClassKey key) const override
         {
             auto const& info{ class_info(key) };
             const auto base{ info.event() == event::Type::dissolution ? 0.24_eV : 0.30_eV };
@@ -261,7 +261,7 @@ namespace
             expect_reference_state(dynamic_cast<TestSimulation const&>(simulation), rules_, simulation.step());
         }
 
-        void observe_selected(process::Record const& record) override
+        void observe_selected(event::Record const& record) override
         {
             ++selections_;
             bool rejected{};
@@ -286,15 +286,15 @@ namespace
                 rejected = rules_.cluster.is_rejected(record.location());
                 ut::expect(record.type == ClusterRule::event);
             }
-            ut::expect(ut::eq(record.outcome == process::Outcome::rejected, rejected))
+            ut::expect(ut::eq(record.outcome == event::Outcome::rejected, rejected))
                 << "postselection rejection matches rule";
-            if (record.outcome == process::Outcome::rejected)
+            if (record.outcome == event::Outcome::rejected)
                 ++rejections_;
         }
 
-        void observe_processed(process::Record const& record) override
+        void observe_processed(event::Record const& record) override
         {
-            ut::expect(record.outcome == process::Outcome::accepted);
+            ut::expect(record.outcome == event::Outcome::accepted);
             ++processed_;
             if (record.sites().size() == 1)
                 ++accepted_site_events_;
@@ -341,7 +341,7 @@ namespace
         std::string_view name() const override { return "first-accepted-event"; }
         bool stop_requested() const override { return accepted_; }
 
-        void observe_processed(process::Record const& record) override
+        void observe_processed(event::Record const& record) override
         {
             accepted_ = true;
             source_index_ = record.sites()[0]->index();
@@ -382,7 +382,7 @@ namespace
             auto& first{ lattice.sites().at(0) };
             auto& second{ lattice.sites().at(1) };
 
-            process::Record site_record{ event::Location{ first }, SiteRule::event, false };
+            event::Record site_record{ event::Location{ first }, SiteRule::event, false };
             ut::expect(ut::eq(site_record.sites().size(), std::size_t{ 1 }));
             ut::expect(site_record.sites()[0] == &first);
             ut::expect(site_record.type == SiteRule::event);
@@ -394,7 +394,7 @@ namespace
             ut::expect(site_copy.sites()[0] == &first);
 
             Cluster<2> const cluster{ &first, &second };
-            process::Record cluster_record{ event::Location{ cluster }, ClusterRule::event, false };
+            event::Record cluster_record{ event::Location{ cluster }, ClusterRule::event, false };
             ut::expect(ut::eq(cluster_record.sites().size(), std::size_t{ 2 }));
             ut::expect(cluster_record.sites()[0] == &first);
             ut::expect(cluster_record.sites()[1] == &second);
@@ -558,7 +558,7 @@ namespace
                 {
                     ut::expect(ut::eq(static_cast<std::size_t>(
                         ModelBase::static_key(Descriptor{ rates[i].first.event(), rates[i].first.element(), rates[i].first.coordination() })), i)) << "cached class owns its key";
-                    ut::expect(rates[i].second == simulation.model()->rate(static_cast<process::Key>(i)))
+                    ut::expect(rates[i].second == simulation.model()->rate(static_cast<RateClassKey>(i)))
                         << "cached rate matches model";
                 }
                 else
@@ -621,12 +621,12 @@ namespace
                 .set_resolution({ .min_snapshot_step = 1, .snapshot_scale_factor = 1.0 }) };
             plan.add<studies::dealloying::analysis::SitePopulation<ModelBase>>(root)
                 .set_resolution({ .min_snapshot_step = 1, .snapshot_scale_factor = 1.0 });
-            plan.add<output::process::EventFlux>(root)
+            plan.add<output::EventFlux>(root)
                 .set_resolution({ .min_snapshot_step = 1, .snapshot_scale_factor = 1.0 });
             plan.add<CheckingObserver>(32, setup.rules);
 
             ut::expect(simulation.run(plan) == simulation::Status::analysed);
-            ut::expect(statistics.counts().contains(process::Outcome::accepted))
+            ut::expect(statistics.counts().contains(event::Outcome::accepted))
                 << "descriptor-based statistics record accepted kinetic events";
             ut::expect(not statistics.transitions().empty())
                 << "descriptor-based transitions are recorded";

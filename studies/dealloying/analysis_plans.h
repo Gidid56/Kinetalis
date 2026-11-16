@@ -32,7 +32,7 @@ namespace studies::dealloying::analysis_plans
         plan.add<output::Time>(path);
         plan.add<output::Phases>(path);
         plan.add<output::Surface>(path);
-        plan.add<output::process::EventFlux>(path);
+        plan.add<output::EventFlux>(path);
         plan.add<output::KineticStatistics<models::LinearBondBreaking>>(path).set_resolution(
             { .min_snapshot_step = 1000, .snapshot_scale_factor = 1.2 });
 

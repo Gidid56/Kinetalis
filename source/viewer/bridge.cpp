@@ -88,9 +88,9 @@ void Bridge::publishNeighborhood(lattice::Site const& site) noexcept
         publish(*neighbor);
 }
 
-void Bridge::observe_processed(kmc::process::Record const& record)
+void Bridge::observe_processed(kmc::event::Record const& record)
 {
-    if (record.outcome != kmc::process::Outcome::accepted)
+    if (record.outcome != kmc::event::Outcome::accepted)
         return;
 
     auto const sites{ record.sites() };
