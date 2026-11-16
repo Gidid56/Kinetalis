@@ -86,16 +86,15 @@ namespace output
 
         void write_snapshot(kmc::Simulation const& simulation) override
         {
-            auto info = [&](Descriptor const& descriptor) -> kmc::ClassInfo const& {
-                return model_->class_info(keys_.at(descriptor));
+            auto row = [&](Descriptor const& descriptor) {
+                return model_->class_csv_row(keys_.at(descriptor));
             };
 
             for (auto const& [outcome, counts] : counts_)
             {
-                std::string csv{ kmc::ClassInfo::header };
-                csv += ",count\n";
+                std::string csv{ std::format("{},count\n", model_->class_csv_header()) };
                 for (auto const& [descriptor, count] : counts)
-                    std::format_to(std::back_inserter(csv), "{},{}\n", info(descriptor), count);
+                    std::format_to(std::back_inserter(csv), "{},{}\n", row(descriptor), count);
                 utility::file::write<utility::file::Type::csv>(
                     writer_path() / enum_name(outcome) / snapshot_name(simulation.step()), csv);
             }
@@ -103,11 +102,12 @@ namespace output
             if (transitions_.empty() or not output_transitions_)
                 return;
 
-            std::string csv{ std::format("from,,,,to,,,,\n{0},{0},count\n", kmc::ClassInfo::header) };
+            auto const header{ model_->class_csv_header() };
+            std::string csv{ std::format("from,,,,to,,,,\n{0},{0},count\n", header) };
             for (auto const& [from, destinations] : transitions_)
                 for (auto const& [to, count] : destinations)
                     std::format_to(std::back_inserter(csv), "{},{},{}\n",
-                        info(from), info(to), count);
+                        row(from), row(to), count);
             utility::file::write<utility::file::Type::csv>(
                 writer_path() / "transitions" / snapshot_name(simulation.step()), csv);
         }
