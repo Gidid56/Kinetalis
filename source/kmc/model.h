@@ -24,6 +24,15 @@ namespace kmc
         auto element() const noexcept { return source_element; }
         auto coordination() const noexcept { return source_coordination; }
 
+        std::string label() const
+        {
+            auto text{ std::format("{}_{}_{}", enum_name(type), source_element,
+                static_cast<unsigned>(source_coordination)) };
+            if (not details.empty())
+                text += "_" + details;
+            return text;
+        }
+
         auto operator<=>(ClassInfo const&) const = default;
 
         static constexpr std::string_view header{

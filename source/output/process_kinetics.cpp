@@ -92,7 +92,7 @@ namespace
         {
             auto const& process{ rates[key].first };
             if (process.is_active())
-                std::format_to(std::back_inserter(header), ",{:_}", process);
+                std::format_to(std::back_inserter(header), ",{}", process.label());
             else
                 std::format_to(std::back_inserter(header), ",not_encountered_{}", key);
         }

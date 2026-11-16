@@ -657,7 +657,7 @@ namespace
                 {
                     auto const& process{ rates[key].first };
                     auto const label{ process.is_active()
-                        ? std::format("{:_}", process)
+                        ? process.label()
                         : std::format("not_encountered_{}", key) };
                     ut::expect(lines.front().find("," + label) != std::string::npos)
                         << "activity header includes final key label " << key;
