@@ -16,13 +16,9 @@ namespace kmc
 
         // Models own kinetic equivalence and stable key registration. Key zero
         // is reserved for inactive events; registered keys must never change identity.
-        // Class descriptions are for reporting, not collision detection.
         virtual RateClassKey classify(event::Type, event::Location const&, lattice::Lattice const&) = 0;
         virtual std::size_t number_keys() const noexcept = 0;
         virtual event::Type class_event(RateClassKey) const = 0;
-        virtual std::string class_label(RateClassKey) const = 0;
-        virtual std::string_view class_csv_header() const = 0;
-        virtual std::string class_csv_row(RateClassKey) const = 0;
         virtual Rate rate(RateClassKey) const = 0;
         virtual void refresh_rates() = 0;
 
