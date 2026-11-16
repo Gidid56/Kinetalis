@@ -72,7 +72,7 @@ Energy LinearBondBreaking::lattice_energy_barrier(RateClassKey key) const
 
 Ratio LinearBondBreaking::modulation_ratio(RateClassKey key) const
 {
-    if (modulation_ and descriptor(key) == modulation_->process)
+    if (modulation_ and descriptor(key) == modulation_->descriptor)
         return modulation_->ratio;
     return 1;
 }
@@ -84,8 +84,8 @@ std::string LinearBondBreaking::output_text() const
         constants_.bond_energy, ElectrochemicalInterface::output_text()) };
     if (modulation_)
         result += std::format(
-            "Modulated process = {}_{}_{}\nModulation ratio = {}\n",
-            enum_name(modulation_->process.event), modulation_->process.element,
-            static_cast<unsigned>(modulation_->process.coordination), modulation_->ratio);
+            "Modulated kinetic class = {}_{}_{}\nModulation ratio = {}\n",
+            enum_name(modulation_->descriptor.event), modulation_->descriptor.element,
+            static_cast<unsigned>(modulation_->descriptor.coordination), modulation_->ratio);
     return result;
 }
