@@ -67,11 +67,6 @@ Element LinearBondBreaking::class_element(RateClassKey key) const
     return descriptor(key).element;
 }
 
-lattice::Coordination LinearBondBreaking::class_coordination(RateClassKey key) const
-{
-    return descriptor(key).coordination;
-}
-
 Energy LinearBondBreaking::lattice_energy_barrier(RateClassKey key) const
 {
     return constants_.bond_energy * descriptor(key).coordination;
