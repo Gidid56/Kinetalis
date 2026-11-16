@@ -45,7 +45,6 @@ namespace studies::dealloying::models
 
     protected:
         kmc::Element class_element(kmc::RateClassKey) const override;
-        lattice::Coordination class_coordination(kmc::RateClassKey) const override;
         Energy lattice_energy_barrier(kmc::RateClassKey) const override;
         Ratio modulation_ratio(kmc::RateClassKey) const override;
 
