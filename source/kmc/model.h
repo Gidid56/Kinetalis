@@ -47,7 +47,7 @@ namespace kmc
         virtual ~Model() = default;
 
         // A model registers its own descriptor and returns its stable class key.
-        // Key zero is reserved for an empty process slot.
+        // Key zero is reserved for an inactive event slot.
         virtual RateClassKey classify(event::Type, event::Location const&, lattice::Lattice const&) = 0;
         virtual std::size_t number_keys() const noexcept = 0;
         virtual ClassInfo const& class_info(RateClassKey) const = 0;
