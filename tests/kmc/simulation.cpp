@@ -1,14 +1,19 @@
 #include "kmc/simulation.h"
 #include "kmc/analysis_plan.h"
 #include "lattice/lattice.h"
+#include "output/process_kinetics.h"
+#include "output/event_flux.h"
 
 #include <algorithm>
 #include <array>
 #include <bit>
 #include <boost/ut.hpp>
 #include <cmath>
+#include <chrono>
 #include <cstddef>
 #include <cstdint>
+#include <filesystem>
+#include <fstream>
 #include <memory>
 #include <numeric>
 #include <ranges>
@@ -568,6 +573,77 @@ namespace
             ut::expect(ut::throws<std::logic_error>([&] {
                 TestSimulation simulation{ setup };
             })) << "dissolution Au and Ag must not reuse the same static key";
+        };
+
+        "kinetics and flux CSV columns stay stable as new process classes appear"_test = [] {
+            auto setup{ make_setup() };
+            TestSimulation simulation{ setup };
+            const auto root{ std::filesystem::temp_directory_path() /
+                std::format("kinetalis-csv-test-{}",
+                    std::chrono::steady_clock::now().time_since_epoch().count()) };
+
+            struct Cleanup
+            {
+                std::filesystem::path path;
+                ~Cleanup() { std::error_code error; std::filesystem::remove_all(path, error); }
+            } cleanup{ root };
+
+            AnalysisPlan plan;
+            plan.add<output::process::Kinetics>(root)
+                .set_resolution({ .min_snapshot_step = 1, .snapshot_scale_factor = 1.0 });
+            plan.add<output::process::EventFlux>(root)
+                .set_resolution({ .min_snapshot_step = 1, .snapshot_scale_factor = 1.0 });
+            plan.add<CheckingObserver>(32, setup.rules);
+
+            ut::expect(simulation.run(plan) == simulation::Status::analysed);
+
+            auto read_csv = [&](std::string const& filename, std::size_t expected_columns) {
+                auto path{ root / filename };
+                path += ".csv";
+                std::ifstream stream{ path };
+                ut::expect(stream.is_open()) << filename << " exists";
+                std::vector<std::string> lines;
+                for (std::string line; std::getline(stream, line);)
+                {
+                    ut::expect(ut::eq(static_cast<std::size_t>(
+                        std::ranges::count(line, ',')) + 1, expected_columns))
+                        << filename << " has a fixed number of CSV columns";
+                    lines.push_back(std::move(line));
+                }
+                ut::expect(ut::that % lines.size() > 2) << filename << " has snapshot rows";
+                return lines;
+            };
+
+            constexpr auto site_columns{
+                std::size(lattice::active_elements) * lattice::max_coordination + 2
+            };
+            for (auto const* file : {
+                "process_kinetics/site_count",
+                "process_kinetics/population",
+                "process_kinetics/time_weighted_site_count",
+                "process_kinetics/time_weighted_population"
+            })
+                read_csv(file, site_columns);
+
+            auto const& rates{ simulation.process_rates() };
+            auto lines{ read_csv("process_kinetics/activity", rates.size() + 1) };
+            read_csv("process_kinetics/time_weighted_activity", rates.size() + 1);
+
+            if (not lines.empty())
+                for (std::size_t key{ 1 }; key < rates.size(); ++key)
+                {
+                    auto const& process{ rates[key].first };
+                    auto const label{ process.is_active()
+                        ? std::format("{:_}", process)
+                        : std::format("not_encountered_{}", key) };
+                    ut::expect(lines.front().find("," + label) != std::string::npos)
+                        << "activity header includes final key label " << key;
+                }
+
+            // Three declared event types plus step and time, two fields per type.
+            auto const flux_columns{ std::size_t{ 2 } +
+                2 * (enum_values<event::Type>().size() - 1) };
+            read_csv("event_flux", flux_columns);
         };
 
         "no active processes exhausts without selecting an event"_test = [] {
