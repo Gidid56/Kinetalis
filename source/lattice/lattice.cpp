@@ -216,9 +216,13 @@ void Lattice::construct_neighbor_list()
         if (sites_.size() >= std::numeric_limits<Index>::max())
             throw std::overflow_error{ "Increase lattice::Index size." };
 
-        Cells const cells{ sites_, max_path_length_ };
+        // Cell bins must cover the same tolerance-expanded cutoff as the
+        // distance filter. Otherwise neighbors on rotated cell boundaries
+        // can fall two bins apart through floating-point roundoff.
+        const auto cutoff{ max_path_length_ + epsilon::length };
+        Cells const cells{ sites_, cutoff };
 
-        auto const distance_squared{ math::square(max_path_length_ + epsilon::length) };
+        auto const distance_squared{ math::square(cutoff) };
 
         for (auto& site : sites_ | std::views::take(site_count))
         {
