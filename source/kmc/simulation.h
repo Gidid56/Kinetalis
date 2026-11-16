@@ -80,7 +80,9 @@ private:
     void update_affected_rates(process::Record const&);
 
     void update(lattice::Site&);
-    void update_neighbors(lattice::Site&);
+
+    template <class Visitor>
+    void visit_neighbor_tree(lattice::Site&, std::size_t radius, Visitor&);
 
     std::unique_ptr<rate_tree::Interface> rate_tree_;
     Rates site_rates_;

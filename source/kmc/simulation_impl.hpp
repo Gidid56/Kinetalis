@@ -78,11 +78,20 @@ namespace kmc
     void RejectionTreeSimulation<Rules>::update_affected_rates(process::Record const& process)
     {
         block_updates_.clear();
+
+        // Model dependencies can extend beyond the nearest neighbors;
+        // the current event rules require at least one neighbor shell.
+        const auto radius{ std::max<std::size_t>(1, model_->invalidation_radius()) };
+
+        // First invalidate the entire region, then recalculate. Recomputing a
+        // source clears its dirty flag, so overlapping walks are inexpensive.
+        auto invalidate = [](lattice::Site& site) { site.set_dirty(true); };
         for (auto* site : process.sites())
-        {
-            update_neighbors(*site);
-            update(*site);
-        }
+            visit_neighbor_tree(*site, radius, invalidate);
+
+        auto recalculate = [this](lattice::Site& site) { update(site); };
+        for (auto* site : process.sites())
+            visit_neighbor_tree(*site, radius, recalculate);
 
         if (block_updates_.size() == 1)
         {
@@ -134,10 +143,18 @@ namespace kmc
     }
 
     template <class Rules>
-    void RejectionTreeSimulation<Rules>::update_neighbors(lattice::Site& site)
+    template <class Visitor>
+    void RejectionTreeSimulation<Rules>::visit_neighbor_tree(
+        lattice::Site& site, std::size_t radius, Visitor& visit)
     {
-        for (auto neighbor : lattice_.neighbors(site))
-            update(*neighbor);
+        // Enumerate graph walks without allocating a visited-site container.
+        // Sites may recur because the lattice graph contains cycles; the
+        // two-pass dirty flag mechanism prevents duplicate rate calculations.
+        if (radius > 0)
+            for (auto* neighbor : lattice_.neighbors(site))
+                visit_neighbor_tree(*neighbor, radius - 1, visit);
+
+        visit(site);
     }
 
     template <class Rules>
