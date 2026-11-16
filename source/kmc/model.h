@@ -2,9 +2,7 @@
 #include "event.h"
 #include "types.h"
 
-#include <compare>
 #include <cstddef>
-#include <format>
 #include <string>
 #include <string_view>
 
@@ -16,8 +14,9 @@ namespace kmc
         static constexpr Temperature standard_temperature{ 25_degC };
         virtual ~Model() = default;
 
-        // A model registers its own descriptor and returns its stable class key.
-        // Key zero is reserved for an inactive event slot.
+        // Models own kinetic equivalence and stable key registration. Key zero
+        // is reserved for inactive events; registered keys must never change identity.
+        // Class descriptions are for reporting, not collision detection.
         virtual RateClassKey classify(event::Type, event::Location const&, lattice::Lattice const&) = 0;
         virtual std::size_t number_keys() const noexcept = 0;
         virtual event::Type class_event(RateClassKey) const = 0;
