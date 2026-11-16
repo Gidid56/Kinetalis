@@ -70,7 +70,8 @@ private:
     void set_process(lattice::Index, process::Key);
 
     Rate rate_sum(lattice::Site&);
-    process::Record select_random_process();
+    event::Location select_random_location();
+    process::Record evaluate_event(event::Location) const;
 
     void initialize_rates();
     void update_all_rates();

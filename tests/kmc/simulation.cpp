@@ -267,7 +267,7 @@ namespace
                 ut::expect(rules_.site.is_candidate(record.location()))
                     << "selected site is a candidate";
                 rejected = rules_.site.is_rejected(record.location());
-                ut::expect(record.process == Process{ SiteRule::event, record.location() });
+                ut::expect(record.type == SiteRule::event);
             }
             else
             {
@@ -277,7 +277,7 @@ namespace
                 ut::expect(rules_.cluster.is_candidate(record.location()))
                     << "selected cluster is a candidate";
                 rejected = rules_.cluster.is_rejected(record.location());
-                ut::expect(record.process == Process{ ClusterRule::event, record.location() });
+                ut::expect(record.type == ClusterRule::event);
             }
             ut::expect(ut::eq(record.outcome == process::Outcome::rejected, rejected))
                 << "postselection rejection matches rule";
@@ -378,6 +378,7 @@ namespace
             process::Record site_record{ event::Location{ first }, SiteRule::event, false };
             ut::expect(ut::eq(site_record.sites().size(), std::size_t{ 1 }));
             ut::expect(site_record.sites()[0] == &first);
+            ut::expect(site_record.type == SiteRule::event);
 
             auto site_copy{ site_record };
             ut::expect(site_copy.sites().data() != site_record.sites().data())
@@ -390,6 +391,7 @@ namespace
             ut::expect(ut::eq(cluster_record.sites().size(), std::size_t{ 2 }));
             ut::expect(cluster_record.sites()[0] == &first);
             ut::expect(cluster_record.sites()[1] == &second);
+            ut::expect(cluster_record.type == ClusterRule::event);
             ut::expect(std::ranges::equal(cluster_record.sites(), cluster));
 
             auto cluster_copy{ cluster_record };

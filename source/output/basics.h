@@ -122,7 +122,7 @@ private:
     std::string settings() const override;
 
     void capture_init(kmc::Simulation const&) override;
-    void observe_processed(kmc::process::Record const&) override;
+    void observe_selected(kmc::process::Record const&) override;
     void write_init(kmc::Simulation const&) override;
     void write_snapshot(kmc::Simulation const&) override;
 

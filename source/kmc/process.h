@@ -46,27 +46,6 @@ public:
 
     static constexpr std::string_view header{ "key:event,key:element,key:coordination" };
 
-    constexpr int solid_change() const
-    {
-        switch (event_)
-        {
-            case kmc::event::Type::dissolution: return -1;
-            case kmc::event::Type::deposition: return 1;
-            default: return 0;
-        }
-    }
-
-    constexpr int neighbor_change(bool front) const
-    {
-        switch (event_)
-        {
-            case kmc::event::Type::dissolution: return front ? -1 : 0;
-            case kmc::event::Type::deposition: return front ? 1 : 0;
-            case kmc::event::Type::diffusion: return front ? -1 : 1;
-            default: return 0;
-        }
-    }
-
 private:
     event::Type event_{};
     Element element_{};
@@ -83,8 +62,8 @@ public:
     event::Location const& location() const noexcept { return location_; }
     auto sites() const noexcept { return location_.sites(); }
 
+    event::Type type;
     Outcome outcome;
-    Process process;
 
 private:
     event::Location location_;

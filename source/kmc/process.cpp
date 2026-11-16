@@ -107,7 +107,7 @@ std::formatter<Process>::format(Process const& process, std::format_context& con
 }
 
 process::Record::Record(event::Location location, event::Type event, bool rejected)
-    : outcome{ rejected ? Outcome::rejected : Outcome::accepted },
-      process{ event, location },
+    : type{ event },
+      outcome{ rejected ? Outcome::rejected : Outcome::accepted },
       location_{ std::move(location) }
 { }

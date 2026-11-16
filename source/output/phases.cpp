@@ -66,8 +66,8 @@ void Phases::observe_selected(kmc::process::Record const& process)
         return;
 
     const auto& site{ *process.sites()[0] };
-    auto solid_change{ process.process.solid_change() };
-    auto neighbor_change{ process.process.neighbor_change(true) };
+    auto solid_change{ kmc::event::solid_change(process.type) };
+    auto neighbor_change{ kmc::event::neighbor_change(process.type, true) };
 
     counts_[Phase::pore] -= solid_change;
     counts_[Phase::solid] += solid_change;
@@ -96,11 +96,11 @@ void Phases::observe_selected(kmc::process::Record const& process)
 
 void Phases::observe_processed(kmc::process::Record const& process)
 {
-    if (process.process.event() != kmc::event::Type::diffusion)
+    if (process.type != kmc::event::Type::diffusion)
         return;
 
     const auto& site{ *process.sites()[1] };
-    auto neighbor_change{ process.process.neighbor_change(false) };
+    auto neighbor_change{ kmc::event::neighbor_change(process.type, false) };
 
     correlation_[Phase::pore] -= 2 * neighbor_change * site.vacant_neighbors();
     correlation_[Phase::solid] += 2 * neighbor_change * site.coordination();

@@ -12,7 +12,7 @@ using namespace studies::dealloying::analysis;
 
 void Electrochemistry::observe_processed(kmc::process::Record const& record)
 {
-    auto const event{ record.process.event() };
+    auto const event{ record.type };
 
     if (auto const charge{ charge_transfer(event) }; charge != 0)
     {

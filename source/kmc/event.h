@@ -18,6 +18,29 @@ namespace kmc::event
         deposition,
     };
 
+    // Lattice occupancy changes associated with an event type. These are
+    // independent of the kinetic Process representation.
+    constexpr int solid_change(Type type) noexcept
+    {
+        switch (type)
+        {
+            case Type::dissolution: return -1;
+            case Type::deposition: return 1;
+            default: return 0;
+        }
+    }
+
+    constexpr int neighbor_change(Type type, bool source) noexcept
+    {
+        switch (type)
+        {
+            case Type::dissolution: return source ? -1 : 0;
+            case Type::deposition: return source ? 1 : 0;
+            case Type::diffusion: return source ? -1 : 1;
+            default: return 0;
+        }
+    }
+
     class Location
     {
     public:

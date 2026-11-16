@@ -51,7 +51,7 @@ namespace kmc
             else
                 time_ += escape_time;
 
-            auto process{ select_random_process() };
+            auto process{ evaluate_event(select_random_location()) };
 
             analysis_plan.observe_selected(process);
 
@@ -115,7 +115,7 @@ namespace kmc
     }
 
     template <class Rules>
-    process::Record RejectionTreeSimulation<Rules>::select_random_process()
+    event::Location RejectionTreeSimulation<Rules>::select_random_location()
     {
         auto selected_rate{ physics::ensure_non_negative(rate_tree_->rate_sum() * rng_.probability()) };
 
@@ -139,17 +139,22 @@ namespace kmc
                 throw std::runtime_error{ "tree not updated correctly" };
 
         if (process_index == site.process_index())
-        {
-            const event::Location location{ site };
-            return process::Record{ location, decltype(rules_.site)::event,
-                rules_.site.is_rejected(location) };
-        }
+            return event::Location{ site };
 
-        const event::Location location{ lattice::Cluster<2>{
+        return event::Location{ lattice::Cluster<2>{
             &site, lattice_.neighbor(process_index - site_index - 1) } };
+    }
 
-        return process::Record{ location, decltype(rules_.cluster)::event,
-            rules_.cluster.is_rejected(location) };
+    template <class Rules>
+    process::Record RejectionTreeSimulation<Rules>::evaluate_event(event::Location location) const
+    {
+        if (location.sites().size() == 1)
+            return { location, decltype(rules_.site)::event, rules_.site.is_rejected(location) };
+
+        if (location.sites().size() == 2)
+            return { location, decltype(rules_.cluster)::event, rules_.cluster.is_rejected(location) };
+
+        throw std::logic_error{ "Unsupported event location size." };
     }
 
     template <class Rules>
