@@ -22,7 +22,7 @@ namespace viewer::gui
 
         using KineticModel = studies::dealloying::models::LinearBondBreaking;
         using KineticCounts = output::KineticStatistics<KineticModel>::CountMap;
-        std::map<kmc::event::Outcome, KineticCounts> processCounts;
+        std::map<kmc::event::Outcome, KineticCounts> kineticCounts;
 
         void setData(kmc::Observer const&);
     };
