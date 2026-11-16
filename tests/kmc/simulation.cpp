@@ -5,7 +5,7 @@
 #include "lattice/lattice.h"
 #include "output/kinetic_activity.h"
 #include "output/kinetic_statistics.h"
-#include "dealloying/analysis/site_population.h"
+#include "output/site_population.h"
 #include "output/event_flux.h"
 
 #include <algorithm>
@@ -622,7 +622,7 @@ namespace
             auto& statistics{ plan.add<output::KineticStatistics<ModelBase>>(root)
                 .set_output_transitions(true)
                 .set_resolution({ .min_snapshot_step = 1, .snapshot_scale_factor = 1.0 }) };
-            plan.add<studies::dealloying::analysis::SitePopulation<ModelBase>>(root)
+            plan.add<output::SitePopulation<ModelBase>>(root)
                 .set_resolution({ .min_snapshot_step = 1, .snapshot_scale_factor = 1.0 });
             plan.add<output::EventFlux>(root)
                 .set_resolution({ .min_snapshot_step = 1, .snapshot_scale_factor = 1.0 });
