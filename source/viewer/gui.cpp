@@ -79,7 +79,7 @@ void GUI::draw()
     if (viewer_.lattice())
         showLatticeStats(*viewer_.lattice());
 
-    showProcessStatistics();
+    showKineticStatistics();
     showDealloyingAnalysis();
 
     ImGui::End();
@@ -400,26 +400,26 @@ void GUI::showDealloyingAnalysis()
     }
 }
 
-void GUI::showProcessStatistics()
+void GUI::showKineticStatistics()
 {
-    if (CollapsingHeader("Process stats", opened))
+    if (CollapsingHeader("Kinetic statistics", opened))
     {
         constexpr auto maxCoord{ 11 };
         constexpr auto width{ 0.25 };
 
-        for (auto&& [state, processes] : status_.processCounts)
+        for (auto&& [state, classes] : status_.kineticCounts)
         {
-            auto title{ std::format("{} processes", enum_name(state)) };
+            auto title{ std::format("{} classes", enum_name(state)) };
 
             if (TreeNode(title.c_str()))
             {
                 std::map<Element, std::vector<int>> countMap;
 
-                for (auto& [process, count] : processes)
+                for (auto& [descriptor, count] : classes)
                 {
-                    if (not countMap.contains(process.element))
-                        countMap[process.element].resize(1 + maxCoord);
-                    countMap[process.element][process.coordination] += (int)count;
+                    if (not countMap.contains(descriptor.element))
+                        countMap[descriptor.element].resize(1 + maxCoord);
+                    countMap[descriptor.element][descriptor.coordination] += (int)count;
                 }
 
                 if (ImPlot::BeginPlot(title.c_str(), {}))
