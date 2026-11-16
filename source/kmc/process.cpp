@@ -16,18 +16,11 @@ Process::Process(event::Type event, Element element, Coordination coordination)
       coordination_{ coordination }
 { }
 
-Process::Process(event::Type event, Site const& site)
+Process::Process(event::Type event, event::Location const& location)
     : event_{ event },
-      element_{ site.element() },
-      coordination_{ site.coordination() },
-      element_neighbors_{ site.element_neighbors() }
-{ }
-
-Process::Process(event::Type event, Cluster<2> const& cluster)
-    : event_{ event },
-      element_{ cluster[0]->element() },
-      coordination_{ cluster[0]->coordination() },
-      element_neighbors_{ cluster[0]->element_neighbors() }
+      element_{ location.source().element() },
+      coordination_{ location.source().coordination() },
+      element_neighbors_{ location.source().element_neighbors() }
 { }
 
 static_assert(
@@ -113,16 +106,8 @@ std::formatter<Process>::format(Process const& process, std::format_context& con
     return out;
 }
 
-process::Record::Record(Site& site, event::Type event, bool rejected)
+process::Record::Record(event::Location location, event::Type event, bool rejected)
     : outcome{ rejected ? Outcome::rejected : Outcome::accepted },
-      process{ event, site },
-      cluster_{ &site, nullptr },
-      size_{ 1 }
-{ }
-
-process::Record::Record(Cluster<2> const& event_cluster, event::Type event, bool rejected)
-    : outcome{ rejected ? Outcome::rejected : Outcome::accepted },
-      process{ event, event_cluster },
-      cluster_{ event_cluster },
-      size_{ 2 }
+      process{ event, location },
+      location_{ std::move(location) }
 { }

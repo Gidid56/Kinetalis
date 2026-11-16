@@ -29,8 +29,7 @@ class kmc::Process
 public:
     explicit Process() = default;
     explicit Process(event::Type, Element, lattice::Coordination);
-    explicit Process(event::Type, lattice::Site const&);
-    explicit Process(event::Type, lattice::Cluster<2> const&);
+    explicit Process(event::Type, event::Location const&);
 
     process::Key static_key() const;
     static std::size_t number_keys();
@@ -79,37 +78,17 @@ private:
 class kmc::process::Record
 {
 public:
-    Record(lattice::Site&, event::Type, bool rejected);
-    Record(lattice::Cluster<2> const&, event::Type, bool rejected);
+    Record(event::Location, event::Type, bool rejected);
 
-    // The returned view refers to storage owned by this record.
-    // It must not outlive the record.
-    std::span<lattice::Site* const> sites() const noexcept
-    {
-        return { cluster_.data(), size_ };
-    }
-
-    // Retain the current two-site rule interface.
-    lattice::Cluster<2>& cluster() noexcept
-    {
-        assert(size_ == 2);
-        return cluster_;
-    }
-
-    lattice::Cluster<2> const& cluster() const noexcept
-    {
-        assert(size_ == 2);
-        return cluster_;
-    }
+    event::Location const& location() const noexcept { return location_; }
+    auto sites() const noexcept { return location_.sites(); }
 
     Outcome outcome;
     Process process;
 
 private:
-    lattice::Cluster<2> cluster_{};
-    std::uint8_t size_{};
+    event::Location location_;
 };
-
 
 template <>
 struct std::hash<kmc::Process>

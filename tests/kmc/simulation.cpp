@@ -38,8 +38,9 @@ namespace
         bool allow_gold{ false };
         std::vector<std::size_t>* source_checks{};
 
-        bool is_source_candidate(Site const& site) const
+        bool is_source_candidate(event::Location const& location) const
         {
+            auto const& site{ location.source() };
             if (source_checks and site.index() < source_checks->size())
                 ++(*source_checks)[site.index()];
 
@@ -48,12 +49,20 @@ namespace
                    site.coordination() < lattice::max_coordination;
         }
 
-        bool is_candidate(Site const& site) const { return is_source_candidate(site); }
-        bool is_rejected(Site const& site) const { return site.coordination() > 8; }
-
-        void execute(Site& site, lattice::Lattice& lattice) const
+        bool is_candidate(event::Location const& location) const
         {
-            site.set_element(lattice, Element::none);
+            return location.sites().size() == 1 and is_source_candidate(location);
+        }
+
+        bool is_rejected(event::Location const& location) const
+        {
+            return location.source().coordination() > 8;
+        }
+
+        void execute(event::Location const& location, lattice::Lattice& lattice) const
+        {
+            assert(location.sites().size() == 1);
+            location.source().set_element(lattice, Element::none);
         }
 
 
@@ -65,35 +74,39 @@ namespace
         static constexpr event::Type event{ event::Type::diffusion };
         bool enabled{ true };
 
-        bool is_source_candidate(Site const& site) const
+        bool is_source_candidate(event::Location const& location) const
         {
+            auto const& site{ location.source() };
             return enabled and site.is_occupied() and
                    site.coordination() < lattice::max_coordination;
         }
 
-        bool is_candidate(Cluster<2> const& cluster) const
+        bool is_candidate(event::Location const& location) const
         {
-            return is_source_candidate(*cluster[0]) and cluster[1]->is_vacant();
+            return location.sites().size() == 2 and is_source_candidate(location) and
+                   location.sites()[1]->is_vacant();
         }
 
-        bool is_rejected(Cluster<2> const& cluster) const
+        bool is_rejected(event::Location const& location) const
         {
-            return cluster[1]->coordination() < 9;
+            assert(location.sites().size() == 2);
+            return location.sites()[1]->coordination() < 9;
         }
 
-        void execute(Cluster<2>& cluster, lattice::Lattice& lattice) const
+        void execute(event::Location const& location, lattice::Lattice& lattice) const
         {
-            const auto element{ cluster[0]->element() };
-            cluster[1]->set_element(lattice, element);
-            cluster[0]->set_element(lattice, Element::none);
+            assert(location.sites().size() == 2);
+            const auto element{ location.source().element() };
+            location.sites()[1]->set_element(lattice, element);
+            location.source().set_element(lattice, Element::none);
         }
 
 
         std::string settings() const { return "test cluster rule"; }
     };
 
-    static_assert(event::Rule<SiteRule, Site>);
-    static_assert(event::Rule<ClusterRule, Cluster<2>>);
+    static_assert(event::Rule<SiteRule>);
+    static_assert(event::Rule<ClusterRule>);
 
     using Rules = event::Rules<SiteRule, ClusterRule>;
     using TestSimulation = RejectionTreeSimulation<Rules>;
@@ -173,18 +186,20 @@ namespace
         {
             Rate site_sum{};
             auto has_processes{ false };
-            if (rules.site.is_source_candidate(site) and rules.site.is_candidate(site))
+            const event::Location source{ const_cast<Site&>(site) };
+            if (rules.site.is_source_candidate(source) and rules.site.is_candidate(source))
             {
-                add(site_sum, Process{ SiteRule::event, site });
+                add(site_sum, Process{ SiteRule::event, source });
                 has_processes = true;
             }
-            if (rules.cluster.is_source_candidate(site))
+            if (rules.cluster.is_source_candidate(source))
                 for (auto const* target : lattice.neighbors(site))
                 {
-                    auto const cluster{ Cluster<2>{ const_cast<Site*>(&site), const_cast<Site*>(target) } };
-                    if (rules.cluster.is_candidate(cluster))
+                    const event::Location location{ Cluster<2>{
+                        const_cast<Site*>(&site), const_cast<Site*>(target) } };
+                    if (rules.cluster.is_candidate(location))
                     {
-                        add(site_sum, Process{ ClusterRule::event, cluster });
+                        add(site_sum, Process{ ClusterRule::event, location });
                         has_processes = true;
                     }
                 }
@@ -243,25 +258,26 @@ namespace
         {
             ++selections_;
             bool rejected{};
+            const event::Location source{ record.location().source() };
             if (record.sites().size() == 1)
             {
                 ++site_selections_;
-                ut::expect(rules_.site.is_source_candidate(*record.sites()[0]))
+                ut::expect(rules_.site.is_source_candidate(source))
                     << "selected site has valid source";
-                ut::expect(rules_.site.is_candidate(*record.sites()[0]))
+                ut::expect(rules_.site.is_candidate(record.location()))
                     << "selected site is a candidate";
-                rejected = rules_.site.is_rejected(*record.sites()[0]);
-                ut::expect(record.process == Process{ SiteRule::event, *record.sites()[0] });
+                rejected = rules_.site.is_rejected(record.location());
+                ut::expect(record.process == Process{ SiteRule::event, record.location() });
             }
             else
             {
                 ++cluster_selections_;
-                ut::expect(rules_.cluster.is_source_candidate(*record.sites()[0]))
+                ut::expect(rules_.cluster.is_source_candidate(source))
                     << "selected cluster has valid source";
-                ut::expect(rules_.cluster.is_candidate(record.cluster()))
+                ut::expect(rules_.cluster.is_candidate(record.location()))
                     << "selected cluster is a candidate";
-                rejected = rules_.cluster.is_rejected(record.cluster());
-                ut::expect(record.process == Process{ ClusterRule::event, record.cluster() });
+                rejected = rules_.cluster.is_rejected(record.location());
+                ut::expect(record.process == Process{ ClusterRule::event, record.location() });
             }
             ut::expect(ut::eq(record.outcome == process::Outcome::rejected, rejected))
                 << "postselection rejection matches rule";
@@ -359,7 +375,7 @@ namespace
             auto& first{ lattice.sites().at(0) };
             auto& second{ lattice.sites().at(1) };
 
-            process::Record site_record{ first, SiteRule::event, false };
+            process::Record site_record{ event::Location{ first }, SiteRule::event, false };
             ut::expect(ut::eq(site_record.sites().size(), std::size_t{ 1 }));
             ut::expect(site_record.sites()[0] == &first);
 
@@ -370,16 +386,16 @@ namespace
             ut::expect(site_copy.sites()[0] == &first);
 
             Cluster<2> const cluster{ &first, &second };
-            process::Record cluster_record{ cluster, ClusterRule::event, false };
+            process::Record cluster_record{ event::Location{ cluster }, ClusterRule::event, false };
             ut::expect(ut::eq(cluster_record.sites().size(), std::size_t{ 2 }));
             ut::expect(cluster_record.sites()[0] == &first);
             ut::expect(cluster_record.sites()[1] == &second);
-            ut::expect(cluster_record.cluster() == cluster);
+            ut::expect(std::ranges::equal(cluster_record.sites(), cluster));
 
             auto cluster_copy{ cluster_record };
             ut::expect(cluster_copy.sites().data() != cluster_record.sites().data())
                 << "a cluster record copy owns its own pointer storage";
-            ut::expect(cluster_copy.cluster() == cluster);
+            ut::expect(std::ranges::equal(cluster_copy.sites(), cluster));
 
             auto cluster_move{ std::move(cluster_copy) };
             ut::expect(ut::eq(cluster_move.sites().size(), std::size_t{ 2 }));
@@ -396,14 +412,14 @@ namespace
             ClusterRule cluster_rule;
 
             auto source_it{ std::ranges::find_if(lattice.sites(), [&](Site const& site) {
-                return site_rule.is_candidate(site);
+                return site_rule.is_candidate(event::Location{ const_cast<Site&>(site) });
             }) };
             ut::expect(source_it != lattice.sites().end()) << "site candidate exists";
             if (source_it == lattice.sites().end())
                 return;
 
             auto const atoms_before{ lattice.number_atoms() };
-            site_rule.execute(*source_it, lattice);
+            site_rule.execute(event::Location{ *source_it }, lattice);
             ut::expect(source_it->is_vacant()) << "site rule removes selected atom";
             ut::expect(ut::eq(lattice.number_atoms(), atoms_before - 1));
 
@@ -414,7 +430,7 @@ namespace
                 for (auto* neighbor : lattice.neighbors(site))
                 {
                     Cluster<2> candidate{ &site, neighbor };
-                    if (cluster_rule.is_candidate(candidate))
+                    if (cluster_rule.is_candidate(event::Location{ candidate }))
                     {
                         source = &site;
                         destination = neighbor;
@@ -432,7 +448,7 @@ namespace
             auto const element{ source->element() };
             auto const atoms_before_move{ lattice.number_atoms() };
             Cluster<2> cluster{ source, destination };
-            cluster_rule.execute(cluster, lattice);
+            cluster_rule.execute(event::Location{ cluster }, lattice);
             ut::expect(source->is_vacant()) << "source becomes vacant";
             ut::expect(destination->element() == element) << "destination receives atom";
             ut::expect(ut::eq(lattice.number_atoms(), atoms_before_move))

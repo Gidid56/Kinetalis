@@ -23,22 +23,24 @@ namespace studies::dealloying::events
                 static_cast<unsigned>(max_coordination));
         }
 
-        bool is_source_candidate(lattice::Site const& site) const
+        bool is_source_candidate(kmc::event::Location const& location) const
         {
-            return site.element() == element and site.coordination() <= max_coordination;
+            auto const& source{ location.source() };
+            return source.element() == element and source.coordination() <= max_coordination;
         }
 
-        bool is_candidate(lattice::Site const& site) const
+        bool is_candidate(kmc::event::Location const& location) const
         {
-            return is_source_candidate(site);
+            return location.sites().size() == 1 and is_source_candidate(location);
         }
 
         // No postselection rejection in the dissolution model.
-        bool is_rejected(lattice::Site const&) const { return false; }
+        bool is_rejected(kmc::event::Location const&) const { return false; }
 
-        void execute(lattice::Site& site, lattice::Lattice& lattice) const
+        void execute(kmc::event::Location const& location, lattice::Lattice& lattice) const
         {
-            site.set_element(lattice, kmc::Element::none);
+            assert(location.sites().size() == 1);
+            location.source().set_element(lattice, kmc::Element::none);
         }
 
     };
@@ -49,28 +51,32 @@ namespace studies::dealloying::events
 
         lattice::Coordination max_source_coordination{ 9 }, min_target_coordination{ 2 };
 
-        bool is_source_candidate(lattice::Site const& site) const
+        bool is_source_candidate(kmc::event::Location const& location) const
         {
-            return site.is_occupied() and site.coordination() <= max_source_coordination;
+            auto const& source{ location.source() };
+            return source.is_occupied() and source.coordination() <= max_source_coordination;
         }
 
-        bool is_candidate(lattice::Cluster<2> const& cluster) const
+        bool is_candidate(kmc::event::Location const& location) const
         {
-            return is_source_candidate(*cluster[0]) and cluster[1]->is_vacant();
+            return location.sites().size() == 2 and is_source_candidate(location) and
+                   location.sites()[1]->is_vacant();
         }
 
         // A selected candidate can still be rejected by the target constraint.
-        bool is_rejected(lattice::Cluster<2> const& cluster) const
+        bool is_rejected(kmc::event::Location const& location) const
         {
-            return cluster[1]->coordination() <= min_target_coordination and
-                   cluster[0]->coordination() != 0;
+            assert(location.sites().size() == 2);
+            return location.sites()[1]->coordination() <= min_target_coordination and
+                   location.source().coordination() != 0;
         }
 
-        void execute(lattice::Cluster<2>& cluster, lattice::Lattice& lattice) const
+        void execute(kmc::event::Location const& location, lattice::Lattice& lattice) const
         {
-            const auto element{ cluster[0]->element() };
-            cluster[1]->set_element(lattice, element);
-            cluster[0]->set_element(lattice, kmc::Element::none);
+            assert(location.sites().size() == 2);
+            const auto element{ location.source().element() };
+            location.sites()[1]->set_element(lattice, element);
+            location.source().set_element(lattice, kmc::Element::none);
         }
 
 

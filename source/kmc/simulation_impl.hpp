@@ -60,9 +60,9 @@ namespace kmc
                 ++step_;
 
                 if (process.sites().size() == 1)
-                    rules_.site.execute(*process.sites()[0], lattice_);
+                    rules_.site.execute(process.location(), lattice_);
                 else
-                    rules_.cluster.execute(process.cluster(), lattice_);
+                    rules_.cluster.execute(process.location(), lattice_);
 
                 update_affected_rates(process);
 
@@ -139,13 +139,17 @@ namespace kmc
                 throw std::runtime_error{ "tree not updated correctly" };
 
         if (process_index == site.process_index())
-            return process::Record{ site, decltype(rules_.site)::event, rules_.site.is_rejected(site) };
+        {
+            const event::Location location{ site };
+            return process::Record{ location, decltype(rules_.site)::event,
+                rules_.site.is_rejected(location) };
+        }
 
-        lattice::Cluster<2> const cluster{ &site,
-            lattice_.neighbor(process_index - site_index - 1) };
+        const event::Location location{ lattice::Cluster<2>{
+            &site, lattice_.neighbor(process_index - site_index - 1) } };
 
-        return process::Record{ cluster, decltype(rules_.cluster)::event,
-            rules_.cluster.is_rejected(cluster) };
+        return process::Record{ location, decltype(rules_.cluster)::event,
+            rules_.cluster.is_rejected(location) };
     }
 
     template <class Rules>
@@ -192,8 +196,9 @@ namespace kmc
     template <class Rules>
     Rate RejectionTreeSimulation<Rules>::rate_sum(lattice::Site& site)
     {
-        const bool site_source_candidate{ rules_.site.is_source_candidate(site) };
-        const bool cluster_source_candidate{ rules_.cluster.is_source_candidate(site) };
+        const event::Location source{ site };
+        const bool site_source_candidate{ rules_.site.is_source_candidate(source) };
+        const bool cluster_source_candidate{ rules_.cluster.is_source_candidate(source) };
 
         lattice::Index index{ site.process_index() };
 
@@ -225,8 +230,8 @@ namespace kmc
             sum += process_rates_.at(key).second;
         };
 
-        if (site_source_candidate and rules_.site.is_candidate(site))
-            add_process(process_key(Process{ decltype(rules_.site)::event, site }));
+        if (site_source_candidate and rules_.site.is_candidate(source))
+            add_process(process_key(Process{ decltype(rules_.site)::event, source }));
         else
             clear_site();
 
@@ -239,9 +244,9 @@ namespace kmc
 
         for (auto neighbor : lattice_.neighbors(site))
         {
-            lattice::Cluster<2> const cluster{ &site, neighbor };
-            if (rules_.cluster.is_candidate(cluster))
-                add_process(process_key(Process{ decltype(rules_.cluster)::event, cluster }));
+            const event::Location location{ lattice::Cluster<2>{ &site, neighbor } };
+            if (rules_.cluster.is_candidate(location))
+                add_process(process_key(Process{ decltype(rules_.cluster)::event, location }));
             else
                 add_process({});
         }
