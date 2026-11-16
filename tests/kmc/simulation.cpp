@@ -30,6 +30,7 @@ namespace
     {
         static constexpr event::Type event{ event::Type::dissolution };
         bool enabled{ true };
+        bool allow_gold{ false };
         std::vector<std::size_t>* source_checks{};
 
         bool is_source_candidate(Site const& site) const
@@ -37,7 +38,8 @@ namespace
             if (source_checks and site.index() < source_checks->size())
                 ++(*source_checks)[site.index()];
 
-            return enabled and site.element() == Element::Ag and
+            return enabled and (site.element() == Element::Ag or
+                   (allow_gold and site.element() == Element::Au)) and
                    site.coordination() < lattice::max_coordination;
         }
 
@@ -542,6 +544,30 @@ namespace
             ut::expect(silver != gold);
             ut::expect(ut::eq(silver.static_key(), gold.static_key()))
                 << "current dissolution key intentionally omits element";
+        };
+
+        "distinct process classes sharing a static key are rejected"_test = [] {
+            auto setup{ make_setup() };
+            setup.rules.site.allow_gold = true;
+            setup.rules.cluster.enabled = false;
+
+            // Give both Au and Ag source sites coordination 11, forcing
+            // their dissolution processes to collide on the same static key.
+            auto make_lattice{ setup.make_lattice };
+            setup.make_lattice = [make_lattice] {
+                auto lattice{ make_lattice() };
+                lattice.set_fill_function([](lattice::Lattice& lattice, simulation::Engine&) {
+                    auto& vacancy{ lattice.sites().at(0) };
+                    auto* silver{ *lattice.neighbors(vacancy).begin() };
+                    vacancy.set_element(lattice, Element::none);
+                    silver->set_element(lattice, Element::Ag);
+                });
+                return lattice;
+            };
+
+            ut::expect(ut::throws<std::logic_error>([&] {
+                TestSimulation simulation{ setup };
+            })) << "dissolution Au and Ag must not reuse the same static key";
         };
 
         "no active processes exhausts without selecting an event"_test = [] {
