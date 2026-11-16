@@ -125,9 +125,9 @@ namespace
 
         Rate rate(RateClassKey key) const override
         {
-            auto const& info{ class_info(key) };
-            const auto base{ info.event() == event::Type::dissolution ? 0.24_eV : 0.30_eV };
-            const auto barrier{ base + 0.005_eV * static_cast<double>(info.coordination()) };
+            auto const& kinetic_class{ descriptor(key) };
+            const auto base{ kinetic_class.event == event::Type::dissolution ? 0.24_eV : 0.30_eV };
+            const auto barrier{ base + 0.005_eV * static_cast<double>(kinetic_class.coordination) };
             return physics::equations::kinetics::tst_rate(Ratio{ 1 }, barrier, temperature());
         }
 
@@ -179,11 +179,12 @@ namespace
             ut::expect(ut::that % key < rates.size()) << "class key within table, step " << step;
             if (key == 0 or key >= rates.size())
                 return;
-            auto const expected{ ClassInfo{ descriptor.event, descriptor.element,
-                descriptor.coordination, {} } };
-            ut::expect(rates[key].first == expected)
-                << "stored kinetic class matches rebuilt class, step " << step;
-            ut::expect(ut::eq(rates[key].second.value(), simulation.model()->rate(key).value()))
+            auto const* model{ dynamic_cast<ModelBase const*>(simulation.model().get()) };
+            ut::expect(model != nullptr and model->descriptor(key) == descriptor)
+                << "model descriptor matches rebuilt class, step " << step;
+            ut::expect(simulation.class_initialized(key))
+                << "kinetic class initialized, step " << step;
+            ut::expect(ut::eq(rates[key].value(), simulation.model()->rate(key).value()))
                 << "cached model rate, step " << step;
             ++expected_counts[key];
             site_sum += simulation.model()->rate(key);
@@ -536,10 +537,11 @@ namespace
             auto const& counts{ simulation.class_counts() };
             ut::expect(ut::eq(rates.size(), simulation.model()->number_keys()));
             ut::expect(ut::eq(counts.size(), rates.size()));
-            for (auto const& [kinetic_class, rate] : rates)
+            for (std::size_t index{}; index < rates.size(); ++index)
             {
-                ut::expect(not kinetic_class.is_active()) << "unused class stays uninitialized";
-                ut::expect(rate == Rate{}) << "unused class has zero rate";
+                ut::expect(not simulation.class_initialized(static_cast<RateClassKey>(index)))
+                    << "unused class stays uninitialized";
+                ut::expect(rates[index] == Rate{}) << "unused class has zero rate";
             }
         };
 
@@ -548,22 +550,23 @@ namespace
             TestSimulation simulation{ setup };
             auto const& rates{ simulation.class_rates() };
 
-            auto const initialized{ std::ranges::count_if(rates, [](auto const& entry) {
-                return entry.first.is_active();
-            }) };
-            ut::expect(ut::that % initialized > 0) << "at least one class created";
-
+            std::size_t initialized{};
+            auto const* model{ dynamic_cast<ModelBase const*>(simulation.model().get()) };
+            ut::expect(model != nullptr);
             for (std::size_t i{}; i < rates.size(); ++i)
-                if (rates[i].first.is_active())
+                if (simulation.class_initialized(static_cast<RateClassKey>(i)))
                 {
+                    ++initialized;
                     ut::expect(ut::eq(static_cast<std::size_t>(
-                        ModelBase::static_key(Descriptor{ rates[i].first.event(), rates[i].first.element(), rates[i].first.coordination() })), i)) << "cached class owns its key";
-                    ut::expect(rates[i].second == simulation.model()->rate(static_cast<RateClassKey>(i)))
+                        ModelBase::static_key(model->descriptor(static_cast<RateClassKey>(i)))), i))
+                        << "cached class owns its key";
+                    ut::expect(rates[i] == simulation.model()->rate(static_cast<RateClassKey>(i)))
                         << "cached rate matches model";
                 }
                 else
-                    ut::expect(rates[i].second == Rate{})
+                    ut::expect(rates[i] == Rate{})
                         << "uninitialized rate remains zero";
+            ut::expect(ut::that % initialized > 0) << "at least one class created";
 
             expect_reference_state(simulation, setup.rules, 0);
         };
@@ -666,9 +669,8 @@ namespace
             if (not lines.empty())
                 for (std::size_t key{ 1 }; key < rates.size(); ++key)
                 {
-                    auto const& kinetic_class{ rates[key].first };
-                    auto const label{ kinetic_class.is_active()
-                        ? kinetic_class.label()
+                    auto const label{ simulation.class_initialized(static_cast<RateClassKey>(key))
+                        ? simulation.model()->class_label(static_cast<RateClassKey>(key))
                         : std::format("not_encountered_{}", key) };
                     ut::expect(lines.front().find("," + label) != std::string::npos)
                         << "activity header includes final key label " << key;
