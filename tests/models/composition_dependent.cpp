@@ -67,6 +67,13 @@ namespace
 
             ut::expect(first_composition != second_composition)
                 << "composition descriptor distinguishes changed neighbor chemistry";
+            ut::expect(composition.class_event(first_composition) == kmc::event::Type::diffusion);
+            ut::expect(composition.class_label(first_composition) !=
+                composition.class_label(second_composition))
+                << "model-owned class labels distinguish neighbor chemistry";
+            ut::expect(composition.class_csv_row(first_composition) !=
+                composition.class_csv_row(second_composition))
+                << "CSV metadata preserves model-specific descriptors";
             ut::expect(first_linear == second_linear)
                 << "coordination descriptor ignores irrelevant neighbor chemistry";
             ut::expect(ut::eq(composition.number_keys(), std::size_t{ 3 }));
