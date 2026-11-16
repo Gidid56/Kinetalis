@@ -192,12 +192,12 @@ namespace
         for (auto const& site : lattice.sites())
         {
             Rate site_sum{};
-            auto has_processes{ false };
+            auto has_events{ false };
             const event::Location source{ const_cast<Site&>(site) };
             if (rules.site.is_source_candidate(site) and rules.site.is_candidate(source))
             {
                 add(site_sum, Descriptor{ SiteRule::event, source.source().element(), source.source().coordination() });
-                has_processes = true;
+                has_events = true;
             }
             if (rules.cluster.is_source_candidate(site))
                 for (auto const* target : lattice.neighbors(site))
@@ -207,12 +207,12 @@ namespace
                     if (rules.cluster.is_candidate(location))
                     {
                         add(site_sum, Descriptor{ ClusterRule::event, location.source().element(), location.source().coordination() });
-                        has_processes = true;
+                        has_events = true;
                     }
                 }
 
             block_sums[site.index() / block_size] += site_sum;
-            ut::expect(ut::eq(site.is_active(), has_processes))
+            ut::expect(ut::eq(site.is_active(), has_events))
                 << "site active flag, step " << step << ", site " << site.index();
             ut::expect(not site.is_dirty())
                 << "site clean after rate update, step " << step << ", site " << site.index();
@@ -226,7 +226,7 @@ namespace
         ut::expect(ut::eq(counts.size(), expected_counts.size()));
         for (std::size_t key{}; key < counts.size(); ++key)
             ut::expect(ut::eq(counts[key], expected_counts[key]))
-                << "kinetic_class count key " << key << ", step " << step;
+                << "kinetic class count key " << key << ", step " << step;
 
         auto const& tree{ *simulation.rate_tree() };
         for (std::size_t i{}; i < block_sums.size(); ++i)
@@ -364,7 +364,7 @@ namespace
             << "rejection fraction after resume";
         ut::expect(ut::eq(a.rate_tree()->rate_sum().value(), b.rate_tree()->rate_sum().value()))
             << "total rate after resume";
-        ut::expect(a.class_counts() == b.class_counts()) << "kinetic_class counts after resume";
+        ut::expect(a.class_counts() == b.class_counts()) << "kinetic class counts after resume";
         for (std::size_t i{}; i < a.lattice().sites().size(); ++i)
         {
             ut::expect(a.lattice().sites()[i].element() ==
@@ -375,7 +375,7 @@ namespace
     }
 
     ut::suite<"kmc.simulation"> simulation_tests = [] {
-        "kinetic_class records own their site-pointer storage"_test = [] {
+        "event records own their site-pointer storage"_test = [] {
             auto setup{ make_setup() };
             TestSimulation simulation{ setup };
             auto& lattice{ simulation.mutable_lattice() };
@@ -526,7 +526,7 @@ namespace
             ut::expect(ut::eq(checker.last_step(), simulation.step()));
         };
 
-        "static kinetic_class cache is lazy and only contains encountered classes"_test = [] {
+        "static kinetic-class cache is lazy and only contains encountered classes"_test = [] {
             auto setup{ make_setup() };
             setup.rules.site.enabled = false;
             setup.rules.cluster.enabled = false;
@@ -543,7 +543,7 @@ namespace
             }
         };
 
-        "static kinetic_class cache initializes encountered events only once"_test = [] {
+        "static kinetic-class cache initializes encountered events only once"_test = [] {
             auto setup{ make_setup() };
             TestSimulation simulation{ setup };
             auto const& rates{ simulation.class_rates() };
@@ -568,7 +568,7 @@ namespace
             expect_reference_state(simulation, setup.rules, 0);
         };
 
-        "static kinetic_class keys must distinguish different kinetic classes"_test = [] {
+        "static kinetic-class keys must distinguish different kinetic classes"_test = [] {
             Descriptor const silver{ event::Type::dissolution, Element::Ag, 5 };
             Descriptor const gold{ event::Type::dissolution, Element::Au, 5 };
             ut::expect(silver != gold);
@@ -576,7 +576,7 @@ namespace
                 << "current dissolution key intentionally omits element";
         };
 
-        "distinct kinetic_class classes sharing a static key are rejected"_test = [] {
+        "distinct kinetic classes sharing a static key are rejected"_test = [] {
             auto setup{ make_setup() };
             setup.rules.site.allow_gold = true;
             setup.rules.cluster.enabled = false;
@@ -600,7 +600,7 @@ namespace
             })) << "dissolution Au and Ag must not reuse the same static key";
         };
 
-        "kinetics and flux CSV columns stay stable as new kinetic_class classes appear"_test = [] {
+        "kinetics and flux CSV columns stay stable as new kinetic classes appear"_test = [] {
             auto setup{ make_setup() };
             TestSimulation simulation{ setup };
             const auto root{ std::filesystem::temp_directory_path() /
@@ -693,7 +693,7 @@ namespace
             ut::expect(ut::eq(simulation.rejection_fraction(), 0.0));
         };
 
-        "initial static kinetic_class tables and block rates match a full reconstruction"_test = [] {
+        "initial static kinetic-class tables and block rates match a full reconstruction"_test = [] {
             auto setup{ make_setup() };
             TestSimulation simulation{ setup };
             expect_reference_state(simulation, setup.rules, 0);
