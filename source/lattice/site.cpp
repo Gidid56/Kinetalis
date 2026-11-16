@@ -11,6 +11,8 @@ void Site::set_element(Lattice& lattice, Element element)
     if (element_ == element)
         return;
 
+    set_pristine(false);
+
     if (element_ != Element::none)
         update_neighbors(lattice, -1);
 
@@ -44,7 +46,6 @@ void Site::update_neighbors(Lattice& lattice, std::int_fast8_t delta)
             if (element_ != Element::none)
                 neighbor->element_neighbors_[elementKey(element_)] += delta;
     }
-    set_pristine(false);
 }
 
 physics::quantity::Displacement Site::layer_position(math::Axis axis) const
