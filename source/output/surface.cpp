@@ -34,7 +34,7 @@ void Surface::observe_selected(kmc::process::Record const& process)
     if (process.outcome != kmc::process::Outcome::accepted)
         return;
 
-    update(process.path.front(), process.process.neighbor_change(true));
+    update(*process.cluster[0], process.process.neighbor_change(true));
 }
 
 void Surface::observe_processed(kmc::process::Record const& process)
@@ -42,7 +42,7 @@ void Surface::observe_processed(kmc::process::Record const& process)
     if (process.process.event() != kmc::event::Type::diffusion)
         return;
 
-    update(process.path.back(), process.process.neighbor_change(false));
+    update(*process.cluster[1], process.process.neighbor_change(false));
 
     if constexpr (utility::is_debug)
         if (sites_ != lattice_->surface_atoms())

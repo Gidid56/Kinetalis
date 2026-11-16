@@ -53,7 +53,7 @@ namespace kmc
             {
                 ++step_;
 
-                if (&*process.cluster[0] == &*process.cluster[1])
+                if (process.cluster[0] == process.cluster[1])
                     rules_.site.execute(*process.cluster[0], lattice_);
                 else
                     rules_.cluster.execute(process.cluster, lattice_);
@@ -179,24 +179,24 @@ namespace kmc
     Rate RejectionTreeSimulation<Rules>::rate_sum(lattice::Site& site)
     {
         const bool site_source_candidate{ rules_.site.is_source_candidate(site) };
-        const bool path_source_candidate{ rules_.cluster.is_source_candidate(site) };
+        const bool cluster_source_candidate{ rules_.cluster.is_source_candidate(site) };
 
         lattice::Index index{ site.process_index() };
 
         auto clear_site = [&] {
             set_process(index++, {});
         };
-        auto clear_paths = [&] {
+        auto clear_clusters = [&] {
             for (std::size_t i{}; i < site.max_neighbors(); ++i)
                 set_process(index++, {});
         };
 
-        if (not site_source_candidate and not path_source_candidate)
+        if (not site_source_candidate and not cluster_source_candidate)
         {
             if (site.is_active())
             {
                 clear_site();
-                clear_paths();
+                clear_clusters();
                 site.set_active(false);
             }
             return {};
@@ -216,9 +216,9 @@ namespace kmc
         else
             clear_site();
 
-        if (not path_source_candidate)
+        if (not cluster_source_candidate)
         {
-            clear_paths();
+            clear_clusters();
             site.set_active(has_processes);
             return sum;
         }

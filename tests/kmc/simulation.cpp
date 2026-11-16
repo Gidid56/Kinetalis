@@ -24,7 +24,7 @@ namespace
 {
     using namespace kmc;
     using lattice::Site;
-    using lattice::Path;
+    using lattice::Cluster;
 
     struct SiteRule
     {
@@ -53,7 +53,7 @@ namespace
         std::string settings() const { return "test site rule"; }
     };
 
-    struct PathRule
+    struct ClusterRule
     {
         static constexpr event::Type event{ event::Type::diffusion };
         bool enabled{ true };
@@ -64,21 +64,21 @@ namespace
                    site.coordination() < lattice::max_coordination;
         }
 
-        bool is_candidate(Path const& path) const
+        bool is_candidate(Cluster<2> const& cluster) const
         {
-            return is_source_candidate(path.front()) and path.back().is_vacant();
+            return is_source_candidate(*cluster[0]) and cluster[1]->is_vacant();
         }
 
-        bool is_rejected(Path const& path) const
+        bool is_rejected(Cluster<2> const& cluster) const
         {
-            return path.back().coordination() < 9;
+            return *cluster[1].coordination() < 9;
         }
 
-        void execute(Path& path, lattice::Lattice& lattice) const
+        void execute(Cluster<2>& cluster, lattice::Lattice& lattice) const
         {
-            const auto element{ path.front().element() };
-            path.back().set_element(lattice, element);
-            path.front().set_element(lattice, Element::none);
+            const auto element{ *cluster[0].element() };
+            *cluster[1].set_element(lattice, element);
+            *cluster[0].set_element(lattice, Element::none);
         }
 
         bool supports(Process const& process) const
@@ -86,13 +86,13 @@ namespace
             return process.event() == event and process.element() != Element::none;
         }
 
-        std::string settings() const { return "test path rule"; }
+        std::string settings() const { return "test cluster rule"; }
     };
 
-    static_assert(Rule<SiteRule, Site>);
-    static_assert(Rule<PathRule, Path>);
+    static_assert(event::Rule<SiteRule, Site>);
+    static_assert(event::Rule<ClusterRule, Cluster<2>>);
 
-    using Rules = EventRules<SiteRule, PathRule>;
+    using Rules = event::Rules<SiteRule, ClusterRule>;
     using TestSimulation = RejectionTreeSimulation<Rules>;
 
     class TestModel final : public Model
@@ -168,13 +168,13 @@ namespace
                 add(site_sum, Process{ SiteRule::event, site });
                 has_processes = true;
             }
-            if (rules.path.is_source_candidate(site))
+            if (rules.cluster.is_source_candidate(site))
                 for (auto const* target : lattice.neighbors(site))
                 {
-                    auto const path{ Path{ const_cast<Site*>(&site), const_cast<Site*>(target) } };
-                    if (rules.path.is_candidate(path))
+                    auto const cluster{ Cluster<2>{ const_cast<Site*>(&site), const_cast<Site*>(target) } };
+                    if (rules.cluster.is_candidate(cluster))
                     {
-                        add(site_sum, Process{ PathRule::event, path });
+                        add(site_sum, Process{ ClusterRule::event, cluster });
                         has_processes = true;
                     }
                 }
@@ -233,25 +233,25 @@ namespace
         {
             ++selections_;
             bool rejected{};
-            if (&record.path.front() == &record.path.back())
+            if (&*record.cluster[0] == &*record.cluster[1])
             {
                 ++site_selections_;
-                ut::expect(rules_.site.is_source_candidate(record.path.front()))
+                ut::expect(rules_.site.is_source_candidate(*record.cluster[0]))
                     << "selected site has valid source";
-                ut::expect(rules_.site.is_candidate(record.path.front()))
+                ut::expect(rules_.site.is_candidate(*record.cluster[0]))
                     << "selected site is a candidate";
-                rejected = rules_.site.is_rejected(record.path.front());
-                ut::expect(record.process == Process{ SiteRule::event, record.path.front() });
+                rejected = rules_.site.is_rejected(*record.cluster[0]);
+                ut::expect(record.process == Process{ SiteRule::event, *record.cluster[0] });
             }
             else
             {
-                ++path_selections_;
-                ut::expect(rules_.path.is_source_candidate(record.path.front()))
-                    << "selected path has valid source";
-                ut::expect(rules_.path.is_candidate(record.path))
-                    << "selected path is a candidate";
-                rejected = rules_.path.is_rejected(record.path);
-                ut::expect(record.process == Process{ PathRule::event, record.path });
+                ++cluster_selections_;
+                ut::expect(rules_.cluster.is_source_candidate(*record.cluster[0]))
+                    << "selected cluster has valid source";
+                ut::expect(rules_.cluster.is_candidate(record.cluster))
+                    << "selected cluster is a candidate";
+                rejected = rules_.cluster.is_rejected(record.cluster);
+                ut::expect(record.process == Process{ ClusterRule::event, record.cluster });
             }
             ut::expect(ut::eq(record.outcome == process::Outcome::rejected, rejected))
                 << "postselection rejection matches rule";
@@ -263,10 +263,10 @@ namespace
         {
             ut::expect(record.outcome == process::Outcome::accepted);
             ++processed_;
-            if (&record.path.front() == &record.path.back())
+            if (&*record.cluster[0] == &*record.cluster[1])
                 ++accepted_site_events_;
             else
-                ++accepted_path_events_;
+                ++accepted_cluster_events_;
         }
 
         void take_snapshot(Simulation const& simulation) override
@@ -286,8 +286,8 @@ namespace
         std::size_t processed_count() const { return processed_; }
         std::size_t site_selections() const { return site_selections_; }
         std::size_t accepted_site_events() const { return accepted_site_events_; }
-        std::size_t accepted_path_events() const { return accepted_path_events_; }
-        std::size_t path_selections() const { return path_selections_; }
+        std::size_t accepted_cluster_events() const { return accepted_cluster_events_; }
+        std::size_t cluster_selections() const { return cluster_selections_; }
 
     private:
         Step target_{};
@@ -297,9 +297,9 @@ namespace
         std::size_t rejections_{};
         std::size_t processed_{};
         std::size_t site_selections_{};
-        std::size_t path_selections_{};
+        std::size_t cluster_selections_{};
         std::size_t accepted_site_events_{};
-        std::size_t accepted_path_events_{};
+        std::size_t accepted_cluster_events_{};
     };
 
     void expect_same_state(TestSimulation const& a, TestSimulation const& b)
@@ -322,12 +322,12 @@ namespace
     }
 
     ut::suite<"kmc.simulation"> simulation_tests = [] {
-        "site and path rules execute lattice transformations"_test = [] {
+        "site and cluster rules execute lattice transformations"_test = [] {
             auto setup{ make_setup() };
             TestSimulation simulation{ setup };
             auto& lattice{ simulation.mutable_lattice() };
             SiteRule site_rule;
-            PathRule path_rule;
+            ClusterRule cluster_rule;
 
             auto source_it{ std::ranges::find_if(lattice.sites(), [&](Site const& site) {
                 return site_rule.is_candidate(site);
@@ -347,8 +347,8 @@ namespace
             {
                 for (auto* neighbor : lattice.neighbors(site))
                 {
-                    Path candidate{ &site, neighbor };
-                    if (path_rule.is_candidate(candidate))
+                    Cluster<2> candidate{ &site, neighbor };
+                    if (cluster_rule.is_candidate(candidate))
                     {
                         source = &site;
                         destination = neighbor;
@@ -359,24 +359,24 @@ namespace
                     break;
             }
 
-            ut::expect(source != nullptr) << "path candidate exists";
+            ut::expect(source != nullptr) << "cluster candidate exists";
             if (not source)
                 return;
 
             auto const element{ source->element() };
             auto const atoms_before_move{ lattice.number_atoms() };
-            Path path{ source, destination };
-            path_rule.execute(path, lattice);
+            Cluster<2> cluster{ source, destination };
+            cluster_rule.execute(cluster, lattice);
             ut::expect(source->is_vacant()) << "source becomes vacant";
             ut::expect(destination->element() == element) << "destination receives atom";
             ut::expect(ut::eq(lattice.number_atoms(), atoms_before_move))
-                << "path execution conserves atom count";
+                << "cluster execution conserves atom count";
         };
 
         "no active processes exhausts without selecting an event"_test = [] {
             auto setup{ make_setup() };
             setup.rules.site.enabled = false;
-            setup.rules.path.enabled = false;
+            setup.rules.cluster.enabled = false;
             TestSimulation simulation{ setup };
             expect_reference_state(simulation, setup.rules, 0);
             ut::expect(ut::eq(simulation.rate_tree()->rate_sum().value(), 0.0));
@@ -407,11 +407,11 @@ namespace
             ut::expect(ut::eq(checker.selected_count(),
                 checker.processed_count() + checker.rejected_count()));
             ut::expect(ut::that % checker.site_selections() > 0) << "site processes selected";
-            ut::expect(ut::that % checker.path_selections() > 0) << "path processes selected";
+            ut::expect(ut::that % checker.cluster_selections() > 0) << "cluster processes selected";
             ut::expect(ut::that % checker.rejected_count() > 0) << "rejection path exercised";
             ut::expect(ut::that % checker.accepted_site_events() > 0)
                 << "site update path exercised";
-            ut::expect(ut::that % checker.accepted_path_events() > 0)
+            ut::expect(ut::that % checker.accepted_cluster_events() > 0)
                 << "diffusion update path exercised";
         };
 

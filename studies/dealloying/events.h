@@ -3,7 +3,6 @@
 #include "kmc/event.h"
 #include "kmc/process.h"
 #include "kmc/setup.h"
-#include "lattice/path.h"
 #include "lattice/site.h"
 
 namespace studies::dealloying::events
@@ -59,23 +58,23 @@ namespace studies::dealloying::events
             return site.is_occupied() and site.coordination() <= max_source_coordination;
         }
 
-        bool is_candidate(lattice::Path const& path) const
+        bool is_candidate(lattice::Cluster<2> const& cluster) const
         {
-            return is_source_candidate(path.front()) and path.back().is_vacant();
+            return is_source_candidate(*cluster[0]) and *cluster[1].is_vacant();
         }
 
         // A selected candidate can still be rejected by the target constraint.
-        bool is_rejected(lattice::Path const& path) const
+        bool is_rejected(lattice::Cluster<2> const& cluster) const
         {
-            return path.back().coordination() <= min_target_coordination and
-                   path.front().coordination() != 0;
+            return *cluster[1].coordination() <= min_target_coordination and
+                   *cluster[0].coordination() != 0;
         }
 
-        void execute(lattice::Path& path, lattice::Lattice& lattice) const
+        void execute(lattice::Cluster<2>& cluster, lattice::Lattice& lattice) const
         {
-            const auto element{ path.front().element() };
-            path.back().set_element(lattice, element);
-            path.front().set_element(lattice, kmc::Element::none);
+            const auto element{ *cluster[0].element() };
+            *cluster[1].set_element(lattice, element);
+            *cluster[0].set_element(lattice, kmc::Element::none);
         }
 
         bool supports(kmc::Process const& process) const
@@ -96,7 +95,7 @@ namespace studies::dealloying::events
 
 namespace studies::dealloying
 {
-    using Rules = kmc::event::Rules<rules::Dissolution, rules::Diffusion>;
+    using Rules = kmc::event::Rules<events::Dissolution, events::Diffusion>;
     using Setup = kmc::Setup<Rules>;
     using Campaign = batch::Campaign<Rules>;
 }

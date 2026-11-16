@@ -94,21 +94,21 @@ void Bridge::observe_processed(kmc::process::Record const& record)
     if (record.outcome != kmc::process::Outcome::accepted)
         return;
 
-    if (&record.path.front() == &record.path.back())
+    if (&*record.cluster[0] == &*record.cluster[1])
     {
-        auto& site{ record.path.front() };
+        auto& site{ *record.cluster[0] };
 
         publish(site);
         publishNeighborhood(site);
     }
     else
     {
-        auto& path{ record.path };
+        auto& cluster{ record.cluster };
 
-        swapHighlight(path.front().index(), path.back().index());
+        swapHighlight(*cluster[0].index(), *cluster[1].index());
 
-        publishNeighborhood(path.front());
-        publishNeighborhood(path.back());
+        publishNeighborhood(*cluster[0]);
+        publishNeighborhood(*cluster[1]);
     }
 }
 
