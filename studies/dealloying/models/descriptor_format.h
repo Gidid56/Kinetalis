@@ -3,6 +3,12 @@
 #include "linear_bond_breaking.h"
 #include "output/descriptor_format.h"
 
+#include <format>
+#include <iterator>
+#include <ranges>
+#include <string>
+#include <string_view>
+
 namespace studies::dealloying::models::formatting
 {
     inline constexpr std::string_view csv_header{
