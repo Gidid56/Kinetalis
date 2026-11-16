@@ -37,8 +37,10 @@ namespace lattice
 
     using Coord = math::Vector<4, std::int16_t>;
 
-    class Path;
-    using Paths = std::vector<Path>;
+    // Ordered, non-owning sites participating in an event; site 0 is the source.
+    template <std::size_t N>
+    requires (N > 0)
+    using Cluster = std::array<Site*, N>;
 
     using Coordination = std::uint8_t;
     // Implemented for static performance optimizations,

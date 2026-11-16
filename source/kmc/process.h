@@ -1,6 +1,5 @@
 #pragma once
 #include "event.h"
-#include "lattice/path.h"
 #include "lattice/types.h"
 
 /*
@@ -27,7 +26,7 @@ public:
     explicit Process() = default;
     explicit Process(event::Type, Element, lattice::Coordination);
     explicit Process(event::Type, lattice::Site const&);
-    explicit Process(event::Type, lattice::Path const&);
+    explicit Process(event::Type, lattice::Cluster<2> const&);
 
     process::Key static_key() const;
     static std::size_t number_keys();
@@ -77,11 +76,11 @@ class kmc::process::Record
 {
 public:
     Record(lattice::Site&, event::Type, bool rejected);
-    Record(lattice::Path const&, event::Type, bool rejected);
+    Record(lattice::Cluster<2> const&, event::Type, bool rejected);
 
     Outcome outcome;
     Process process;
-    lattice::Path path;
+    lattice::Cluster<2> cluster;
 };
 
 

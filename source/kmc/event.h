@@ -1,11 +1,12 @@
 #pragma once
-#include "lattice/path.h"
+#include "lattice/site.h"
 #include "types.h"
 
 #include <concepts>
 #include <cstdint>
 #include <format>
 #include <string>
+#include <type_traits>
 
 namespace kmc::event
 {
@@ -18,7 +19,13 @@ namespace kmc::event
     };
 
     template <class T>
-    concept Location = std::same_as<T, lattice::Site> or std::same_as<T, lattice::Path>;
+    struct IsCluster : std::false_type { };
+
+    template <std::size_t N>
+    struct IsCluster<lattice::Cluster<N>> : std::true_type { };
+
+    template <class T>
+    concept Location = std::same_as<T, lattice::Site> or IsCluster<T>::value;
 
     // The source site and the full event location are evaluated before
     // selection; rejection is evaluated only for a selected candidate.
@@ -39,22 +46,22 @@ namespace kmc::event
         { rule.settings() } -> std::convertible_to<std::string>;
     };
 
-    template <class Site, class Path>
-    requires Rule<Site, lattice::Site> && Rule<Path, lattice::Path>
+    template <class SiteRule, class ClusterRule>
+    requires Rule<SiteRule, lattice::Site> && Rule<ClusterRule, lattice::Cluster<2>>
     struct Rules
     {
-        [[no_unique_address]] Site site;
-        [[no_unique_address]] Path path;
+        [[no_unique_address]] SiteRule site;
+        [[no_unique_address]] ClusterRule cluster;
 
         std::string settings() const
         {
             return std::format(
                 "[site: {}]\n{}\n\n"
-                "[path: {}]\n{}\n",
-                enum_name(Site::event),
+                "[cluster: {}]\n{}\n",
+                enum_name(SiteRule::event),
                 site.settings(),
-                enum_name(Path::event),
-                path.settings());
+                enum_name(ClusterRule::event),
+                cluster.settings());
         }
     };
 }

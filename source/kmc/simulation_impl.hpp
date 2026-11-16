@@ -2,7 +2,7 @@
 // Template definitions for RejectionTreeSimulation; included by simulation.h.
 
 #include "analysis_plan.h"
-#include "lattice/path.h"
+#include "lattice/lattice.h"
 #include "utility/utility.h"
 
 namespace kmc
@@ -53,10 +53,10 @@ namespace kmc
             {
                 ++step_;
 
-                if (&process.path.front() == &process.path.back())
-                    rules_.site.execute(process.path.front(), lattice_);
+                if (&*process.cluster[0] == &*process.cluster[1])
+                    rules_.site.execute(*process.cluster[0], lattice_);
                 else
-                    rules_.path.execute(process.path, lattice_);
+                    rules_.cluster.execute(process.cluster, lattice_);
 
                 update_affected_rates(process);
 
@@ -78,7 +78,7 @@ namespace kmc
     void RejectionTreeSimulation<Rules>::update_affected_rates(process::Record const& process)
     {
         block_updates_.clear();
-        for (auto site : process.path.sites())
+        for (auto site : process.cluster)
         {
             update_neighbors(*site);
             update(*site);
@@ -126,10 +126,11 @@ namespace kmc
         if (process_index == site.process_index())
             return process::Record{ site, decltype(rules_.site)::event, rules_.site.is_rejected(site) };
 
-        auto const path{ lattice::Path{ &site,
-            lattice_.neighbor(process_index - site_index - 1) } };
+        lattice::Cluster<2> const cluster{ &site,
+            lattice_.neighbor(process_index - site_index - 1) };
 
-        return process::Record{ path, decltype(rules_.path)::event, rules_.path.is_rejected(path) };
+        return process::Record{ cluster, decltype(rules_.cluster)::event,
+            rules_.cluster.is_rejected(cluster) };
     }
 
     template <class Rules>
@@ -178,7 +179,7 @@ namespace kmc
     Rate RejectionTreeSimulation<Rules>::rate_sum(lattice::Site& site)
     {
         const bool site_source_candidate{ rules_.site.is_source_candidate(site) };
-        const bool path_source_candidate{ rules_.path.is_source_candidate(site) };
+        const bool path_source_candidate{ rules_.cluster.is_source_candidate(site) };
 
         lattice::Index index{ site.process_index() };
 
@@ -224,9 +225,9 @@ namespace kmc
 
         for (auto neighbor : lattice_.neighbors(site))
         {
-            auto const path{ lattice::Path{ &site, neighbor } };
-            if (rules_.path.is_candidate(path))
-                add_process(process_key(Process{ decltype(rules_.path)::event, path }));
+            lattice::Cluster<2> const cluster{ &site, neighbor };
+            if (rules_.cluster.is_candidate(cluster))
+                add_process(process_key(Process{ decltype(rules_.cluster)::event, cluster }));
             else
                 add_process({});
         }
@@ -352,7 +353,7 @@ namespace kmc
         };
 
         add_rule(rules_.site);
-        add_rule(rules_.path);
+        add_rule(rules_.cluster);
 
         if (process_counts_.size() == 1)
             process_counts_.resize(process_rates_.size());

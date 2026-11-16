@@ -7,7 +7,6 @@ target_sources(
     kinetalis_core
     PRIVATE
         lattice/lattice.cpp
-        lattice/path.cpp
         lattice/shape.cpp
         lattice/site.cpp
         lattice/unitcell.cpp
