@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.25)
 
 project(
     Kinetalis
-    VERSION 0.5.2
+    VERSION 0.6.0
     DESCRIPTION "Kinetic Monte Carlo simulation framework"
     LANGUAGES C CXX
 )
