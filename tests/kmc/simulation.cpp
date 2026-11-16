@@ -30,9 +30,13 @@ namespace
     {
         static constexpr event::Type event{ event::Type::dissolution };
         bool enabled{ true };
+        std::vector<std::size_t>* source_checks{};
 
         bool is_source_candidate(Site const& site) const
         {
+            if (source_checks and site.index() < source_checks->size())
+                ++(*source_checks)[site.index()];
+
             return enabled and site.element() == Element::Ag and
                    site.coordination() < lattice::max_coordination;
         }
@@ -97,6 +101,11 @@ namespace
 
     class TestModel final : public Model
     {
+    public:
+        explicit TestModel(std::size_t radius = 1) : radius_{ radius } { }
+
+        std::size_t invalidation_radius() const noexcept override { return radius_; }
+
     private:
         Ratio transmission_coefficient(Process const&) const override { return 1; }
 
@@ -105,14 +114,16 @@ namespace
             auto const base{ process.event() == event::Type::dissolution ? 0.24_eV : 0.30_eV };
             return base + 0.005_eV * static_cast<double>(process.coordination());
         }
+
+        std::size_t radius_;
     };
 
-    Setup<Rules> make_setup()
+    Setup<Rules> make_setup(std::size_t radius = 1)
     {
         Setup<Rules> setup;
         setup.name = "KMC incremental update integration test";
         setup.seed = simulation::Seed{ 1, 2, 3, 4, 5, 6, 7, 8 };
-        setup.make_model = [] { return std::make_unique<TestModel>(); };
+        setup.make_model = [radius] { return std::make_unique<TestModel>(radius); };
         setup.make_lattice = [] {
             auto cell{ lattice::UnitCell::conventional<lattice::Bravais::cF>(400_pm)
                 .fill(chemistry::Atom{ Element::Au }) };
@@ -302,6 +313,26 @@ namespace
         std::size_t accepted_cluster_events_{};
     };
 
+    class FirstAcceptedObserver final : public Observer
+    {
+    public:
+        std::string_view name() const override { return "first-accepted-event"; }
+        bool stop_requested() const override { return accepted_; }
+
+        void observe_processed(process::Record const& record) override
+        {
+            accepted_ = true;
+            source_index_ = record.sites()[0]->index();
+        }
+
+        lattice::Index source_index() const { return source_index_; }
+        bool accepted() const { return accepted_; }
+
+    private:
+        bool accepted_{};
+        lattice::Index source_index_{};
+    };
+
     void expect_same_state(TestSimulation const& a, TestSimulation const& b)
     {
         ut::expect(ut::eq(a.step(), b.step())) << "step after resume";
@@ -407,6 +438,68 @@ namespace
             ut::expect(destination->element() == element) << "destination receives atom";
             ut::expect(ut::eq(lattice.number_atoms(), atoms_before_move))
                 << "cluster execution conserves atom count";
+        };
+
+        "radius-two invalidation recalculates exactly two neighbor shells"_test = [] {
+            std::vector<std::size_t> source_checks;
+            auto setup{ make_setup(2) };
+            setup.rules.cluster.enabled = false;
+            setup.rules.site.source_checks = &source_checks;
+
+            TestSimulation simulation{ setup };
+            auto const& lattice{ simulation.lattice() };
+            source_checks.resize(lattice.sites().size());
+
+            AnalysisPlan plan;
+            auto& observer{ plan.add<FirstAcceptedObserver>() };
+            auto const status{ simulation.run(plan) };
+
+            ut::expect(status == simulation::Status::analysed);
+            ut::expect(observer.accepted());
+            if (not observer.accepted())
+                return;
+            ut::expect(ut::eq(simulation.step(), Step{ 1 }));
+
+            std::vector<bool> expected(lattice.sites().size());
+            auto& source{ lattice.sites().at(observer.source_index()) };
+            expected[source.index()] = true;
+            for (auto* first : lattice.neighbors(source))
+            {
+                expected[first->index()] = true;
+                for (auto* second : lattice.neighbors(*first))
+                    expected[second->index()] = true;
+            }
+
+            auto beyond_first_shell{ false };
+            for (std::size_t index{}; index < expected.size(); ++index)
+            {
+                const bool visited{ source_checks[index] != 0 };
+                ut::expect(ut::eq(visited, expected[index]))
+                    << "radius-two visit at source " << index;
+                ut::expect(not lattice.sites()[index].is_dirty())
+                    << "dirty flag cleared after second pass at source " << index;
+
+                if (expected[index] and index != source.index())
+                {
+                    const auto is_first_neighbor{ std::ranges::any_of(
+                        lattice.neighbors(source),
+                        [index](auto* site) { return site->index() == index; }) };
+                    beyond_first_shell |= not is_first_neighbor;
+                }
+            }
+            ut::expect(beyond_first_shell) << "second shell contains additional sites";
+            expect_reference_state(simulation, setup.rules, simulation.step());
+        };
+
+        "radius-two incremental updates match full reconstruction"_test = [] {
+            auto setup{ make_setup(2) };
+            TestSimulation simulation{ setup };
+            AnalysisPlan plan;
+            auto& checker{ plan.add<CheckingObserver>(40, setup.rules) };
+            const auto status{ simulation.run(plan) };
+            ut::expect(status == simulation::Status::analysed);
+            ut::expect(ut::eq(simulation.step(), Step{ 40 }));
+            ut::expect(ut::eq(checker.last_step(), simulation.step()));
         };
 
         "no active processes exhausts without selecting an event"_test = [] {
