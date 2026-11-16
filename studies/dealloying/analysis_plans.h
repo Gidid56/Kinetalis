@@ -5,7 +5,7 @@
 #include "output/basics.h"
 #include "output/phases.h"
 #include "output/kinetic_activity.h"
-#include "dealloying/analysis/site_population.h"
+#include "output/site_population.h"
 #include "dealloying/models/linear_bond_breaking.h"
 #include "output/kinetic_statistics.h"
 
@@ -85,7 +85,7 @@ namespace studies::dealloying::analysis_plans
         //    { .min_snapshot_step = 10, .snapshot_scale_factor = 1.01 });
 
         plan.add<output::KineticActivity<models::LinearBondBreaking>>(path);
-        plan.add<analysis::SitePopulation<models::LinearBondBreaking>>(path);
+        plan.add<output::SitePopulation<models::LinearBondBreaking>>(path);
         //plan.add<output::KineticStatistics<models::LinearBondBreaking>>(path).set_resolution(
         //    { .min_snapshot_step = 1000, .snapshot_scale_factor = 1.2 });
 
