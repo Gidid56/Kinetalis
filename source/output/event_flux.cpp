@@ -17,7 +17,7 @@ void EventFlux::capture_init(kmc::Simulation const& simulation)
     residence_time_ = {};
     data_.clear();
 
-    // Event types are fixed independently of the lazy process rate cache.
+    // Event types are fixed independently of the lazy kinetic-class rate cache.
     for (auto event : enum_values<kmc::event::Type>())
         if (event != kmc::event::Type::none)
             data_.try_emplace(event);
@@ -25,27 +25,24 @@ void EventFlux::capture_init(kmc::Simulation const& simulation)
 
 void EventFlux::observe_selected(kmc::event::Record const& record)
 {
-    if (record.outcome != kmc::event::Outcome::accepted)
-        return;
-
     auto const& simulation{ *simulation_ };
     auto const time_delta{ simulation.time() - last_time_ };
 
     last_time_ = simulation.time();
     residence_time_ += time_delta;
 
-    auto const& process_counts{ simulation.process_counts() };
-    auto const& process_rates{ simulation.process_rates() };
+    auto const& class_counts{ simulation.class_counts() };
+    auto const& class_rates{ simulation.class_rates() };
 
-    for (std::size_t key{ 1 }; key < process_counts.size(); ++key)
+    for (std::size_t key{ 1 }; key < class_counts.size(); ++key)
     {
-        auto const count{ process_counts[key] };
+        auto const count{ class_counts[key] };
 
         if (count == 0)
             continue;
 
-        auto const& [process, rate]{ process_rates[key] };
-        auto const event{ process.event() };
+        auto const& [info, rate]{ class_rates[key] };
+        auto const event{ info.event() };
 
         if (event != kmc::event::Type::none)
             data_[event].integral += count * rate * time_delta;
