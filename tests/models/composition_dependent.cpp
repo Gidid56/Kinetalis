@@ -1,4 +1,4 @@
-#include "models/composition_dependent.h"
+#include "dealloying/models/composition_dependent.h"
 
 #include <boost/ut.hpp>
 #include <stdexcept>
@@ -10,6 +10,7 @@ using namespace physics::unit::literals;
 namespace
 {
     using namespace kmc;
+    namespace models = studies::dealloying::models;
     using enum Element;
 
     ut::suite<"models.composition_dependent"> composition_dependent_tests = [] {

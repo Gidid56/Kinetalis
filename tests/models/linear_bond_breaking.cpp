@@ -1,4 +1,4 @@
-#include "models/linear_bond_breaking.h"
+#include "dealloying/models/linear_bond_breaking.h"
 
 #include <boost/ut.hpp>
 #include <limits>
@@ -12,6 +12,7 @@ using namespace physics::unit::literals;
 namespace
 {
     using namespace kmc;
+    namespace models = studies::dealloying::models;
 
     ut::suite<"models.linear_bond_breaking"> linear_bond_breaking_tests = [] {
         "default bond energy and setter retain the configured value"_test = [] {

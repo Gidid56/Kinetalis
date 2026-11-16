@@ -1,4 +1,6 @@
 #include "kmc/simulation.h"
+#include "dealloying/models/linear_bond_breaking.h"
+#include "physics/equations/kinetics.h"
 #include "kmc/analysis_plan.h"
 #include "lattice/lattice.h"
 #include "output/process_kinetics.h"
@@ -109,22 +111,25 @@ namespace
     using Rules = event::Rules<SiteRule, ClusterRule>;
     using TestSimulation = RejectionTreeSimulation<Rules>;
 
-    class TestModel final : public Model
+    using Descriptor = studies::dealloying::models::LinearBondBreaking::Descriptor;
+    using ModelBase = studies::dealloying::models::LinearBondBreaking;
+
+    class TestModel final : public ModelBase
     {
     public:
         explicit TestModel(std::size_t radius = 1) : radius_{ radius } { }
 
         std::size_t invalidation_radius() const noexcept override { return radius_; }
 
-    private:
-        Ratio transmission_coefficient(Process const&) const override { return 1; }
-
-        Energy activation_gibbs_energy(Process const& process) const override
+        Rate rate(process::Key key) const override
         {
-            auto const base{ process.event() == event::Type::dissolution ? 0.24_eV : 0.30_eV };
-            return base + 0.005_eV * static_cast<double>(process.coordination());
+            auto const& info{ class_info(key) };
+            const auto base{ info.event() == event::Type::dissolution ? 0.24_eV : 0.30_eV };
+            const auto barrier{ base + 0.005_eV * static_cast<double>(info.coordination()) };
+            return physics::equations::kinetics::tst_rate(Ratio{ 1 }, barrier, temperature());
         }
 
+    private:
         std::size_t radius_;
     };
 
@@ -166,18 +171,20 @@ namespace
         std::vector<Rate> block_sums((lattice.sites().size() + block_size - 1) / block_size);
         std::vector<std::size_t> expected_counts(counts.size());
 
-        auto add = [&](Rate& site_sum, Process const& process) {
-            auto const key{ process.static_key() };
-            ut::expect(ut::that % key > 0) << "active process has nonzero key, step " << step;
-            ut::expect(ut::that % key < rates.size()) << "process key within table, step " << step;
+        auto add = [&](Rate& site_sum, Descriptor const& descriptor) {
+            auto const key{ ModelBase::static_key(descriptor) };
+            ut::expect(ut::that % key > 0) << "active class has nonzero key, step " << step;
+            ut::expect(ut::that % key < rates.size()) << "class key within table, step " << step;
             if (key == 0 or key >= rates.size())
                 return;
-            ut::expect(rates[key].first == process)
-                << "stored static-key process matches rebuilt process, step " << step;
-            ut::expect(ut::eq(rates[key].second.value(), simulation.model()->rate(process).value()))
+            auto const expected{ ClassInfo{ descriptor.event, descriptor.element,
+                descriptor.coordination, {} } };
+            ut::expect(rates[key].first == expected)
+                << "stored kinetic class matches rebuilt class, step " << step;
+            ut::expect(ut::eq(rates[key].second.value(), simulation.model()->rate(key).value()))
                 << "cached model rate, step " << step;
             ++expected_counts[key];
-            site_sum += simulation.model()->rate(process);
+            site_sum += simulation.model()->rate(key);
         };
 
         for (auto const& site : lattice.sites())
@@ -187,7 +194,7 @@ namespace
             const event::Location source{ const_cast<Site&>(site) };
             if (rules.site.is_source_candidate(site) and rules.site.is_candidate(source))
             {
-                add(site_sum, Process{ SiteRule::event, source });
+                add(site_sum, Descriptor{ SiteRule::event, source.source().element(), source.source().coordination() });
                 has_processes = true;
             }
             if (rules.cluster.is_source_candidate(site))
@@ -197,7 +204,7 @@ namespace
                         const_cast<Site*>(&site), const_cast<Site*>(target) } };
                     if (rules.cluster.is_candidate(location))
                     {
-                        add(site_sum, Process{ ClusterRule::event, location });
+                        add(site_sum, Descriptor{ ClusterRule::event, location.source().element(), location.source().coordination() });
                         has_processes = true;
                     }
                 }
@@ -525,7 +532,7 @@ namespace
 
             auto const& rates{ simulation.process_rates() };
             auto const& counts{ simulation.process_counts() };
-            ut::expect(ut::eq(rates.size(), Process::number_keys()));
+            ut::expect(ut::eq(rates.size(), simulation.model()->number_keys()));
             ut::expect(ut::eq(counts.size(), rates.size()));
             for (auto const& [process, rate] : rates)
             {
@@ -548,8 +555,8 @@ namespace
                 if (rates[i].first.is_active())
                 {
                     ut::expect(ut::eq(static_cast<std::size_t>(
-                        rates[i].first.static_key()), i)) << "cached class owns its key";
-                    ut::expect(rates[i].second == simulation.model()->rate(rates[i].first))
+                        ModelBase::static_key(Descriptor{ rates[i].first.event(), rates[i].first.element(), rates[i].first.coordination() })), i)) << "cached class owns its key";
+                    ut::expect(rates[i].second == simulation.model()->rate(static_cast<process::Key>(i)))
                         << "cached rate matches model";
                 }
                 else
@@ -560,10 +567,10 @@ namespace
         };
 
         "static process keys must distinguish different kinetic classes"_test = [] {
-            Process const silver{ event::Type::dissolution, Element::Ag, 5 };
-            Process const gold{ event::Type::dissolution, Element::Au, 5 };
+            Descriptor const silver{ event::Type::dissolution, Element::Ag, 5 };
+            Descriptor const gold{ event::Type::dissolution, Element::Au, 5 };
             ut::expect(silver != gold);
-            ut::expect(ut::eq(silver.static_key(), gold.static_key()))
+            ut::expect(ut::eq(ModelBase::static_key(silver), ModelBase::static_key(gold)))
                 << "current dissolution key intentionally omits element";
         };
 

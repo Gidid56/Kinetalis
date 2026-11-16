@@ -57,7 +57,8 @@ CompositionDependent::CompositionDependent()
 process::Key CompositionDependent::classify(event::Type type, event::Location const& location)
 {
     auto const& source{ location.source() };
-    Descriptor desc{ type, source.element(), source.coordination(), source.element_neighbors() };
+    Descriptor desc{ type, source.element(), source.coordination(), {} };
+    std::ranges::copy(source.element_neighbors(), desc.element_neighbors.begin());
     if (auto it{ keys_.find(desc) }; it != keys_.end()) return it->second;
 
     if (infos_.size() > std::numeric_limits<process::Key>::max())
