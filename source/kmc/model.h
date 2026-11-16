@@ -1,51 +1,85 @@
 #pragma once
+#include "event.h"
 #include "types.h"
-#include "process.h"
 
+#include <compare>
 #include <cstddef>
+#include <format>
+#include <string>
+#include <string_view>
 
-class kmc::Model
+namespace kmc
 {
-public:
-    static constexpr Temperature standard_temperature{ 25_degC };
-
-    struct Modulation
+    // Universal reporting metadata. Only concrete study models own the
+    // actual descriptors and decide kinetic equivalence.
+    struct ClassInfo
     {
-        Process process;
-        Ratio ratio;
+        event::Type type{};
+        Element source_element{};
+        lattice::Coordination source_coordination{};
+        std::string details{};
+
+        bool is_active() const noexcept { return type != event::Type::none; }
+        auto event() const noexcept { return type; }
+        auto element() const noexcept { return source_element; }
+        auto coordination() const noexcept { return source_coordination; }
+
+        auto operator<=>(ClassInfo const&) const = default;
+
+        static constexpr std::string_view header{
+            "key:event,key:element,key:coordination,key:details"
+        };
     };
 
-    virtual ~Model() = default;
-
-    // Maximum nearest-neighbor graph distance from a modified event site
-    // to a source whose outgoing event rates may need recomputation.
-    // Radius one also covers the present rules' eligibility dependencies.
-    virtual std::size_t invalidation_radius() const noexcept { return 1; }
-
-    auto& set_temperature(this auto& self, Temperature temperature)
+    class Model
     {
-        self.temperature_ = temperature;
-        return self;
+    public:
+        static constexpr Temperature standard_temperature{ 25_degC };
+        virtual ~Model() = default;
+
+        // A model registers its own descriptor and returns its stable class key.
+        // Key zero is reserved for an empty process slot.
+        virtual process::Key classify(event::Type, event::Location const&) = 0;
+        virtual std::size_t number_keys() const noexcept = 0;
+        virtual ClassInfo const& class_info(process::Key) const = 0;
+        virtual Rate rate(process::Key) const = 0;
+        virtual void refresh_rates() = 0;
+
+        virtual std::size_t invalidation_radius() const noexcept { return 1; }
+        virtual std::string output_text() const = 0;
+
+        auto& set_temperature(this auto& self, Temperature temperature)
+        {
+            self.temperature_ = temperature;
+            return self;
+        }
+
+        auto temperature() const { return temperature_; }
+
+    protected:
+        Temperature temperature_{ standard_temperature };
+    };
+}
+
+template <>
+struct std::formatter<kmc::ClassInfo> : std::formatter<std::string_view>
+{
+    char separator{ ',' };
+
+    constexpr auto parse(std::format_parse_context& context)
+    {
+        auto it{ context.begin() };
+        if (it != context.end() and *it != '}')
+            separator = *it++;
+        if (it != context.end() and *it != '}')
+            throw std::format_error{ "Invalid class info format specifier." };
+        return it;
     }
 
-    auto& set_modulation(this auto& self, Modulation const& modulation)
+    auto format(kmc::ClassInfo const& info, std::format_context& context) const
     {
-        self.modulation_ = modulation;
-        return self;
+        return std::format_to(context.out(), "{}{}{}{}{}{}{}",
+            enum_name(info.event()), separator, info.element(), separator,
+            static_cast<unsigned>(info.coordination()), separator, info.details);
     }
-
-    Frequency rate(Process const&) const;
-
-    virtual std::string output_text() const;
-
-    auto temperature() const { return temperature_; }
-
-protected:
-    virtual Ratio transmission_coefficient(Process const&) const = 0;
-    virtual Energy activation_gibbs_energy(Process const&) const = 0;
-
-private:
-    Temperature temperature_{ standard_temperature };
-
-    std::optional<Modulation> modulation_{};
 };

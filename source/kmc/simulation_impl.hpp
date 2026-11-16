@@ -14,12 +14,9 @@ namespace kmc
         site_rates_.resize(lattice_.sites().size());
         processes_.resize(lattice_.sites().size() + lattice_.neighbors().size());
 
-        // Static process keys occupy fixed slots, filled only on first use.
-        if constexpr (staticProcessKeys)
-        {
-            process_rates_.resize(Process::number_keys());
-            process_counts_.resize(Process::number_keys());
-        }
+        // Each model decides whether to preallocate or register classes lazily.
+        process_rates_.resize(model_->number_keys());
+        process_counts_.resize(model_->number_keys());
     }
 
     template <class Rules>
@@ -236,7 +233,7 @@ namespace kmc
         };
 
         if (site_source_candidate and rules_.site.is_candidate(source))
-            add_process(process_key(Process{ decltype(rules_.site)::event, source }));
+            add_process(process_key(decltype(rules_.site)::event, source));
         else
             clear_site();
 
@@ -251,7 +248,7 @@ namespace kmc
         {
             const event::Location location{ lattice::Cluster<2>{ &site, neighbor } };
             if (rules_.cluster.is_candidate(location))
-                add_process(process_key(Process{ decltype(rules_.cluster)::event, location }));
+                add_process(process_key(decltype(rules_.cluster)::event, location));
             else
                 add_process({});
         }
@@ -297,42 +294,28 @@ namespace kmc
     }
 
     template <class Rules>
-    process::Key RejectionTreeSimulation<Rules>::process_key(Process process)
+    process::Key RejectionTreeSimulation<Rules>::process_key(
+        event::Type type, event::Location const& location)
     {
-        if (not process.is_active())
-            return {};
+        const auto key{ model_->classify(type, location) };
+        if (key == process::Key{})
+            throw std::logic_error{ "Active event maps to reserved key zero." };
 
-        if constexpr (staticProcessKeys)
+        if (key >= process_rates_.size())
         {
-            const auto key{ process.static_key() };
-            if (key == process::Key{})
-                throw std::logic_error{ "Active process maps to reserved static key zero." };
-
-            auto& [cached_process, rate]{ process_rates_.at(key) };
-            if (not cached_process.is_active())
-            {
-                rate = model_->rate(process);
-                cached_process = process;
-            }
-            else if (cached_process != process)
-                throw std::logic_error{ "Static process key collision." };
-
-            return key;
+            process_rates_.resize(static_cast<std::size_t>(key) + 1);
+            process_counts_.resize(static_cast<std::size_t>(key) + 1);
         }
 
-        if (auto it{ dynamic_keys_.find(process) }; it != dynamic_keys_.end())
-            return it->second;
-
-        if (process_rates_.size() > std::numeric_limits<process::Key>::max())
-            throw std::overflow_error{ "Increase process::Key size." };
-
-        auto const key{ static_cast<process::Key>(process_rates_.size()) };
-
-        auto const rate{ model_->rate(process) };
-
-        dynamic_keys_.emplace(process, key);
-        process_rates_.emplace_back(process, rate);
-        process_counts_.emplace_back(0);
+        auto& [cached_info, cached_rate]{ process_rates_.at(key) };
+        auto const& info{ model_->class_info(key) };
+        if (not cached_info.is_active())
+        {
+            cached_rate = model_->rate(key);
+            cached_info = info;
+        }
+        else if (cached_info != info)
+            throw std::logic_error{ "Rate class key collision." };
 
         return key;
     }
@@ -340,9 +323,10 @@ namespace kmc
     template <class Rules>
     void RejectionTreeSimulation<Rules>::update_all_rates()
     {
-        for (auto& [process, rate] : process_rates_ | std::views::drop(1))
-            if (process.is_active())
-                rate = model_->rate(process);
+        model_->refresh_rates();
+        for (std::size_t key{ 1 }; key < process_rates_.size(); ++key)
+            if (process_rates_[key].first.is_active())
+                process_rates_[key].second = model_->rate(static_cast<process::Key>(key));
 
         // A full-rate refresh bypasses per-event block collection. Rebuild each
         // block once after all site rates have been recalculated.

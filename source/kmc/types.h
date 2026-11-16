@@ -22,7 +22,7 @@ namespace kmc
         };
     }
 
-    inline constexpr bool staticProcessKeys{ true }, stochasticResidenceTime{ true };
+    inline constexpr bool stochasticResidenceTime{ true };
 }
 
 namespace kmc
@@ -53,7 +53,6 @@ namespace kmc
     }
 
     class Model;
-    class Process;
     class Simulation;
 
     template <class Rules>

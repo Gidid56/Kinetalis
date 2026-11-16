@@ -179,7 +179,7 @@ namespace studies::dealloying::campaigns
             for (auto ratio : ratios)
                 for (auto overpotential : critical_potential_wide_search_range)
                 {
-                    kmc::Model::Modulation modulation{ process, ratio };
+                    models::LinearBondBreaking::Modulation modulation{ process, ratio };
                     setups.emplace_back(
                         setups::pore_dealloying(
                             CampaignType::bifurcation,

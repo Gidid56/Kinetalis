@@ -1,7 +1,7 @@
 #pragma once
 #include "kmc/setup.h"
 #include "lattice/lattice.h"
-#include "models/linear_bond_breaking.h"
+#include "dealloying/models/linear_bond_breaking.h"
 #include "parameters.h"
 #include "events.h"
 #include "simulation/engine.h"
@@ -103,7 +103,7 @@ namespace studies::dealloying::setups
         lattice::Composition::Quantity x0 = 10,
         ElectricPotential overpotential = 0_V,
         kmc::Temperature temperature = 300_K,
-        std::optional<kmc::Model::Modulation> modulation = {})
+        std::optional<models::LinearBondBreaking::Modulation> modulation = {})
     {
         Setup setup;
 
@@ -113,7 +113,7 @@ namespace studies::dealloying::setups
         auto potential{ critical_potential(x0, temperature) + overpotential };
 
         setup.make_model = [potential, temperature, modulation] {
-            auto model{ std::make_unique<kmc::models::LinearBondBreaking>() };
+            auto model{ std::make_unique<models::LinearBondBreaking>() };
             (*model).set_potential(potential).set_temperature(temperature);
             if (modulation)
                 (*model).set_modulation(*modulation);
@@ -133,7 +133,7 @@ namespace studies::dealloying::setups
         setup.make_lattice = [radius, inverted] {
             return cut_sphere(2 * radius + 1_nm, radius, inverted);
         };
-        setup.make_model = &std::make_unique<kmc::models::LinearBondBreaking>;
+        setup.make_model = &std::make_unique<models::LinearBondBreaking>;
         setup.name = std::format("nano{};r = {:nm}", inverted ? "void" : "particle", radius);
 
         return setup;
@@ -146,7 +146,7 @@ namespace studies::dealloying::setups
         setup.make_lattice = [layer] {
             return passivation_schematic(layer);
         };
-        setup.make_model = &std::make_unique<kmc::models::LinearBondBreaking>;
+        setup.make_model = &std::make_unique<models::LinearBondBreaking>;
         setup.name = std::format("schematic");
         setup.seed = simulation::Engine::parse_seed(seeds[0]);
 

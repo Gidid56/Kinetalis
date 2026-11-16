@@ -42,7 +42,7 @@ protected:
     Time time_{};
     std::size_t rejections_{};
 
-    std::vector<std::pair<Process, Rate>> process_rates_{ { Process{}, Rate{} } };
+    std::vector<std::pair<ClassInfo, Rate>> process_rates_{ { ClassInfo{}, Rate{} } };
     std::vector<std::size_t> process_counts_{ 0 };
 };
 
@@ -66,7 +66,7 @@ public:
 
 private:
     Rate block_rate(lattice::Site&);
-    process::Key process_key(Process);
+    process::Key process_key(event::Type, event::Location const&);
     void set_process(lattice::Index, process::Key);
 
     Rate rate_sum(lattice::Site&);
@@ -86,8 +86,6 @@ private:
     Rates site_rates_;
     process::Keys processes_;
     std::vector<rate_tree::BlockUpdate> block_updates_;
-
-    std::unordered_map<Process, process::Key> dynamic_keys_;
 
     [[no_unique_address]] Rules rules_;
 };
