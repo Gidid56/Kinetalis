@@ -72,8 +72,8 @@ private:
     void set_class_key(lattice::Index, RateClassKey);
 
     Rate rate_sum(lattice::Site&);
-    event::Location select_random_location();
-    event::Record evaluate_event(event::Location) const;
+    std::pair<event::Location, RateClassKey> select_random_location();
+    event::Record evaluate_event(event::Location, RateClassKey) const;
 
     void initialize_rates();
     void update_all_rates();
