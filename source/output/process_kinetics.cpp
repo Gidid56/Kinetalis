@@ -14,7 +14,7 @@ namespace
 {
     kmc::Process site_key(kmc::Process const& process)
     {
-        return kmc::Process{ kmc::Event::none, process.element(), process.coordination() };
+        return kmc::Process{ kmc::event::Type::none, process.element(), process.coordination() };
     }
 
     std::map<kmc::Process, std::size_t> site_counts(kmc::Simulation const& simulation)
@@ -34,14 +34,14 @@ namespace
 
             auto const& process{ process_rates[key].first };
 
-            if (process.event() == kmc::Event::none or process.element() == lattice::Element::none)
+            if (process.event() == kmc::event::Type::none or process.element() == lattice::Element::none)
             {
                 continue;
             }
 
             auto const site{ site_key(process) };
 
-            if (process.event() != kmc::Event::diffusion)
+            if (process.event() != kmc::event::Type::diffusion)
             {
                 if constexpr (utility::is_debug)
                 {
@@ -84,7 +84,7 @@ namespace
         std::set<kmc::Process> classes;
 
         for (auto const& [process, _] : simulation.process_rates())
-            if (process.event() != kmc::Event::none and process.element() != lattice::Element::none)
+            if (process.event() != kmc::event::Type::none and process.element() != lattice::Element::none)
             {
                 classes.insert(site_key(process));
             }
@@ -120,7 +120,7 @@ void process::Kinetics::observe_selected(kmc::process::Record const& record)
     {
         auto const& [process, rate]{ process_rates[key] };
 
-        if (process.event() != kmc::Event::none and process.element() != lattice::Element::none)
+        if (process.event() != kmc::event::Type::none and process.element() != lattice::Element::none)
         {
             total_activity += process_counts[key] * rate;
         }
@@ -134,7 +134,7 @@ void process::Kinetics::observe_selected(kmc::process::Record const& record)
         auto const count{ process_counts[key] };
         auto const& [process, rate]{ process_rates[key] };
 
-        if (count == 0 or process.event() == kmc::Event::none or
+        if (count == 0 or process.event() == kmc::event::Type::none or
             process.element() == lattice::Element::none)
         {
             continue;
@@ -192,7 +192,7 @@ void process::Kinetics::write_init(kmc::Simulation const& simulation)
     std::string process_header{ Writer::default_header };
 
     for (auto const& [process, _] : simulation.process_rates())
-        if (process.event() != kmc::Event::none and process.element() != lattice::Element::none)
+        if (process.event() != kmc::event::Type::none and process.element() != lattice::Element::none)
         {
             std::format_to(std::back_inserter(process_header), ",{:_}", process);
         }
@@ -251,7 +251,7 @@ void process::Kinetics::write_snapshot(kmc::Simulation const& simulation)
 
     for (auto const& [process, _] : simulation.process_rates())
     {
-        if (process.event() == kmc::Event::none or process.element() == lattice::Element::none)
+        if (process.event() == kmc::event::Type::none or process.element() == lattice::Element::none)
         {
             continue;
         }

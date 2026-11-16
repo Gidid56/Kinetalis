@@ -12,7 +12,7 @@ public:
         kmc::Rate maximum{};
     };
 
-    using Data = std::map<kmc::Event, FluxData>;
+    using Data = std::map<kmc::event::Type, FluxData>;
 
     using Writer::Writer;
 
@@ -24,7 +24,7 @@ public:
     void write_init(kmc::Simulation const&) override;
     void write_snapshot(kmc::Simulation const&) override;
 
-    std::optional<double> relative_flux(kmc::Event event) const;
+    std::optional<double> relative_flux(kmc::event::Type event) const;
 
     auto& last_data() const { return data_; }
 

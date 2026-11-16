@@ -190,7 +190,7 @@ bool Regime::is_passivated() const
 
 bool Regime::is_arrested() const
 {
-    if (auto relative_dissolution_flux{ event_flux_.relative_flux(kmc::Event::dissolution) })
+    if (auto relative_dissolution_flux{ event_flux_.relative_flux(kmc::event::Type::dissolution) })
         return *relative_dissolution_flux < thresholds_.at(Condition::arrested);
 
     return false;

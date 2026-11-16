@@ -24,7 +24,7 @@ void process::Statistics::observe_selected(kmc::process::Record const& record)
     if (record.outcome == kmc::process::Outcome::rejected)
         return;
 
-    if (last_process_.event() != kmc::Event::none)
+    if (last_process_.event() != kmc::event::Type::none)
         ++transitions_[last_process_][record.process];
 
     last_process_ = record.process;

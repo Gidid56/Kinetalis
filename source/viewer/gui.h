@@ -43,7 +43,7 @@ private:
     std::vector<double> times_;
 
     std::map<output::Phases::Phase, std::vector<double>> phaseFractions_, phaseDiameters_;
-    std::map<kmc::Event, std::vector<double>> event_fluxes_;
+    std::map<kmc::event::Type, std::vector<double>> event_fluxes_;
 
     std::locale locale_{ "" };
 };

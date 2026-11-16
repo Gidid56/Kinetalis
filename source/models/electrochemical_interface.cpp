@@ -43,10 +43,10 @@ Ratio models::ElectrochemicalInterface::transmission_coefficient(Process const& 
 {
     switch (process.event())
     {
-        case Event::diffusion:
-        case Event::dissolution: return 1;
+        case event::Type::diffusion:
+        case event::Type::dissolution: return 1;
 
-        case Event::deposition:
+        case event::Type::deposition:
             return physics::ensure_unit_interval(
                 fcc_molar_volume(process.element()) * concentration_);
 
@@ -63,11 +63,11 @@ Energy models::ElectrochemicalInterface::activation_gibbs_energy(Process const& 
 
     switch (process.event())
     {
-        case Event::diffusion: return lattice_energy_barrier(process);
+        case event::Type::diffusion: return lattice_energy_barrier(process);
 
-        case Event::dissolution: return lattice_energy_barrier(process) - alpha * e * (E - E_0);
+        case event::Type::dissolution: return lattice_energy_barrier(process) - alpha * e * (E - E_0);
 
-        case Event::deposition: return constants_.solvation_energy + (1 - alpha) * e * (E - E_0);
+        case event::Type::deposition: return constants_.solvation_energy + (1 - alpha) * e * (E - E_0);
 
         default: throw std::logic_error{ "Activation Gibbs energy is not defined for event." };
     }

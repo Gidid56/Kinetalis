@@ -1,4 +1,5 @@
 #pragma once
+#include "kmc/event.h"
 #include "output/writer.h"
 
 namespace studies::dealloying::analysis { class Electrochemistry; }
@@ -10,8 +11,8 @@ public:
 
     // enable or disable event specific output here
     static constexpr std::array events{
-        kmc::Event::dissolution,
-        //kmc::Event::deposition,
+        kmc::event::Type::dissolution,
+        //kmc::event::Type::deposition,
     };
 
     struct Data
@@ -27,12 +28,12 @@ public:
         auto net_current() const { return utility::sum(currents); }
     };
 
-    static constexpr ChargeTransfer charge_transfer(kmc::Event event)
+    static constexpr ChargeTransfer charge_transfer(kmc::event::Type event)
     {
         switch (event)
         {
-            case kmc::Event::dissolution: return 1;
-            case kmc::Event::deposition: return -1;
+            case kmc::event::Type::dissolution: return 1;
+            case kmc::event::Type::deposition: return -1;
             default: return {};
         }
     }

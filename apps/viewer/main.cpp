@@ -12,7 +12,7 @@ int run_viewer()
     Viewer viewer;
 
     kmc::Model::Modulation modulation{
-        kmc::Process{ kmc::Event::dissolution, chemistry::Element::Ag, 9 },
+        kmc::Process{ kmc::event::Type::dissolution, chemistry::Element::Ag, 9 },
         0.5_ratio,
     };
 

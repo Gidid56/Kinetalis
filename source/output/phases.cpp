@@ -96,7 +96,7 @@ void Phases::observe_selected(kmc::process::Record const& process)
 
 void Phases::observe_processed(kmc::process::Record const& process)
 {
-    if (process.process.event() != kmc::Event::diffusion)
+    if (process.process.event() != kmc::event::Type::diffusion)
         return;
 
     const auto& site{ process.path.back() };
