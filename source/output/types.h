@@ -26,7 +26,7 @@ namespace output
 	namespace process
 	{
 		using Count = std::size_t;
-		using CountMap = std::map<kmc::Process, Count>;
+		using CountMap = std::map<kmc::process::Key, Count>;
 
         class EventFlux;
 		class Statistics;

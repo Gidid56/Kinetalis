@@ -24,8 +24,9 @@ public:
 
     struct Data
     {
-        std::map<kmc::Process, SiteAccumulation> sites;
-        std::map<kmc::Process, ProcessAccumulation> processes;
+        using SiteKey = std::pair<lattice::Element, lattice::Coordination>;
+        std::map<SiteKey, SiteAccumulation> sites;
+        std::map<kmc::process::Key, ProcessAccumulation> processes;
 
         physics::quantity::TimeDifference residence_time{};
         std::size_t samples{};

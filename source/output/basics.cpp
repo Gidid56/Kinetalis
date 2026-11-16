@@ -80,11 +80,11 @@ void output::Lattice::write_final(kmc::Simulation const& kmc)
 
 void output::Rates::write_final(kmc::Simulation const& kmc)
 {
-    std::string text{ kmc::Process::header };
+    std::string text{ kmc::ClassInfo::header };
     text += ",rate/Hz\n";
 
-    for (auto const& [process, rate] : kmc.process_rates())
-        std::format_to(std::back_inserter(text), "{},{:v:Hz}\n", process, rate);
+    for (auto const& [info, rate] : kmc.process_rates())
+        std::format_to(std::back_inserter(text), "{},{:v:Hz}\n", info, rate);
 
     file::write<csv>(writer_path(), text);
 }
@@ -179,9 +179,6 @@ std::string global::settings()
 
     settings += std::format(
         "\nSimulation Settings\n"
-        "staticProcessKeys = {}\n"
-        "stochasticResidenceTime = {}\n",
-        kmc::staticProcessKeys,
-        kmc::stochasticResidenceTime);
+        "stochasticResidenceTime = {}\n", kmc::stochasticResidenceTime);
     return settings;
 }

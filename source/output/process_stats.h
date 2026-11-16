@@ -30,7 +30,8 @@ private:
 
     bool output_transitions_{ false };
 
-    kmc::Process last_process_{};
+    kmc::Simulation const* simulation_{};
+    kmc::process::Key last_process_{};
     std::map<kmc::process::Outcome, CountMap> counts_;
-    std::map<kmc::Process, CountMap> transitions_;
+    std::map<kmc::process::Key, CountMap> transitions_;
 };

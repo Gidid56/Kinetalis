@@ -12,20 +12,22 @@ using namespace output;
 
 namespace
 {
-    kmc::Process site_key(kmc::Process const& process)
+    using SiteKey = output::process::Kinetics::Data::SiteKey;
+
+    SiteKey site_key(kmc::ClassInfo const& info)
     {
-        return kmc::Process{ kmc::event::Type::none, process.element(), process.coordination() };
+        return { info.element(), info.coordination() };
     }
 
-    std::map<kmc::Process, std::size_t> site_counts(kmc::Simulation const& simulation)
+    std::map<SiteKey, std::size_t> site_counts(kmc::Simulation const& simulation)
     {
-        std::map<kmc::Process, std::size_t> counts;
-        std::set<kmc::Process> direct_counts;
+        std::map<SiteKey, std::size_t> counts;
+        std::set<SiteKey> direct_counts;
 
         auto const& process_counts{ simulation.process_counts() };
         auto const& process_rates{ simulation.process_rates() };
 
-        for (kmc::process::Key key{ 1 }; key < process_counts.size(); ++key)
+        for (std::size_t key{ 1 }; key < process_counts.size(); ++key)
         {
             auto const process_count{ process_counts[key] };
 
@@ -158,7 +160,7 @@ void process::Kinetics::observe_selected(kmc::process::Record const& record)
 
     kmc::Rate total_activity{};
 
-    for (kmc::process::Key key{ 1 }; key < process_counts.size(); ++key)
+    for (std::size_t key{ 1 }; key < process_counts.size(); ++key)
     {
         auto const& [process, rate]{ process_rates[key] };
 
@@ -171,7 +173,7 @@ void process::Kinetics::observe_selected(kmc::process::Record const& record)
     if (total_activity <= kmc::Rate{})
         return;
 
-    for (kmc::process::Key key{ 1 }; key < process_counts.size(); ++key)
+    for (std::size_t key{ 1 }; key < process_counts.size(); ++key)
     {
         auto const count{ process_counts[key] };
         auto const& [process, rate]{ process_rates[key] };
@@ -183,7 +185,7 @@ void process::Kinetics::observe_selected(kmc::process::Record const& record)
         }
 
         auto const activity{ count * rate / total_activity };
-        auto& accumulation{ accumulation_.processes[process] };
+        auto& accumulation{ accumulation_.processes[static_cast<kmc::process::Key>(key)] };
 
         accumulation.activity_fraction += activity;
         accumulation.activity_time += activity * time_delta;
@@ -272,7 +274,7 @@ void process::Kinetics::write_snapshot(kmc::Simulation const& simulation)
         for (lattice::Coordination coordination{}; coordination < lattice::max_coordination;
             ++coordination)
         {
-            const kmc::Process site{ kmc::event::Type::none, element, coordination };
+            const SiteKey site{ element, coordination };
             SiteAccumulation data{};
 
             if (auto it{ last_data_.sites.find(site) }; it != last_data_.sites.end())
@@ -300,7 +302,7 @@ void process::Kinetics::write_snapshot(kmc::Simulation const& simulation)
         }
 
         ProcessAccumulation data{};
-        if (auto it{ last_data_.processes.find(process) };
+        if (auto it{ last_data_.processes.find(static_cast<kmc::process::Key>(key)) };
             it != last_data_.processes.end())
             data = it->second;
 
