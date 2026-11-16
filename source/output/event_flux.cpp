@@ -21,7 +21,7 @@ void process::EventFlux::capture_init(kmc::Simulation const& simulation)
     {
         auto const event{ simulation.process_rates()[key].first.event() };
 
-        if (event != kmc::Event::none)
+        if (event != kmc::event::Type::none)
             data_.try_emplace(event);
     }
 }
@@ -50,7 +50,7 @@ void process::EventFlux::observe_selected(kmc::process::Record const& record)
         auto const& [process, rate]{ process_rates[key] };
         auto const event{ process.event() };
 
-        if (event != kmc::Event::none)
+        if (event != kmc::event::Type::none)
             data_[event].integral += count * rate * time_delta;
     }
 }
@@ -73,7 +73,7 @@ void process::EventFlux::capture_snapshot(kmc::Simulation const&)
     residence_time_ = {};
 }
 
-std::optional<double> process::EventFlux::relative_flux(kmc::Event event) const
+std::optional<double> process::EventFlux::relative_flux(kmc::event::Type event) const
 {
     auto const iterator{ data_.find(event) };
 

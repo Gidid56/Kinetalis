@@ -39,7 +39,7 @@ void Surface::observe_selected(kmc::process::Record const& process)
 
 void Surface::observe_processed(kmc::process::Record const& process)
 {
-    if (process.process.event() != kmc::Event::diffusion)
+    if (process.process.event() != kmc::event::Type::diffusion)
         return;
 
     update(process.path.back(), process.process.neighbor_change(false));

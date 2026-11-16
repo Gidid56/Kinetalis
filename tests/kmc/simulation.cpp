@@ -28,7 +28,7 @@ namespace
 
     struct SiteRule
     {
-        static constexpr Event event{ Event::dissolution };
+        static constexpr event::Type event{ event::Type::dissolution };
         bool enabled{ true };
 
         bool is_source_candidate(Site const& site) const
@@ -55,7 +55,7 @@ namespace
 
     struct PathRule
     {
-        static constexpr Event event{ Event::diffusion };
+        static constexpr event::Type event{ event::Type::diffusion };
         bool enabled{ true };
 
         bool is_source_candidate(Site const& site) const
@@ -102,7 +102,7 @@ namespace
 
         Energy activation_gibbs_energy(Process const& process) const override
         {
-            auto const base{ process.event() == Event::dissolution ? 0.24_eV : 0.30_eV };
+            auto const base{ process.event() == event::Type::dissolution ? 0.24_eV : 0.30_eV };
             return base + 0.005_eV * static_cast<double>(process.coordination());
         }
     };
