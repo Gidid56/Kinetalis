@@ -55,7 +55,7 @@ public:
           rules_{ setup.rules }
     {
         initialize_rates();
-        update_rates();
+        update_all_rates();
     }
 
     simulation::Status run(AnalysisPlan&, std::stop_token = {}) override;
@@ -73,8 +73,7 @@ private:
     process::Record select_random_process();
 
     void initialize_rates();
-    void update_rates();
-    void refresh_cached_rates();
+    void update_all_rates();
     void update_affected_rates(process::Record const&);
 
     void update(lattice::Site&);

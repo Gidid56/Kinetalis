@@ -302,10 +302,8 @@ namespace kmc
             auto& [cached_process, rate]{ process_rates_.at(key) };
             if (not cached_process.is_active())
             {
-                // Leave the slot uninitialized if the model evaluation fails.
-                const auto new_rate{ model_->rate(process) };
+                rate = model_->rate(process);
                 cached_process = process;
-                rate = new_rate;
             }
             else if (cached_process != process)
                 throw std::logic_error{ "Static process key collision." };
@@ -331,9 +329,11 @@ namespace kmc
     }
 
     template <class Rules>
-    void RejectionTreeSimulation<Rules>::update_rates()
+    void RejectionTreeSimulation<Rules>::update_all_rates()
     {
-        refresh_cached_rates();
+        for (auto& [process, rate] : process_rates_ | std::views::drop(1))
+            if (process.is_active())
+                rate = model_->rate(process);
 
         // A full-rate refresh bypasses per-event block collection. Rebuild each
         // block once after all site rates have been recalculated.
@@ -348,13 +348,5 @@ namespace kmc
         for (std::size_t index{}; index < site_rates_.size(); index += block_size)
             rate_tree_->update_rate(
                 static_cast<lattice::Index>(index), block_rate(lattice_.sites().at(index)));
-    }
-
-    template <class Rules>
-    void RejectionTreeSimulation<Rules>::refresh_cached_rates()
-    {
-        for (auto& [process, rate] : process_rates_ | std::views::drop(1))
-            if (process.is_active())
-                rate = model_->rate(process);
     }
 }

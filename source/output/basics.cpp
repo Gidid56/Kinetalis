@@ -78,8 +78,6 @@ void output::Lattice::write_final(kmc::Simulation const& kmc)
         file::write<xyz>(writer_path() / "final", kmc.lattice().to_xyz_file(true));
 }
 
-void output::Rates::write_init(kmc::Simulation const& kmc) { write_final(kmc); }
-
 void output::Rates::write_final(kmc::Simulation const& kmc)
 {
     std::string text{ kmc::Process::header };

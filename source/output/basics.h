@@ -104,7 +104,6 @@ private:
     std::string_view name() const override { return "rates"; }
     bool uses_snapshot_resolution() const override { return false; }
 
-    void write_init(kmc::Simulation const&) override;
     void write_final(kmc::Simulation const&) override;
 };
 
