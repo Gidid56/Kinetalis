@@ -41,7 +41,12 @@ namespace
             lattice.construct_neighbor_list();
 
             auto& source{ lattice.sites().front() };
-            auto* neighbor{ *lattice.neighbors(source).begin() };
+            auto neighbors{ lattice.neighbors(source) };
+            auto it{ neighbors.begin() };
+            // Static coordination descriptors deliberately exclude fully
+            // coordinated bulk sites; introduce a vacancy first.
+            (*it)->set_element(lattice, Element::none);
+            auto* neighbor{ *++it };
             const kmc::event::Location location{ source };
 
             models::CompositionDependent composition;
