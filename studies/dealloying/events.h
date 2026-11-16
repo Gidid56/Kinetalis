@@ -1,7 +1,7 @@
 #pragma once
 #include "batch/campaign.h"
 #include "kmc/event.h"
-#include "kmc/process.h"
+#include "kmc/event.h"
 #include "kmc/setup.h"
 #include "lattice/site.h"
 
