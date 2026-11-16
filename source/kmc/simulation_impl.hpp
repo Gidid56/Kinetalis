@@ -201,9 +201,9 @@ namespace kmc
     template <class Rules>
     Rate RejectionTreeSimulation<Rules>::rate_sum(lattice::Site& site)
     {
+        const bool site_source_candidate{ rules_.site.is_source_candidate(site) };
+        const bool cluster_source_candidate{ rules_.cluster.is_source_candidate(site) };
         const event::Location source{ site };
-        const bool site_source_candidate{ rules_.site.is_source_candidate(source) };
-        const bool cluster_source_candidate{ rules_.cluster.is_source_candidate(source) };
 
         lattice::Index index{ site.process_index() };
 

@@ -93,21 +93,19 @@ void Bridge::observe_processed(kmc::process::Record const& record)
     if (record.outcome != kmc::process::Outcome::accepted)
         return;
 
-    if (record.sites().size() == 1)
-    {
-        auto& site{ *record.sites()[0] };
+    auto const sites{ record.sites() };
 
-        publish(site);
-        publishNeighborhood(site);
+    // Highlighting follows the moving atom, not arbitrary multi-site events.
+    if (record.type == kmc::event::Type::diffusion)
+    {
+        assert(sites.size() == 2);
+        swapHighlight(sites[0]->index(), sites[1]->index());
     }
-    else
+
+    for (auto const* site : sites)
     {
-        auto const& cluster{ record.cluster() };
-
-        swapHighlight(cluster[0]->index(), cluster[1]->index());
-
-        publishNeighborhood(*cluster[0]);
-        publishNeighborhood(*cluster[1]);
+        publish(*site);
+        publishNeighborhood(*site);
     }
 }
 

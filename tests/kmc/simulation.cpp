@@ -38,9 +38,8 @@ namespace
         bool allow_gold{ false };
         std::vector<std::size_t>* source_checks{};
 
-        bool is_source_candidate(event::Location const& location) const
+        bool is_source_candidate(Site const& site) const
         {
-            auto const& site{ location.source() };
             if (source_checks and site.index() < source_checks->size())
                 ++(*source_checks)[site.index()];
 
@@ -51,7 +50,7 @@ namespace
 
         bool is_candidate(event::Location const& location) const
         {
-            return location.sites().size() == 1 and is_source_candidate(location);
+            return location.sites().size() == 1 and is_source_candidate(location.source());
         }
 
         bool is_rejected(event::Location const& location) const
@@ -74,16 +73,15 @@ namespace
         static constexpr event::Type event{ event::Type::diffusion };
         bool enabled{ true };
 
-        bool is_source_candidate(event::Location const& location) const
+        bool is_source_candidate(Site const& site) const
         {
-            auto const& site{ location.source() };
             return enabled and site.is_occupied() and
                    site.coordination() < lattice::max_coordination;
         }
 
         bool is_candidate(event::Location const& location) const
         {
-            return location.sites().size() == 2 and is_source_candidate(location) and
+            return location.sites().size() == 2 and is_source_candidate(location.source()) and
                    location.sites()[1]->is_vacant();
         }
 
@@ -187,12 +185,12 @@ namespace
             Rate site_sum{};
             auto has_processes{ false };
             const event::Location source{ const_cast<Site&>(site) };
-            if (rules.site.is_source_candidate(source) and rules.site.is_candidate(source))
+            if (rules.site.is_source_candidate(site) and rules.site.is_candidate(source))
             {
                 add(site_sum, Process{ SiteRule::event, source });
                 has_processes = true;
             }
-            if (rules.cluster.is_source_candidate(source))
+            if (rules.cluster.is_source_candidate(site))
                 for (auto const* target : lattice.neighbors(site))
                 {
                     const event::Location location{ Cluster<2>{
@@ -258,7 +256,7 @@ namespace
         {
             ++selections_;
             bool rejected{};
-            const event::Location source{ record.location().source() };
+            auto const& source{ record.location().source() };
             if (record.sites().size() == 1)
             {
                 ++site_selections_;

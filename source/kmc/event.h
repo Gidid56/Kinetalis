@@ -68,12 +68,13 @@ namespace kmc::event
         std::uint8_t size_{};
     };
 
-    // Every rule examines an ordered event location. For the source
-    // prefilter, the location contains only its source site.
+    // Source prefiltering only needs the source site; all other rule
+    // operations receive the complete ordered event location.
     template <class T>
-    concept Rule = requires(T const& rule, Location const& location, lattice::Lattice& lattice) {
+    concept Rule = requires(T const& rule, lattice::Site const& source,
+                            Location const& location, lattice::Lattice& lattice) {
         { T::event } -> std::convertible_to<kmc::event::Type>;
-        { rule.is_source_candidate(location) } -> std::convertible_to<bool>;
+        { rule.is_source_candidate(source) } -> std::convertible_to<bool>;
         { rule.is_candidate(location) } -> std::convertible_to<bool>;
         { rule.is_rejected(location) } -> std::convertible_to<bool>;
         { rule.execute(location, lattice) } -> std::same_as<void>;

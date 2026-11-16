@@ -185,8 +185,9 @@ void Atoms::rebuildHolograms()
             for (auto destination : lattice_.neighbors(source))
             {
                 lattice::Cluster<2> const cluster{ &source, destination };
+                const kmc::event::Location location{ cluster };
 
-                if (diffusion.is_candidate(cluster) and not diffusion.is_rejected(cluster))
+                if (diffusion.is_candidate(location) and not diffusion.is_rejected(location))
                     std::invoke(function, cluster);
             }
         }

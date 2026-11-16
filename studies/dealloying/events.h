@@ -23,15 +23,14 @@ namespace studies::dealloying::events
                 static_cast<unsigned>(max_coordination));
         }
 
-        bool is_source_candidate(kmc::event::Location const& location) const
+        bool is_source_candidate(lattice::Site const& source) const
         {
-            auto const& source{ location.source() };
             return source.element() == element and source.coordination() <= max_coordination;
         }
 
         bool is_candidate(kmc::event::Location const& location) const
         {
-            return location.sites().size() == 1 and is_source_candidate(location);
+            return location.sites().size() == 1 and is_source_candidate(location.source());
         }
 
         // No postselection rejection in the dissolution model.
@@ -51,15 +50,14 @@ namespace studies::dealloying::events
 
         lattice::Coordination max_source_coordination{ 9 }, min_target_coordination{ 2 };
 
-        bool is_source_candidate(kmc::event::Location const& location) const
+        bool is_source_candidate(lattice::Site const& source) const
         {
-            auto const& source{ location.source() };
             return source.is_occupied() and source.coordination() <= max_source_coordination;
         }
 
         bool is_candidate(kmc::event::Location const& location) const
         {
-            return location.sites().size() == 2 and is_source_candidate(location) and
+            return location.sites().size() == 2 and is_source_candidate(location.source()) and
                    location.sites()[1]->is_vacant();
         }
 
