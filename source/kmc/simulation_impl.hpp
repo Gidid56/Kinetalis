@@ -46,7 +46,8 @@ namespace kmc
             const auto escape_time{ 1.0 / total_rate };
             time_ += -std::log1p(-rng_.probability()) * escape_time;
 
-            auto record{ evaluate_event(select_random_location()) };
+            auto [location, class_key]{ select_random_location() };
+            auto record{ evaluate_event(std::move(location), class_key) };
 
             analysis_plan.observe_selected(record);
 
@@ -110,7 +111,7 @@ namespace kmc
     }
 
     template <class Rules>
-    event::Location RejectionTreeSimulation<Rules>::select_random_location()
+    std::pair<event::Location, RateClassKey> RejectionTreeSimulation<Rules>::select_random_location()
     {
         auto selected_rate{ physics::ensure_non_negative(rate_tree_->rate_sum() * rng_.probability()) };
 
@@ -133,21 +134,23 @@ namespace kmc
             if (event_offset > site.event_offset() + site.max_neighbors())
                 throw std::runtime_error{ "tree not updated correctly" };
 
+        auto const key{ event_class_keys_.at(event_offset) };
         if (event_offset == site.event_offset())
-            return event::Location{ site };
+            return { event::Location{ site }, key };
 
-        return event::Location{ lattice::Cluster<2>{
-            &site, lattice_.neighbor(event_offset - site_index - 1) } };
+        return { event::Location{ lattice::Cluster<2>{
+            &site, lattice_.neighbor(event_offset - site_index - 1) } }, key };
     }
 
     template <class Rules>
-    event::Record RejectionTreeSimulation<Rules>::evaluate_event(event::Location location) const
+    event::Record RejectionTreeSimulation<Rules>::evaluate_event(
+        event::Location location, RateClassKey key) const
     {
         if (location.sites().size() == 1)
-            return { location, decltype(rules_.site)::event, rules_.site.is_rejected(location) };
+            return { location, decltype(rules_.site)::event, rules_.site.is_rejected(location), key };
 
         if (location.sites().size() == 2)
-            return { location, decltype(rules_.cluster)::event, rules_.cluster.is_rejected(location) };
+            return { location, decltype(rules_.cluster)::event, rules_.cluster.is_rejected(location), key };
 
         throw std::logic_error{ "Unsupported event location size." };
     }
