@@ -494,6 +494,56 @@ namespace
             ut::expect(ut::eq(checker.last_step(), simulation.step()));
         };
 
+        "static process cache is lazy and only contains encountered classes"_test = [] {
+            auto setup{ make_setup() };
+            setup.rules.site.enabled = false;
+            setup.rules.cluster.enabled = false;
+            TestSimulation simulation{ setup };
+
+            auto const& rates{ simulation.process_rates() };
+            auto const& counts{ simulation.process_counts() };
+            ut::expect(ut::eq(rates.size(), Process::number_keys()));
+            ut::expect(ut::eq(counts.size(), rates.size()));
+            for (auto const& [process, rate] : rates)
+            {
+                ut::expect(not process.is_active()) << "unused class stays uninitialized";
+                ut::expect(rate == Rate{}) << "unused class has zero rate";
+            }
+        };
+
+        "static process cache initializes encountered processes only once"_test = [] {
+            auto setup{ make_setup() };
+            TestSimulation simulation{ setup };
+            auto const& rates{ simulation.process_rates() };
+
+            auto const initialized{ std::ranges::count_if(rates, [](auto const& entry) {
+                return entry.first.is_active();
+            }) };
+            ut::expect(ut::that % initialized > 0) << "at least one class created";
+
+            for (std::size_t i{}; i < rates.size(); ++i)
+                if (rates[i].first.is_active())
+                {
+                    ut::expect(ut::eq(static_cast<std::size_t>(
+                        rates[i].first.static_key()), i)) << "cached class owns its key";
+                    ut::expect(rates[i].second == simulation.model()->rate(rates[i].first))
+                        << "cached rate matches model";
+                }
+                else
+                    ut::expect(rates[i].second == Rate{})
+                        << "uninitialized rate remains zero";
+
+            expect_reference_state(simulation, setup.rules, 0);
+        };
+
+        "static process keys must distinguish different kinetic classes"_test = [] {
+            Process const silver{ event::Type::dissolution, Element::Ag, 5 };
+            Process const gold{ event::Type::dissolution, Element::Au, 5 };
+            ut::expect(silver != gold);
+            ut::expect(ut::eq(silver.static_key(), gold.static_key()))
+                << "current dissolution key intentionally omits element";
+        };
+
         "no active processes exhausts without selecting an event"_test = [] {
             auto setup{ make_setup() };
             setup.rules.site.enabled = false;
