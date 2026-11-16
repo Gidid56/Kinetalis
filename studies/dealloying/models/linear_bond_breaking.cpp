@@ -40,29 +40,36 @@ RateClassKey LinearBondBreaking::classify(
     const Descriptor desc{ type, location.source().element(), location.source().coordination() };
     const auto key{ static_key(desc) };
     auto& stored{ descriptors_[key] };
-    auto& info{ infos_[key] };
-    if (not info.is_active())
-    {
+    if (not stored)
         stored = desc;
-        info = ClassInfo{ desc.event, desc.element, desc.coordination, {} };
-    }
-    else if (stored != desc)
+    else if (*stored != desc)
         throw std::logic_error{ "Static kinetic class key collision." };
     return key;
 }
 
 std::size_t LinearBondBreaking::number_keys() const noexcept { return key_count; }
 
-ClassInfo const& LinearBondBreaking::class_info(RateClassKey key) const
-{
-    return infos_.at(key);
-}
-
 LinearBondBreaking::Descriptor const& LinearBondBreaking::descriptor(RateClassKey key) const
 {
-    if (not infos_.at(key).is_active())
+    auto const& value{ descriptors_.at(key) };
+    if (not value)
         throw std::logic_error{ "Uninitialized kinetic class." };
-    return descriptors_.at(key);
+    return *value;
+}
+
+event::Type LinearBondBreaking::class_event(RateClassKey key) const
+{
+    return descriptor(key).event;
+}
+
+Element LinearBondBreaking::class_element(RateClassKey key) const
+{
+    return descriptor(key).element;
+}
+
+lattice::Coordination LinearBondBreaking::class_coordination(RateClassKey key) const
+{
+    return descriptor(key).coordination;
 }
 
 Energy LinearBondBreaking::lattice_energy_barrier(RateClassKey key) const
