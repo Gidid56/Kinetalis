@@ -90,7 +90,7 @@ namespace output
             if (record.outcome != kmc::event::Outcome::accepted)
                 return;
 
-            auto remember = [this](lattice::Site& site) {
+            auto remember = [this](lattice::Site const& site) {
                 if (std::ranges::none_of(affected_, [&](auto const& entry) {
                         return entry.first == &site;
                     }))
@@ -193,7 +193,7 @@ namespace output
         kmc::Simulation const* simulation_{};
         kmc::Time last_time_{};
         Counts counts_;
-        std::vector<std::pair<lattice::Site*, std::optional<SiteKey>>> affected_;
+        std::vector<std::pair<lattice::Site const*, std::optional<SiteKey>>> affected_;
         Data last_data_{}, accumulation_{};
     };
 }
