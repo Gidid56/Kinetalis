@@ -121,8 +121,8 @@ namespace studies::dealloying::setups
         };
         setup.name = std::format("T = {:K};x_Au = {};E = {:V}", temperature, x0, potential);
         if (modulation)
-            setup.name += std::format("{}_{}_{} = {}", enum_name(modulation->process.event),
-            modulation->process.element, static_cast<unsigned>(modulation->process.coordination),
+            setup.name += std::format("{}_{}_{} = {}", enum_name(modulation->descriptor.event),
+            modulation->descriptor.element, static_cast<unsigned>(modulation->descriptor.coordination),
             modulation->ratio);
 
         return setup;
