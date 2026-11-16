@@ -33,8 +33,8 @@ public:
     auto time() const { return time_; }
     auto& model() const { return model_; }
 
-    auto& process_rates() const { return process_rates_; }
-    auto& process_counts() const { return process_counts_; }
+    auto& class_rates() const { return class_rates_; }
+    auto& class_counts() const { return class_counts_; }
 
 protected:
     std::unique_ptr<kmc::Model> model_;
@@ -42,8 +42,8 @@ protected:
     Time time_{};
     std::size_t rejections_{};
 
-    std::vector<std::pair<ClassInfo, Rate>> process_rates_{ { ClassInfo{}, Rate{} } };
-    std::vector<std::size_t> process_counts_{ 0 };
+    std::vector<std::pair<ClassInfo, Rate>> class_rates_{ { ClassInfo{}, Rate{} } };
+    std::vector<std::size_t> class_counts_{ 0 };
 };
 
 template <class Rules>
@@ -66,8 +66,8 @@ public:
 
 private:
     Rate block_rate(lattice::Site&);
-    RateClassKey process_key(event::Type, event::Location const&);
-    void set_process(lattice::Index, RateClassKey);
+    RateClassKey class_key(event::Type, event::Location const&);
+    void set_class_key(lattice::Index, RateClassKey);
 
     Rate rate_sum(lattice::Site&);
     event::Location select_random_location();
@@ -84,7 +84,7 @@ private:
 
     std::unique_ptr<rate_tree::Interface> rate_tree_;
     Rates site_rates_;
-    RateClassKeys processes_;
+    RateClassKeys event_class_keys_;
     std::vector<rate_tree::BlockUpdate> block_updates_;
 
     [[no_unique_address]] Rules rules_;
