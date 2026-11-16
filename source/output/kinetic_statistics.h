@@ -1,6 +1,6 @@
 #pragma once
 #include "writer.h"
-#include "descriptor_format.h"
+#include "types.h"
 #include "kmc/simulation.h"
 #include "utility/file.h"
 

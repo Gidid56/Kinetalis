@@ -1,7 +1,7 @@
 #pragma once
 #include "composition_dependent.h"
 #include "linear_bond_breaking.h"
-#include "output/descriptor_format.h"
+#include "output/types.h"
 
 #include <format>
 #include <iterator>
