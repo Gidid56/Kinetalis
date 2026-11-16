@@ -616,6 +616,9 @@ namespace
             AnalysisPlan plan;
             plan.add<output::KineticActivity<ModelBase>>(root)
                 .set_resolution({ .min_snapshot_step = 1, .snapshot_scale_factor = 1.0 });
+            auto& statistics{ plan.add<output::KineticStatistics<ModelBase>>(root)
+                .set_output_transitions(true)
+                .set_resolution({ .min_snapshot_step = 1, .snapshot_scale_factor = 1.0 }) };
             plan.add<studies::dealloying::analysis::SitePopulation<ModelBase>>(root)
                 .set_resolution({ .min_snapshot_step = 1, .snapshot_scale_factor = 1.0 });
             plan.add<output::process::EventFlux>(root)
@@ -623,6 +626,10 @@ namespace
             plan.add<CheckingObserver>(32, setup.rules);
 
             ut::expect(simulation.run(plan) == simulation::Status::analysed);
+            ut::expect(statistics.counts().contains(process::Outcome::accepted))
+                << "descriptor-based statistics record accepted kinetic events";
+            ut::expect(not statistics.transitions().empty())
+                << "descriptor-based transitions are recorded";
 
             auto read_csv = [&](std::string const& filename, std::size_t expected_columns) {
                 auto path{ root / filename };
