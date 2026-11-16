@@ -97,9 +97,9 @@ static constexpr ElectricPotential critical_potential(
     return potentials.back();
 }
 
-static std::vector<models::LinearBondBreaking::Descriptor> modulated_processes()
+static std::vector<studies::dealloying::models::LinearBondBreaking::Descriptor> modulated_processes()
 {
-    std::vector<models::LinearBondBreaking::Descriptor> processes;
+    std::vector<studies::dealloying::models::LinearBondBreaking::Descriptor> processes;
 
     for (lattice::Coordination coordination{ 7 }; coordination <= 10; ++coordination)
         processes.emplace_back(kmc::event::Type::dissolution, chemistry::Element::Ag, coordination);
