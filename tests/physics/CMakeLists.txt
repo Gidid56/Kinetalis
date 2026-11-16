@@ -3,6 +3,7 @@ kinetalis_add_test_suite(physics
     catalogue.cpp
     constants.cpp
     dimensions.cpp
+    domain.cpp
     format.cpp
     functions.cpp
     logarithmic.cpp
