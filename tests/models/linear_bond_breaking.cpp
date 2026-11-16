@@ -22,6 +22,8 @@ namespace
             model.set_bond_energy(0.20_eV);
             ut::expect(model.constants().bond_energy == 0.20_eV);
             ut::expect(model.output_text().find("Linear bond breaking") != std::string::npos);
+            ut::expect(model.class_csv_header() ==
+                std::string_view{ "key:event,key:element,key:coordination,key:details" });
         };
 
         "nonfinite bond energies are rejected"_test = [] {
