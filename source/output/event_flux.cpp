@@ -23,7 +23,7 @@ void EventFlux::capture_init(kmc::Simulation const& simulation)
             data_.try_emplace(event);
 }
 
-void EventFlux::observe_selected(kmc::event::Record const& record)
+void EventFlux::observe_selected(kmc::event::Record const&)
 {
     auto const& simulation{ *simulation_ };
     auto const time_delta{ simulation.time() - last_time_ };
@@ -41,8 +41,8 @@ void EventFlux::observe_selected(kmc::event::Record const& record)
         if (count == 0)
             continue;
 
-        auto const& [info, rate]{ class_rates[key] };
-        auto const event{ info.event() };
+        auto const rate{ class_rates[key] };
+        auto const event{ simulation.model()->class_event(static_cast<kmc::RateClassKey>(key)) };
 
         if (event != kmc::event::Type::none)
             data_[event].integral += count * rate * time_delta;
