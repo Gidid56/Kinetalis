@@ -63,26 +63,6 @@ Energy ElectrochemicalInterface::activation_gibbs_energy(RateClassKey key) const
     }
 }
 
-std::string ElectrochemicalInterface::class_label(RateClassKey key) const
-{
-    auto label{ std::format("{}_{}_{}", enum_name(class_event(key)), class_element(key),
-        static_cast<unsigned>(class_coordination(key))) };
-    if (auto const details{ class_details(key) }; not details.empty())
-        label += "_" + details;
-    return label;
-}
-
-std::string_view ElectrochemicalInterface::class_csv_header() const
-{
-    return "key:event,key:element,key:coordination,key:details";
-}
-
-std::string ElectrochemicalInterface::class_csv_row(RateClassKey key) const
-{
-    return std::format("{},{},{},{}", enum_name(class_event(key)), class_element(key),
-        static_cast<unsigned>(class_coordination(key)), class_details(key));
-}
-
 Rate ElectrochemicalInterface::rate(RateClassKey key) const
 {
     return physics::equations::kinetics::tst_rate(
