@@ -46,11 +46,11 @@ namespace studies::dealloying::analysis
         {
             std::map<SiteKey, std::size_t> counts;
             std::set<SiteKey> direct_counts;
-            auto const& process_counts{ simulation.process_counts() };
+            auto const& class_counts{ simulation.class_counts() };
 
-            for (std::size_t index{ 1 }; index < process_counts.size(); ++index)
+            for (std::size_t index{ 1 }; index < class_counts.size(); ++index)
             {
-                auto const count{ process_counts[index] };
+                auto const count{ class_counts[index] };
                 if (count == 0)
                     continue;
 
@@ -97,11 +97,8 @@ namespace studies::dealloying::analysis
             accumulation_ = {};
         }
 
-        void observe_selected(kmc::event::Record const& record) override
+        void observe_selected(kmc::event::Record const&) override
         {
-            if (record.outcome != kmc::event::Outcome::accepted)
-                return;
-
             auto const delta{ simulation_->time() - last_time_ };
             last_time_ = simulation_->time();
 
