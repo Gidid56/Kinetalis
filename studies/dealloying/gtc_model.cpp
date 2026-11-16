@@ -21,15 +21,17 @@ std::vector<Position> studies::dealloying::gtc::transition_states(Cluster<2> con
 
     constexpr std::size_t samples_per_arc{ 64 };
     constexpr double coordinate_tolerance{ 8 * epsilon::coordinate };
-    const auto length_tolerance{ 8 * epsilon::length };
-    const auto area_tolerance{ math::square(length_tolerance) };
+    const Length length_tolerance{ 8 * epsilon::length };
+    const Area area_tolerance{ math::square(length_tolerance) };
+    using SignedArea = physics::Quantity<physics::dimension::Area,
+        physics::Reference::zero, physics::Domain::unrestricted>;
 
     const Position initial{};
     const auto final{ lattice.displacement(*cluster[0], *cluster[1]) };
     const Length nearest_neighbor_distance{ final.norm() };
 
     if (nearest_neighbor_distance <= length_tolerance or
-        math::abs(nearest_neighbor_distance - lattice.unit_cell().next_neighbor_distance()) >
+        Length{ math::abs(nearest_neighbor_distance - lattice.unit_cell().next_neighbor_distance()) } >
             length_tolerance)
         return {};
 
@@ -102,7 +104,7 @@ std::vector<Position> studies::dealloying::gtc::transition_states(Cluster<2> con
     };
 
     auto is_contact = [&](Position const& point, Position const& support) {
-        return math::abs((point - support).norm() - nearest_neighbor_distance) <= length_tolerance;
+        return Length{ math::abs((point - support).norm() - nearest_neighbor_distance) } <= length_tolerance;
     };
 
     auto overlaps_occupied_neighbor = [&](Position const& point) {
@@ -153,7 +155,7 @@ std::vector<Position> studies::dealloying::gtc::transition_states(Cluster<2> con
         const Position radial_end{ end - center };
         const Length radius{ radial_begin.norm() };
 
-        if (radius <= length_tolerance or math::abs(radial_end.norm() - radius) > length_tolerance)
+        if (radius <= length_tolerance or Length{ math::abs(radial_end.norm() - radius) } > length_tolerance)
             return arcs;
 
         const Position tangent_begin{ support_vector.cross(radial_begin) / support_distance };
@@ -225,7 +227,7 @@ std::vector<Position> studies::dealloying::gtc::transition_states(Cluster<2> con
             const Displacement projection{ axis_x.dot(ac) };
             const Position normal_component{ ac - axis_x * projection };
             const Displacement normal_length{ normal_component.norm() };
-            if (normal_length <= length_tolerance)
+            if (Length{ normal_length } <= length_tolerance)
                 return intersections;
 
             const auto axis_y{ normal_component / normal_length };
@@ -237,11 +239,11 @@ std::vector<Position> studies::dealloying::gtc::transition_states(Cluster<2> con
             const auto z_squared{ nearest_neighbor_distance_squared - math::square(x) -
                                   math::square(y) };
 
-            if (z_squared < -area_tolerance)
+            if (SignedArea{ z_squared } < -area_tolerance)
                 return intersections;
 
             const Position base{ center_a + axis_x * x + axis_y * y };
-            if (z_squared <= area_tolerance)
+            if (SignedArea{ z_squared } <= area_tolerance)
             {
                 intersections.emplace_back(base);
                 return intersections;
