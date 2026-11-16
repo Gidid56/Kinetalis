@@ -39,27 +39,24 @@ namespace output
         void capture_init(kmc::Simulation const& simulation) override
         {
             simulation_ = &simulation;
-            model_ = dynamic_cast<ModelType*>(simulation.model().get());
+            model_ = dynamic_cast<ModelType const*>(simulation.model().get());
             if (not model_)
                 throw std::logic_error{ "KineticActivity requires the selected model type." };
             last_time_ = simulation.time();
             last_data_ = {};
             accumulation_ = {};
-            process_header_.clear();
-            process_columns_ = {};
+            class_header_.clear();
+            class_columns_ = {};
         }
 
-        void observe_selected(kmc::event::Record const& record) override
+        void observe_selected(kmc::event::Record const&) override
         {
-            if (record.outcome != kmc::event::Outcome::accepted)
-                return;
-
             auto const& simulation{ *simulation_ };
             auto const delta{ simulation.time() - last_time_ };
             last_time_ = simulation.time();
 
-            auto const& counts{ simulation.process_counts() };
-            auto const& rates{ simulation.process_rates() };
+            auto const& counts{ simulation.class_counts() };
+            auto const& rates{ simulation.class_rates() };
             kmc::Rate total{};
 
             for (std::size_t i{ 1 }; i < counts.size(); ++i)
@@ -93,7 +90,7 @@ namespace output
         static std::string header(kmc::Simulation const& simulation)
         {
             std::string text{ Writer::default_header };
-            auto const& rates{ simulation.process_rates() };
+            auto const& rates{ simulation.class_rates() };
             for (std::size_t key{ 1 }; key < rates.size(); ++key)
             {
                 auto const& info{ rates[key].first };
@@ -134,12 +131,12 @@ namespace output
 
         void write_init(kmc::Simulation const& simulation) override
         {
-            process_header_ = header(simulation);
-            process_columns_ = simulation.process_rates().size() - 1;
+            class_header_ = header(simulation);
+            class_columns_ = simulation.class_rates().size() - 1;
             utility::file::write<utility::file::Type::csv>(
-                writer_path() / "activity", process_header_ + '\n');
+                writer_path() / "activity", class_header_ + '\n');
             utility::file::write<utility::file::Type::csv>(
-                writer_path() / "time_weighted_activity", process_header_ + '\n');
+                writer_path() / "time_weighted_activity", class_header_ + '\n');
         }
 
         void write_snapshot(kmc::Simulation const& simulation) override
@@ -149,16 +146,16 @@ namespace output
                 return;
 
             auto const new_header{ header(simulation) };
-            if (new_header != process_header_)
+            if (new_header != class_header_)
             {
-                auto const new_columns{ simulation.process_rates().size() - 1 };
-                if (new_columns < process_columns_)
+                auto const new_columns{ simulation.class_rates().size() - 1 };
+                if (new_columns < class_columns_)
                     throw std::logic_error{ "Kinetic class count shrank during output." };
-                auto const extra{ new_columns - process_columns_ };
+                auto const extra{ new_columns - class_columns_ };
                 replace_header(writer_path() / "activity", new_header, extra);
                 replace_header(writer_path() / "time_weighted_activity", new_header, extra);
-                process_header_ = new_header;
-                process_columns_ = new_columns;
+                class_header_ = new_header;
+                class_columns_ = new_columns;
             }
 
             auto const prefix{ std::format("{},{:v:}", simulation.step(), simulation.time()) };
@@ -166,9 +163,9 @@ namespace output
             std::string activity{ prefix };
             std::string weighted{ prefix };
 
-            for (std::size_t i{ 1 }; i < simulation.process_rates().size(); ++i)
+            for (std::size_t i{ 1 }; i < simulation.class_rates().size(); ++i)
             {
-                auto const& info{ simulation.process_rates()[i].first };
+                auto const& info{ simulation.class_rates()[i].first };
                 if (not info.is_active())
                 {
                     activity += ',';
@@ -194,10 +191,10 @@ namespace output
         }
 
         kmc::Simulation const* simulation_{};
-        ModelType* model_{};
+        ModelType const* model_{};
         kmc::Time last_time_{};
         Data last_data_{}, accumulation_{};
-        std::string process_header_;
-        std::size_t process_columns_{};
+        std::string class_header_;
+        std::size_t class_columns_{};
     };
 }
