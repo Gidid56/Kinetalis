@@ -1,6 +1,7 @@
 #include "lattice/unitcell.h"
 
 #include <algorithm>
+#include <array>
 #include <boost/ut.hpp>
 #include <cmath>
 #include <cstddef>
@@ -140,6 +141,31 @@ namespace
             ut::expect(ut::that % face.packing_fraction().value() < 1.0);
             ut::expect(ut::that %
                 face.packing_fraction().value() > simple.packing_fraction().value());
+        };
+
+        "fcc [111] supercell has the correct orthogonal basis and volume"_test = [] {
+            auto const cell{ UnitCell::conventional<Bravais::cF>(400_pm) };
+            auto const shape{ cell.oriented_periodic_supercell(Indices{ 1, 1, 1 }) };
+            auto const equivalent{ cell.oriented_periodic_supercell(Indices{ 2, 2, 2 }) };
+
+            constexpr std::array expected{
+                std::array{ -1, 1, 0 },
+                std::array{ -1, -1, 2 },
+                std::array{ 1, 1, 1 },
+            };
+            auto const parameter{ (400_pm).value() };
+            for (std::size_t i{}; i < 3; ++i)
+                for (std::size_t j{}; j < 3; ++j)
+                    ut::expect(ut::that %
+                        std::abs(shape.vectors()[i][j].value() / parameter - expected[i][j]) <
+                            1E-12) << "oriented basis component";
+
+            ut::expect(shape.is_rectangular());
+            ut::expect(shape.vectors() == equivalent.vectors())
+                << "Miller indices must be reduced to a primitive direction";
+            ut::expect(ut::that %
+                std::abs(shape.volume().value() / (parameter * parameter * parameter) - 6.0) <
+                    1E-12) << "the [111] supercell has volume 6a^3";
         };
 
         "zero Miller indices are rejected"_test = [] {

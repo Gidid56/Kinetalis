@@ -42,7 +42,9 @@ UnitCell::oriented_periodic_supercell(Indices const& new_z, Indices const& old_z
     Indices new_y{ direction.cross(new_x) };
     math::Matrix<3, 3, int> new_vectors{ new_x, new_y, direction };
 
-    return shape::Parallelepiped{ new_vectors * parameters() };
+    // The lattice parameters are nonnegative magnitudes; the oriented basis
+    // contains signed Cartesian displacements.
+    return shape::Parallelepiped{ new_vectors * parameters().to<Displacement>() };
 }
 
 // The shape is first expanded into an outer cuboid using the shape's bounding box.

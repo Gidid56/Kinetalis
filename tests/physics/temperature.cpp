@@ -121,14 +121,17 @@ namespace
                 "absolute - absolute should be allowed");
         };
 
-        "pure scaling preserves absolute reference; dimensional algebra drops it"_test = [] {
+        "scalar scaling preserves absolute reference but resets the value domain"_test = [] {
             const AbsoluteTemperature room{ 20_degC };
             const auto doubled{ 2 * room };
             const auto dimensional_product{ room * 2_m };
 
             static_assert(
-                std::same_as<std::remove_cvref_t<decltype(doubled)>, AbsoluteTemperature>,
-                "scalar scaling should preserve the absolute property");
+                Like<decltype(doubled), AbsoluteTemperature>,
+                "scalar scaling should preserve the absolute temperature reference");
+            static_assert(
+                std::remove_cvref_t<decltype(doubled)>::domain_value == Domain::unrestricted,
+                "scalar scaling must not inherit a restricted value domain");
             //static_assert(
             //    std::remove_cvref_t<decltype(dimensional_product)>::reference_value == Reference::difference,
             //    "dimensional multiplication should remove the reference property");

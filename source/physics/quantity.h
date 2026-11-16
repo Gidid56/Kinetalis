@@ -174,7 +174,7 @@ namespace physics
             return Quantity<
                 ResultDimension,
                 add(reference, other_reference),
-                add(domain, other_domain),
+                Domain::unrestricted,
                 decltype(value_ + other.value())>{ value_ + other.value() };
         }
 
@@ -196,7 +196,7 @@ namespace physics
             return Quantity<
                 ResultDimension,
                 subtract(reference, other_reference),
-                subtract(domain, other_domain),
+                Domain::unrestricted,
                 decltype(value_ - other.value())>{ value_ - other.value() };
         }
 
@@ -253,7 +253,7 @@ namespace physics
             return Quantity<
                 decltype(Dimension{} + OtherDimension{}),
                 multiply(reference, other_reference),
-                multiply(domain, other_domain),
+                Domain::unrestricted,
                 decltype(value_ * other.value())>{ value_ * other.value() };
         }
 
@@ -268,7 +268,7 @@ namespace physics
             return Quantity<
                 decltype(Dimension{} - OtherDimension{}),
                 divide(reference, other_reference, dimension::Same<Dimension, OtherDimension>),
-                divide(domain, other_domain),
+                Domain::unrestricted,
                 decltype(value_ / other.value())>{ value_ / other.value() };
         }
     };
@@ -295,7 +295,7 @@ namespace physics
         return Quantity<
             Dimensionless,
             Reference::difference,
-            domain,
+            Domain::unrestricted,
             decltype(left - right.value())>{ left - right.value() };
     }
 
@@ -307,7 +307,7 @@ namespace physics
         std::floating_point Value>
     constexpr auto operator*(Scalar left, Quantity<Dimension, reference, domain, Value> right)
     {
-        return Quantity<Dimension, reference, domain, decltype(left * right.value())>{
+        return Quantity<Dimension, reference, Domain::unrestricted, decltype(left * right.value())>{
             left * right.value()
         };
     }
@@ -323,7 +323,7 @@ namespace physics
         return Quantity<
             decltype(-Dimension{}),
             divide(Reference::ratio, reference, false),
-            domain,
+            Domain::unrestricted,
             decltype(left / right.value())>{ left / right.value() };
     }
 

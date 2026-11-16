@@ -184,10 +184,11 @@ void Lattice::make_periodic()
         for (auto& site : sites_)
         {
             auto periodicity_fraction{ max_path_length_ / shape_.parameters()[axis] };
-            auto coordinate{ (shape_.coordinate(site.position()) - site::center)[axis] -
-                             epsilon::coordinate };
+            const auto coordinate{ (shape_.coordinate(site.position()) - site::center)[axis] };
 
-            if (abs(coordinate) >= 0.5 - periodicity_fraction)
+            // Include sites exactly one neighbor cutoff from a boundary, allowing
+            // for floating-point roundoff in the rotated supercell coordinates.
+            if (abs(coordinate) + epsilon::coordinate >= 0.5 - periodicity_fraction)
             {
                 translated.emplace_back(
                     site,
@@ -215,9 +216,13 @@ void Lattice::construct_neighbor_list()
         if (sites_.size() >= std::numeric_limits<Index>::max())
             throw std::overflow_error{ "Increase lattice::Index size." };
 
-        Cells const cells{ sites_, max_path_length_ };
+        // Cell bins must cover the same tolerance-expanded cutoff as the
+        // distance filter. Otherwise neighbors on rotated cell boundaries
+        // can fall two bins apart through floating-point roundoff.
+        const auto cutoff{ max_path_length_ + epsilon::length };
+        Cells const cells{ sites_, cutoff };
 
-        auto const distance_squared{ math::square(max_path_length_ + epsilon::length) };
+        auto const distance_squared{ math::square(cutoff) };
 
         for (auto& site : sites_ | std::views::take(site_count))
         {

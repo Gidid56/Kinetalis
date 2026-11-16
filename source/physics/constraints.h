@@ -72,40 +72,9 @@ namespace physics::inline constraints
         return multiply(left, right);
     }
 
-    constexpr Domain add(Domain left, Domain right)
-    {
-        if (satisfies(left, Domain::non_negative) and satisfies(right, Domain::non_negative))
-        {
-            return Domain::non_negative;
-        }
-
-        return Domain::unrestricted;
-    }
-
-    constexpr Domain subtract(Domain, Domain) { return Domain::unrestricted; }
-
-    constexpr Domain multiply(Domain left, Domain right)
-    {
-        if (left == Domain::unit_interval and right == Domain::unit_interval)
-            return Domain::unit_interval;
-
-        if (satisfies(left, Domain::non_negative) and satisfies(right, Domain::non_negative))
-        {
-            return Domain::non_negative;
-        }
-
-        return Domain::unrestricted;
-    }
-
-    constexpr Domain divide(Domain left, Domain right)
-    {
-        if (satisfies(left, Domain::non_negative) and satisfies(right, Domain::non_negative))
-        {
-            return Domain::non_negative;
-        }
-
-        return Domain::unrestricted;
-    }
+    // Arithmetic expressions default to Domain::unrestricted. Domain restrictions
+    // describe valid stored values and are only retained by functions whose
+    // mathematical range is independently known (e.g. abs, sqrt, exp).
 
     template <std::size_t root>
     constexpr Domain root_map(Domain domain)

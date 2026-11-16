@@ -130,6 +130,21 @@ namespace
                 Parameters::all(1600_pm), Indices{ 1, 0, 0 }), 12);
         };
 
+        "fcc [111] supercells have correct open and periodic neighbor graphs"_test = [] {
+            using enum math::Axis;
+            auto const orientation{ Indices{ 1, 1, 1 } };
+            auto const dimensions{ Parameters::all(1600_pm) };
+
+            auto open{ make_lattice<Bravais::cF>(none, dimensions, orientation) };
+            ut::expect(ut::eq(open.sites().size(), std::size_t{ 432 }))
+                << "18 conventional fcc volumes with 4 sites each, replicated 6-fold";
+            check_neighbor_graph(open);
+
+            auto periodic{ make_lattice<Bravais::cF>(x | y | z, dimensions, orientation) };
+            ut::expect(ut::eq(periodic.sites().size(), std::size_t{ 432 }));
+            check_neighbor_graph(periodic, 12);
+        };
+
         "neighbor construction is not repeatable and too-small periodic boxes fail"_test = [] {
             auto lattice{ make_lattice<Bravais::cF>() };
             ut::expect(ut::throws<std::logic_error>([&] { lattice.construct_sites(); }));
