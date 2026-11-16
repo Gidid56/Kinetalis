@@ -64,23 +64,23 @@ void Regime::capture_init(kmc::Simulation const& kmc)
     history_.clear();
 }
 
-void Regime::observe_selected(kmc::event::Record const& process)
+void Regime::observe_selected(kmc::event::Record const& record)
 {
-    phases_.observe_selected(process);
+    phases_.observe_selected(record);
 
     if ((observer_conditions_ & Condition::passivated) != Condition::none)
-        surface_.observe_selected(process);
+        surface_.observe_selected(record);
 
     if ((observer_conditions_ & Condition::arrested) != Condition::none)
-        event_flux_.observe_selected(process);
+        event_flux_.observe_selected(record);
 }
 
-void Regime::observe_processed(kmc::event::Record const& process)
+void Regime::observe_processed(kmc::event::Record const& record)
 {
-    phases_.observe_processed(process);
+    phases_.observe_processed(record);
 
     if ((observer_conditions_ & Condition::passivated) != Condition::none)
-        surface_.observe_processed(process);
+        surface_.observe_processed(record);
 }
 
 auto Regime::lookback_start_step(Condition condition) const
