@@ -225,7 +225,10 @@ namespace kmc
         for (auto neighbor : lattice_.neighbors(site))
         {
             auto const path{ lattice::Path{ &site, neighbor } };
-            add_process(process_key(make_process(path, rules_.path)));
+            if (rules_.path.is_candidate(path))
+                add_process(process_key(Process{ decltype(rules_.path)::event, path }));
+            else
+                add_process({});
         }
 
         site.set_active(has_processes);

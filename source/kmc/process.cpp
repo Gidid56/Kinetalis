@@ -11,20 +11,20 @@ using enum Element;
 
 // TODO fix deposition element to Ag
 
-Process::Process(Event event, Element element, Coordination coordination)
+Process::Process(event::Type event, Element element, Coordination coordination)
     : event_{ event },
       element_{ element },
       coordination_{ coordination }
 { }
 
-Process::Process(Event event, Site const& site)
+Process::Process(event::Type event, Site const& site)
     : event_{ event },
       element_{ site.element() },
       coordination_{ site.coordination() },
       element_neighbors_{ site.element_neighbors() }
 { }
 
-Process::Process(Event event, Path const& path)
+Process::Process(event::Type event, Path const& path)
     : event_{ event },
       element_{ path.front().element() },
       coordination_{ path.front().coordination() },
@@ -55,12 +55,12 @@ process::Key Process::static_key() const
 
     switch (event_)
     {
-        case Event::diffusion:
+        case event::Type::diffusion:
             return offset::diffusion + max_coordination * elementKey(element_) + coordination_;
 
-        case Event::dissolution: return offset::dissolution + coordination_;
+        case event::Type::dissolution: return offset::dissolution + coordination_;
 
-        case Event::deposition: return offset::deposition + coordination_;
+        case event::Type::deposition: return offset::deposition + coordination_;
 
         default: return {};
     }
@@ -114,13 +114,13 @@ std::formatter<Process>::format(Process const& process, std::format_context& con
     return out;
 }
 
-process::Record::Record(Site& site, Event event, bool rejected)
+process::Record::Record(Site& site, event::Type event, bool rejected)
     : outcome{ rejected ? Outcome::rejected : Outcome::accepted },
       process{ event, site },
       path{ &site, &site }
 { }
 
-process::Record::Record(Path const& path, Event event, bool rejected)
+process::Record::Record(Path const& path, event::Type event, bool rejected)
     : outcome{ rejected ? Outcome::rejected : Outcome::accepted },
       process{ event, path },
       path{ path }
