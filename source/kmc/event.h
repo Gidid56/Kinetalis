@@ -78,7 +78,7 @@ namespace kmc::event
     class Record
     {
     public:
-        Record(Location location, Type event, bool rejected, RateClassKey class_key = {}) noexcept
+        Record(Location location, Type event, bool rejected, RateClassKey class_key) noexcept
             : type{ event },
               outcome{ rejected ? Outcome::rejected : Outcome::accepted },
               class_key{ class_key },
