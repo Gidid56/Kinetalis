@@ -101,7 +101,7 @@ namespace output
             if (transitions_.empty() or not output_transitions_)
                 return;
 
-            auto const header{ model_->class_csv_header() };
+            auto const header{ DescriptorFormat<Descriptor>::header() };
             auto const columns{ std::ranges::count(header, ',') + 1 };
             std::string csv{ "from" };
             csv.append(columns, ',');
