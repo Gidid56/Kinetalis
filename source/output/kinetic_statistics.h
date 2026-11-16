@@ -42,7 +42,7 @@ namespace output
         void capture_init(kmc::Simulation const& simulation) override
         {
             simulation_ = &simulation;
-            model_ = dynamic_cast<ModelType*>(simulation.model().get());
+            model_ = dynamic_cast<ModelType const*>(simulation.model().get());
             if (not model_)
                 throw std::logic_error{ "KineticStatistics requires the selected model type." };
 
@@ -54,8 +54,8 @@ namespace output
 
         void observe_selected(kmc::event::Record const& record) override
         {
-            // Observe before event execution, while the local configuration is unchanged.
-            auto key{ model_->classify(record.type, record.location(), simulation_->lattice()) };
+            // The selected event already carries its registered kinetic class.
+            auto const key{ record.class_key };
             Descriptor descriptor{ model_->descriptor(key) };
             keys_[descriptor] = key;
             ++counts_[record.outcome][descriptor];
@@ -120,7 +120,7 @@ namespace output
 
         bool output_transitions_{ false };
         kmc::Simulation const* simulation_{};
-        ModelType* model_{};
+        ModelType const* model_{};
         std::optional<Descriptor> last_descriptor_{};
         std::map<Descriptor, kmc::RateClassKey> keys_;
         std::map<kmc::event::Outcome, CountMap> counts_;
