@@ -78,9 +78,10 @@ namespace kmc::event
     class Record
     {
     public:
-        Record(Location location, Type event, bool rejected) noexcept
+        Record(Location location, Type event, bool rejected, RateClassKey class_key = {}) noexcept
             : type{ event },
               outcome{ rejected ? Outcome::rejected : Outcome::accepted },
+              class_key{ class_key },
               location_{ std::move(location) }
         { }
 
@@ -89,6 +90,7 @@ namespace kmc::event
 
         Type type;
         Outcome outcome;
+        RateClassKey class_key;
 
     private:
         Location location_;
