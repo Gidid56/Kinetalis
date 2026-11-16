@@ -1,5 +1,7 @@
 #include "kmc/simulation.h"
 #include "dealloying/models/linear_bond_breaking.h"
+#include "dealloying/models/composition_dependent.h"
+#include "output/basics.h"
 #include "physics/equations/kinetics.h"
 #include "kmc/analysis_plan.h"
 #include "lattice/lattice.h"
@@ -632,8 +634,8 @@ namespace
             auto& statistics{ plan.add<output::KineticStatistics<ModelBase>>(root)
                 .set_output_transitions(true)
                 .set_resolution({ .min_snapshot_step = 1, .snapshot_scale_factor = 1.0 }) };
-            plan.add<output::SitePopulation>(root)
-                .set_resolution({ .min_snapshot_step = 1, .snapshot_scale_factor = 1.0 });
+            auto& site_population{ plan.add<output::SitePopulation>(root)
+                .set_resolution({ .min_snapshot_step = 1, .snapshot_scale_factor = 1.0 }) };
             plan.add<output::EventFlux>(root)
                 .set_resolution({ .min_snapshot_step = 1, .snapshot_scale_factor = 1.0 });
             plan.add<CheckingObserver>(32, setup.rules);
@@ -643,6 +645,17 @@ namespace
                 << "descriptor-based statistics record accepted kinetic events";
             ut::expect(not statistics.transitions().empty())
                 << "descriptor-based transitions are recorded";
+
+            std::map<output::SitePopulation::SiteKey, std::size_t> expected_sites;
+            for (auto const& site : simulation.lattice().sites())
+                if (site.is_occupied() and site.is_surface())
+                    ++expected_sites[{ site.element(), site.coordination() }];
+            for (auto const& [site, count] : expected_sites)
+                ut::expect(ut::eq(site_population.counts().at(site), count))
+                    << "physical site population matches complete lattice scan";
+            for (auto const& [site, count] : site_population.counts())
+                ut::expect(ut::eq(count, expected_sites[site]))
+                    << "incremental site population contains no spurious sites";
 
             auto read_csv = [&](std::string const& filename, std::size_t expected_columns) {
                 auto path{ root / filename };
@@ -692,6 +705,30 @@ namespace
             auto const flux_columns{ std::size_t{ 2 } +
                 2 * (enum_values<event::Type>().size() - 1) };
             read_csv("event_flux", flux_columns);
+        };
+
+        "site populations are independent of composition-dependent kinetic classes"_test = [] {
+            auto setup{ make_setup() };
+            setup.make_model = [] {
+                return std::make_unique<studies::dealloying::models::CompositionDependent>();
+            };
+            TestSimulation simulation{ setup };
+            AnalysisPlan plan;
+            auto& site_population{ plan.add<output::SitePopulation>() };
+            plan.add<control::StepLimit>(25);
+
+            ut::expect(simulation.run(plan) == simulation::Status::analysed);
+            std::map<output::SitePopulation::SiteKey, std::size_t> expected_sites;
+            for (auto const& site : simulation.lattice().sites())
+                if (site.is_occupied() and site.is_surface())
+                    ++expected_sites[{ site.element(), site.coordination() }];
+
+            for (auto const& [site, count] : expected_sites)
+                ut::expect(ut::eq(site_population.counts().at(site), count))
+                    << "composition-dependent classes do not change physical populations";
+            for (auto const& [site, count] : site_population.counts())
+                ut::expect(ut::eq(count, expected_sites[site]))
+                    << "all physical classes match direct enumeration";
         };
 
         "no active events exhausts without selecting an event"_test = [] {
