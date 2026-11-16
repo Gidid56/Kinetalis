@@ -6,12 +6,8 @@
 
 using namespace lattice;
 
-std::vector<Position> studies::dealloying::gtc::transition_states(Cluster<2> const& cluster, Lattice const& lattice) const
+std::vector<Position> studies::dealloying::gtc::transition_states(Cluster<2> const& cluster, Lattice const& lattice)
 {
-    //	// TODO: Replace this direct midpoint placeholder with
-    //	// the geometric transition-state coordination model.
-    //	return{ cluster[0]->position() + pathVector(lattice) / 2 };
-
     /*
 		Temporary dynamic construction of minimal GTC path proposals.
 
@@ -63,7 +59,7 @@ std::vector<Position> studies::dealloying::gtc::transition_states(Cluster<2> con
     auto insert_neighbor = [&](Site const& endpoint, bool initial_endpoint) {
         for (auto neighbor : lattice.neighbors(endpoint))
         {
-            if (neighbor == &*cluster[0] or neighbor == &*cluster[1])
+            if (neighbor == cluster[0] or neighbor == cluster[1])
                 continue;
 
             const Position candidate_position{

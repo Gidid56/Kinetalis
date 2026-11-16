@@ -4,7 +4,6 @@
 
 #include "bridge.h"
 #include "kmc/process.h"
-#include "lattice/path.h"
 #include "lattice/site.h"
 
 using namespace viewer;

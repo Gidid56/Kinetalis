@@ -7,7 +7,6 @@
 #include "kmc/analysis_plan.h"
 #include "kmc/simulation.h"
 #include "lattice/lattice.h"
-#include "lattice/path.h"
 #include "lattice/site.h"
 
 using namespace viewer;
