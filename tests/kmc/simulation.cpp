@@ -287,6 +287,10 @@ namespace
                 rejected = rules_.cluster.is_rejected(record.location());
                 ut::expect(record.type == ClusterRule::event);
             }
+            auto const expected_key{ ModelBase::static_key(Descriptor{
+                record.type, source.element(), source.coordination() }) };
+            ut::expect(ut::eq(record.class_key, expected_key))
+                << "selected event carries the registered kinetic class";
             ut::expect(ut::eq(record.outcome == event::Outcome::rejected, rejected))
                 << "postselection rejection matches rule";
             if (record.outcome == event::Outcome::rejected)
@@ -383,35 +387,40 @@ namespace
             auto& first{ lattice.sites().at(0) };
             auto& second{ lattice.sites().at(1) };
 
-            event::Record site_record{ event::Location{ first }, SiteRule::event, false };
+            event::Record site_record{ event::Location{ first }, SiteRule::event, false, 65537 };
             ut::expect(ut::eq(site_record.sites().size(), std::size_t{ 1 }));
             ut::expect(site_record.sites()[0] == &first);
             ut::expect(site_record.type == SiteRule::event);
+            ut::expect(ut::eq(site_record.class_key, RateClassKey{ 65537 }));
 
             auto site_copy{ site_record };
             ut::expect(site_copy.sites().data() != site_record.sites().data())
                 << "a record copy owns its own pointer storage";
             ut::expect(ut::eq(site_copy.sites().size(), std::size_t{ 1 }));
             ut::expect(site_copy.sites()[0] == &first);
+            ut::expect(ut::eq(site_copy.class_key, site_record.class_key));
 
             Cluster<2> const cluster{ &first, &second };
-            event::Record cluster_record{ event::Location{ cluster }, ClusterRule::event, false };
+            event::Record cluster_record{ event::Location{ cluster }, ClusterRule::event, false, 65538 };
             ut::expect(ut::eq(cluster_record.sites().size(), std::size_t{ 2 }));
             ut::expect(cluster_record.sites()[0] == &first);
             ut::expect(cluster_record.sites()[1] == &second);
             ut::expect(cluster_record.type == ClusterRule::event);
+            ut::expect(ut::eq(cluster_record.class_key, RateClassKey{ 65538 }));
             ut::expect(std::ranges::equal(cluster_record.sites(), cluster));
 
             auto cluster_copy{ cluster_record };
             ut::expect(cluster_copy.sites().data() != cluster_record.sites().data())
                 << "a cluster record copy owns its own pointer storage";
             ut::expect(std::ranges::equal(cluster_copy.sites(), cluster));
+            ut::expect(ut::eq(cluster_copy.class_key, cluster_record.class_key));
 
             auto cluster_move{ std::move(cluster_copy) };
             ut::expect(ut::eq(cluster_move.sites().size(), std::size_t{ 2 }));
             ut::expect(cluster_move.sites().data() != cluster_record.sites().data());
             ut::expect(cluster_move.sites()[0] == &first);
             ut::expect(cluster_move.sites()[1] == &second);
+            ut::expect(ut::eq(cluster_move.class_key, cluster_record.class_key));
         };
 
         "site and cluster rules execute lattice transformations"_test = [] {
