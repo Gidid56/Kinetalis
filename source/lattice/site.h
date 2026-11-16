@@ -12,7 +12,7 @@
    - Constructors: Initialize site position, element, and index based on provided parameters.
    - Methods for setting and accessing site properties: element, neighbors, position, etc.
    - Functionality to manage site state: setting element, index, position, layer, and checking site properties.
-   - Methods to handle site interactions: insertion, executing processes, updating, and determining events.
+   - Methods to handle site interactions: insertion, executing events, updating, and determining events.
    - Utility functions to query site characteristics: occupancy, surface/bulk status, neighbors, and indices.
 
    Private Attributes:
@@ -96,7 +96,7 @@ public:
     auto flags() const { return flags_; }
     auto index() const { return site_index_; }
     auto neighbor_index() const { return neighbor_index_; }
-    auto process_index() const { return site_index_ + neighbor_index_; }
+    auto event_offset() const { return site_index_ + neighbor_index_; }
     auto& position() const { return position_; }
     Layer layer() const { return layer_.get(); }
     //auto& original() const { return original_; }
