@@ -14,6 +14,13 @@ namespace kmc
         site_rates_.resize(lattice_.sites().size());
         processes_.resize(lattice_.sites().size() + lattice_.neighbors().size());
         block_updates_.reserve(2 * (lattice::max_coordination + 1));
+
+        // Static process keys occupy fixed slots, filled only on first use.
+        if constexpr (staticProcessKeys)
+        {
+            process_rates_.resize(Process::number_keys());
+            process_counts_.resize(Process::number_keys());
+        }
     }
 
     template <class Rules>
@@ -287,7 +294,24 @@ namespace kmc
             return {};
 
         if constexpr (staticProcessKeys)
-            return process.static_key();
+        {
+            const auto key{ process.static_key() };
+            if (key == process::Key{})
+                throw std::logic_error{ "Active process maps to reserved static key zero." };
+
+            auto& [cached_process, rate]{ process_rates_.at(key) };
+            if (not cached_process.is_active())
+            {
+                // Leave the slot uninitialized if the model evaluation fails.
+                const auto new_rate{ model_->rate(process) };
+                cached_process = process;
+                rate = new_rate;
+            }
+            else if (cached_process != process)
+                throw std::logic_error{ "Static process key collision." };
+
+            return key;
+        }
 
         if (auto it{ dynamic_keys_.find(process) }; it != dynamic_keys_.end())
             return it->second;
@@ -309,10 +333,7 @@ namespace kmc
     template <class Rules>
     void RejectionTreeSimulation<Rules>::update_rates()
     {
-        if constexpr (staticProcessKeys)
-            update_static_rates();
-        else
-            update_dynamic_rates();
+        refresh_cached_rates();
 
         // A full-rate refresh bypasses per-event block collection. Rebuild each
         // block once after all site rates have been recalculated.
@@ -330,49 +351,10 @@ namespace kmc
     }
 
     template <class Rules>
-    void RejectionTreeSimulation<Rules>::update_static_rates()
-    {
-        process_rates_.clear();
-        process_rates_.reserve(Process::number_keys());
-        process_rates_.emplace_back(Process{}, Rate{});
-
-        constexpr auto elements{ utility::prepend(Element::none, lattice::active_elements) };
-
-        auto add_rule = [&](auto const& rule) {
-            using Rule = std::remove_cvref_t<decltype(rule)>;
-
-            for (auto element : elements)
-                for (lattice::Coordination coordination{}; coordination < lattice::max_coordination;
-                    ++coordination)
-                {
-                    Process process{ Rule::event, element, coordination };
-
-                    if (not rule.supports(process))
-                        continue;
-
-                    auto const key{ process.static_key() };
-                    auto const rate{ model_->rate(process) };
-
-                    if (key >= process_rates_.size())
-                        process_rates_.resize(key + 1);
-
-                    process_rates_.at(key) = { process, rate };
-                }
-        };
-
-        add_rule(rules_.site);
-        add_rule(rules_.cluster);
-
-        if (process_counts_.size() == 1)
-            process_counts_.resize(process_rates_.size());
-        else if (process_counts_.size() != process_rates_.size())
-            throw std::logic_error{ "Process key space changed after initialization." };
-    }
-
-    template <class Rules>
-    void RejectionTreeSimulation<Rules>::update_dynamic_rates()
+    void RejectionTreeSimulation<Rules>::refresh_cached_rates()
     {
         for (auto& [process, rate] : process_rates_ | std::views::drop(1))
-            rate = model_->rate(process);
+            if (process.is_active())
+                rate = model_->rate(process);
     }
 }

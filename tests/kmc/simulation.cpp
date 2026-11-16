@@ -49,10 +49,6 @@ namespace
             site.set_element(lattice, Element::none);
         }
 
-        bool supports(Process const& process) const
-        {
-            return process.event() == event and process.element() == Element::Ag;
-        }
 
         std::string settings() const { return "test site rule"; }
     };
@@ -85,10 +81,6 @@ namespace
             cluster[0]->set_element(lattice, Element::none);
         }
 
-        bool supports(Process const& process) const
-        {
-            return process.event() == event and process.element() != Element::none;
-        }
 
         std::string settings() const { return "test cluster rule"; }
     };

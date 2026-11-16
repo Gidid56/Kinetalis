@@ -41,10 +41,6 @@ namespace studies::dealloying::events
             site.set_element(lattice, kmc::Element::none);
         }
 
-        bool supports(kmc::Process const& process) const
-        {
-            return process.event() == event and process.element() == element;
-        }
     };
 
     struct Diffusion
@@ -77,10 +73,6 @@ namespace studies::dealloying::events
             cluster[0]->set_element(lattice, kmc::Element::none);
         }
 
-        bool supports(kmc::Process const& process) const
-        {
-            return process.event() == event and process.element() != kmc::Element::none;
-        }
 
         std::string settings() const
         {
