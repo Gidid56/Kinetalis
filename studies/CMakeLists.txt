@@ -5,6 +5,7 @@ target_sources(
     kinetalis_dealloying
     PRIVATE        
         dealloying/analysis/electrochemistry.cpp
+        dealloying/gtc_model.cpp
         dealloying/analysis/regime.cpp
 )
 

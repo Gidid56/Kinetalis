@@ -7,7 +7,6 @@ target_sources(
     kinetalis_core
     PRIVATE
         lattice/lattice.cpp
-        lattice/path.cpp
         lattice/shape.cpp
         lattice/site.cpp
         lattice/unitcell.cpp
@@ -144,6 +143,7 @@ if(KINETALIS_BUILD_VIEWER)
         kinetalis_viewer_runtime
         PUBLIC
             Kinetalis::core
+            Kinetalis::dealloying
             Kinetalis::implot
             Corrade::Main
             Corrade::PluginManager

@@ -54,11 +54,15 @@ namespace
 
             expect_coordination_consistent(lattice);
             for (auto& s : lattice.sites())
+            {
                 s.set_dirty(false);
+                s.set_pristine(true);
+            }
 
             site.set_element(lattice, Element::none);
-            ut::expect(site.is_dirty());
-            ut::expect(adjacent->is_dirty());
+            ut::expect(not site.is_dirty());
+            ut::expect(not adjacent->is_dirty());
+            ut::expect(not site.is_pristine());
             ut::expect(site.is_vacant());
             ut::expect(ut::eq(lattice.number_atoms(), initial_atoms - 1));
             expect_coordination_consistent(lattice);
@@ -86,8 +90,10 @@ namespace
             auto& site{ lattice.sites().front() };
             auto const coordination{ site.coordination() };
             site.set_dirty(false);
+            site.set_pristine(true);
             site.set_element(lattice, Element::Au);
-            ut::expect(site.is_dirty());
+            ut::expect(not site.is_dirty());
+            ut::expect(site.is_pristine());
             ut::expect(ut::eq(site.coordination(), coordination));
             expect_coordination_consistent(lattice);
         };

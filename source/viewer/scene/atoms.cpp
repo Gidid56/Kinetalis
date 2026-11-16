@@ -5,7 +5,8 @@
 #include "atoms.h"
 
 #include "lattice/lattice.h"
-#include "lattice/path.h"
+#include "dealloying/events.h"
+#include "dealloying/gtc_model.h"
 #include "viewer/bridge.h"
 
 using namespace viewer::scene;
@@ -170,30 +171,38 @@ void Atoms::rebuildHolograms()
     clearHolograms();
     hologramsDirty_ = false;
 
-    auto forEachAllowedPath = [&](auto&& function) {
-        for (auto sourceIndex : highlightedSites_)
+    // Temporary study-specific hologram filter until event models expose
+    // their own candidate visualization interfaces.
+    studies::dealloying::events::Diffusion diffusion{};
+
+    auto for_each_diffusion_cluster = [&](auto&& function) {
+        for (auto source_index : highlightedSites_)
         {
-            auto& source{ lattice_.sites().at(sourceIndex) };
+            auto& source{ lattice_.sites().at(source_index) };
+            if (not diffusion.is_source_candidate(source))
+                continue;
 
             for (auto destination : lattice_.neighbors(source))
             {
-                lattice::Path path{ &source, destination };
+                lattice::Cluster<2> const cluster{ &source, destination };
+                const kmc::event::Location location{ cluster };
 
-                if (path.is_open())
-                    std::invoke(function, path);
+                if (diffusion.is_candidate(location) and not diffusion.is_rejected(location))
+                    std::invoke(function, cluster);
             }
         }
     };
 
-    // All transition holograms come first.
-    forEachAllowedPath([&](lattice::Path const& path) {
-        for (auto const& position : path.transition_states(lattice_))
+    // Transition-state holograms first.
+    for_each_diffusion_cluster([&](lattice::Cluster<2> const& cluster) {
+        for (auto const& position : studies::dealloying::gtc::transition_states(cluster, lattice_))
             points_.emplace_back(position, scene::Point::State::Transition);
     });
 
-    // All final-site holograms come afterwards.
-    forEachAllowedPath([&](lattice::Path const& path) {
-        const auto position{ path.front().position() + path.path_vector(lattice_) };
+    // Final-site holograms follow.
+    for_each_diffusion_cluster([&](lattice::Cluster<2> const& cluster) {
+        const auto position{ cluster[0]->position() +
+            lattice_.displacement(*cluster[0], *cluster[1]) };
         points_.emplace_back(position, scene::Point::State::Final);
     });
 

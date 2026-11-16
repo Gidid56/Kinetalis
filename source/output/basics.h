@@ -104,7 +104,6 @@ private:
     std::string_view name() const override { return "rates"; }
     bool uses_snapshot_resolution() const override { return false; }
 
-    void write_init(kmc::Simulation const&) override;
     void write_final(kmc::Simulation const&) override;
 };
 
@@ -123,7 +122,7 @@ private:
     std::string settings() const override;
 
     void capture_init(kmc::Simulation const&) override;
-    void observe_processed(kmc::process::Record const&) override;
+    void observe_selected(kmc::process::Record const&) override;
     void write_init(kmc::Simulation const&) override;
     void write_snapshot(kmc::Simulation const&) override;
 

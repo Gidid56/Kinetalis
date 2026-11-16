@@ -78,8 +78,6 @@ void output::Lattice::write_final(kmc::Simulation const& kmc)
         file::write<xyz>(writer_path() / "final", kmc.lattice().to_xyz_file(true));
 }
 
-void output::Rates::write_init(kmc::Simulation const& kmc) { write_final(kmc); }
-
 void output::Rates::write_final(kmc::Simulation const& kmc)
 {
     std::string text{ kmc::Process::header };
@@ -124,10 +122,14 @@ void output::Composition::capture_init(kmc::Simulation const& kmc)
             ++element_counts_[site.element()];
 }
 
-void output::Composition::observe_processed(kmc::process::Record const& process)
+void output::Composition::observe_selected(kmc::process::Record const& record)
 {
-    auto delta{ process.process.solid_change() };
-    element_counts_[process.process.element()] += delta;
+    if (record.outcome != kmc::process::Outcome::accepted)
+        return;
+
+    auto const delta{ kmc::event::solid_change(record.type) };
+    if (delta != 0)
+        element_counts_[record.location().source().element()] += delta;
 }
 
 void output::Composition::write_init(kmc::Simulation const&)

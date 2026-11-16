@@ -14,7 +14,7 @@ namespace
 {
     kmc::Process site_key(kmc::Process const& process)
     {
-        return kmc::Process{ kmc::Event::none, process.element(), process.coordination() };
+        return kmc::Process{ kmc::event::Type::none, process.element(), process.coordination() };
     }
 
     std::map<kmc::Process, std::size_t> site_counts(kmc::Simulation const& simulation)
@@ -34,14 +34,14 @@ namespace
 
             auto const& process{ process_rates[key].first };
 
-            if (process.event() == kmc::Event::none or process.element() == lattice::Element::none)
+            if (process.event() == kmc::event::Type::none or process.element() == lattice::Element::none)
             {
                 continue;
             }
 
             auto const site{ site_key(process) };
 
-            if (process.event() != kmc::Event::diffusion)
+            if (process.event() != kmc::event::Type::diffusion)
             {
                 if constexpr (utility::is_debug)
                 {
@@ -79,17 +79,57 @@ namespace
         return counts;
     }
 
-    std::set<kmc::Process> site_classes(kmc::Simulation const& simulation)
+    // The process key, rather than the set of already observed processes,
+    // determines the column position for the entire simulation.
+    std::string process_header(kmc::Simulation const& simulation)
     {
-        std::set<kmc::Process> classes;
+        std::string header{ output::Writer::default_header };
+        auto const& rates{ simulation.process_rates() };
 
-        for (auto const& [process, _] : simulation.process_rates())
-            if (process.event() != kmc::Event::none and process.element() != lattice::Element::none)
+        for (std::size_t key{ 1 }; key < rates.size(); ++key)
+        {
+            auto const& process{ rates[key].first };
+            if (process.is_active())
+                std::format_to(std::back_inserter(header), ",{:_}", process);
+            else
+                std::format_to(std::back_inserter(header), ",not_encountered_{}", key);
+        }
+        return header;
+    }
+
+    // Changing a header's length cannot be done safely in-place. On discovery
+    // of new classes, stream the old rows through a replacement file, padding
+    // them when dynamic keys have added new columns.
+    void rewrite_header(std::filesystem::path path, std::string_view header,
+        std::size_t extra_columns)
+    {
+        path.replace_extension(enum_name(csv));
+        auto temporary{ path };
+        temporary += ".tmp";
+
+        {
+            auto input{ file::wait_for_read(path) };
+            std::string old_header;
+            if (not std::getline(input, old_header))
+                throw std::runtime_error{ "Cannot replace an empty CSV header." };
+
+            auto output{ file::wait_for_open<std::ofstream>(
+                temporary, std::ios_base::out | std::ios_base::trunc) };
+
+            output << header << '\n';
+            for (std::string line; std::getline(input, line);)
             {
-                classes.insert(site_key(process));
+                output << line;
+                for (std::size_t i{}; i < extra_columns; ++i)
+                    output.put(',');
+                output.put('\n');
             }
 
-        return classes;
+            if (input.bad() or not output)
+                throw std::runtime_error{ "Failed to rewrite process kinetics CSV header." };
+        }
+
+        std::filesystem::rename(temporary, path);
     }
 }
 
@@ -99,6 +139,8 @@ void process::Kinetics::capture_init(kmc::Simulation const& simulation)
     last_time_ = simulation.time();
     last_data_ = {};
     accumulation_ = {};
+    process_header_.clear();
+    process_columns_ = {};
 }
 
 void process::Kinetics::observe_selected(kmc::process::Record const& record)
@@ -120,7 +162,7 @@ void process::Kinetics::observe_selected(kmc::process::Record const& record)
     {
         auto const& [process, rate]{ process_rates[key] };
 
-        if (process.event() != kmc::Event::none and process.element() != lattice::Element::none)
+        if (process.event() != kmc::event::Type::none and process.element() != lattice::Element::none)
         {
             total_activity += process_counts[key] * rate;
         }
@@ -134,7 +176,7 @@ void process::Kinetics::observe_selected(kmc::process::Record const& record)
         auto const count{ process_counts[key] };
         auto const& [process, rate]{ process_rates[key] };
 
-        if (count == 0 or process.event() == kmc::Event::none or
+        if (count == 0 or process.event() == kmc::event::Type::none or
             process.element() == lattice::Element::none)
         {
             continue;
@@ -178,40 +220,44 @@ void process::Kinetics::capture_snapshot(kmc::Simulation const&)
 
 void process::Kinetics::write_init(kmc::Simulation const& simulation)
 {
+    // Site columns are independent of which process classes were encountered.
     std::string site_header{ Writer::default_header };
-
-    for (auto const& site : site_classes(simulation))
-        std::format_to(
-            std::back_inserter(site_header),
-            ",{}_{}",
-            enum_name(site.element()),
-            static_cast<unsigned>(site.coordination()));
+    for (auto element : lattice::active_elements)
+        for (lattice::Coordination coordination{}; coordination < lattice::max_coordination;
+            ++coordination)
+            std::format_to(std::back_inserter(site_header), ",{}_{}", enum_name(element),
+                static_cast<unsigned>(coordination));
 
     site_header += '\n';
 
-    std::string process_header{ Writer::default_header };
-
-    for (auto const& [process, _] : simulation.process_rates())
-        if (process.event() != kmc::Event::none and process.element() != lattice::Element::none)
-        {
-            std::format_to(std::back_inserter(process_header), ",{:_}", process);
-        }
-
-    process_header += '\n';
+    process_header_ = process_header(simulation);
+    process_columns_ = simulation.process_rates().size() - 1;
 
     file::write<csv>(writer_path() / "site_count", site_header);
     file::write<csv>(writer_path() / "population", site_header);
     file::write<csv>(writer_path() / "time_weighted_site_count", site_header);
     file::write<csv>(writer_path() / "time_weighted_population", site_header);
-    file::write<csv>(writer_path() / "activity", process_header);
-    file::write<csv>(writer_path() / "time_weighted_activity", process_header);
+    file::write<csv>(writer_path() / "activity", process_header_ + '\n');
+    file::write<csv>(writer_path() / "time_weighted_activity", process_header_ + '\n');
 }
 
 void process::Kinetics::write_snapshot(kmc::Simulation const& simulation)
 {
     if (last_data_.samples == 0 or last_data_.residence_time <= physics::quantity::TimeDifference{})
-    {
         return;
+
+    auto const new_header{ process_header(simulation) };
+    if (new_header != process_header_)
+    {
+        const auto new_columns{ simulation.process_rates().size() - 1 };
+        if (new_columns < process_columns_)
+            throw std::logic_error{ "Process key space shrank during CSV output." };
+
+        const auto extra_columns{ new_columns - process_columns_ };
+        rewrite_header(writer_path() / "activity", new_header, extra_columns);
+        rewrite_header(writer_path() / "time_weighted_activity", new_header, extra_columns);
+        process_header_ = new_header;
+        process_columns_ = new_columns;
     }
 
     auto const prefix{ std::format("{},{:v:}", simulation.step(), simulation.time()) };
@@ -222,56 +268,45 @@ void process::Kinetics::write_snapshot(kmc::Simulation const& simulation)
     std::string time_weighted_site_count{ prefix };
     std::string time_weighted_population{ prefix };
 
-    for (auto const& site : site_classes(simulation))
-    {
-        SiteAccumulation accumulation{};
-
-        if (auto const iterator{ last_data_.sites.find(site) }; iterator != last_data_.sites.end())
+    for (auto element : lattice::active_elements)
+        for (lattice::Coordination coordination{}; coordination < lattice::max_coordination;
+            ++coordination)
         {
-            accumulation = iterator->second;
-        }
+            const kmc::Process site{ kmc::event::Type::none, element, coordination };
+            SiteAccumulation data{};
 
-        std::format_to(std::back_inserter(site_count), ",{}", accumulation.count / samples);
-        std::format_to(
-            std::back_inserter(population),
-            ",{}",
-            accumulation.population_fraction / samples);
-        std::format_to(
-            std::back_inserter(time_weighted_site_count),
-            ",{}",
-            accumulation.count_time / last_data_.residence_time);
-        std::format_to(
-            std::back_inserter(time_weighted_population),
-            ",{}",
-            accumulation.population_time / last_data_.residence_time);
-    }
+            if (auto it{ last_data_.sites.find(site) }; it != last_data_.sites.end())
+                data = it->second;
+
+            std::format_to(std::back_inserter(site_count), ",{}", data.count / samples);
+            std::format_to(std::back_inserter(population), ",{}", data.population_fraction / samples);
+            std::format_to(std::back_inserter(time_weighted_site_count), ",{}",
+                data.count_time / last_data_.residence_time);
+            std::format_to(std::back_inserter(time_weighted_population), ",{}",
+                data.population_time / last_data_.residence_time);
+        }
 
     std::string activity{ prefix };
     std::string time_weighted_activity{ prefix };
 
-    for (auto const& [process, _] : simulation.process_rates())
+    for (std::size_t key{ 1 }; key < simulation.process_rates().size(); ++key)
     {
-        if (process.event() == kmc::Event::none or process.element() == lattice::Element::none)
+        auto const& process{ simulation.process_rates()[key].first };
+        if (not process.is_active())
         {
+            activity += ',';
+            time_weighted_activity += ',';
             continue;
         }
 
-        ProcessAccumulation accumulation{};
+        ProcessAccumulation data{};
+        if (auto it{ last_data_.processes.find(process) };
+            it != last_data_.processes.end())
+            data = it->second;
 
-        if (auto const iterator{ last_data_.processes.find(process) };
-            iterator != last_data_.processes.end())
-        {
-            accumulation = iterator->second;
-        }
-
-        std::format_to(
-            std::back_inserter(activity),
-            ",{}",
-            accumulation.activity_fraction / samples);
-        std::format_to(
-            std::back_inserter(time_weighted_activity),
-            ",{}",
-            accumulation.activity_time / last_data_.residence_time);
+        std::format_to(std::back_inserter(activity), ",{}", data.activity_fraction / samples);
+        std::format_to(std::back_inserter(time_weighted_activity), ",{}",
+            data.activity_time / last_data_.residence_time);
     }
 
     site_count += '\n';

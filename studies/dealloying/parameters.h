@@ -102,10 +102,10 @@ static constexpr std::vector<kmc::Process> modulated_processes()
     std::vector<kmc::Process> processes;
 
     for (lattice::Coordination coordination{ 7 }; coordination <= 10; ++coordination)
-        processes.emplace_back(kmc::Event::dissolution, chemistry::Element::Ag, coordination);
+        processes.emplace_back(kmc::event::Type::dissolution, chemistry::Element::Ag, coordination);
 
     for (lattice::Coordination coordination{ 5 }; coordination <= 7; ++coordination)
-        processes.emplace_back(kmc::Event::diffusion, chemistry::Element::Au, coordination);
+        processes.emplace_back(kmc::event::Type::diffusion, chemistry::Element::Au, coordination);
 
     return processes;
 }

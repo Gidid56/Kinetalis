@@ -55,7 +55,7 @@ public:
           rules_{ setup.rules }
     {
         initialize_rates();
-        update_rates();
+        update_all_rates();
     }
 
     simulation::Status run(AnalysisPlan&, std::stop_token = {}) override;
@@ -70,17 +70,17 @@ private:
     void set_process(lattice::Index, process::Key);
 
     Rate rate_sum(lattice::Site&);
-    process::Record select_random_process();
+    event::Location select_random_location();
+    process::Record evaluate_event(event::Location) const;
 
     void initialize_rates();
-    void update_rates();
-    void update_static_rates();
-
-    void update_dynamic_rates();
+    void update_all_rates();
     void update_affected_rates(process::Record const&);
 
     void update(lattice::Site&);
-    void update_neighbors(lattice::Site&);
+
+    template <class Visitor>
+    void visit_neighbor_tree(lattice::Site&, std::size_t radius, Visitor&);
 
     std::unique_ptr<rate_tree::Interface> rate_tree_;
     Rates site_rates_;

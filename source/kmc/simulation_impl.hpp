@@ -2,7 +2,7 @@
 // Template definitions for RejectionTreeSimulation; included by simulation.h.
 
 #include "analysis_plan.h"
-#include "lattice/path.h"
+#include "lattice/lattice.h"
 #include "utility/utility.h"
 
 namespace kmc
@@ -13,7 +13,13 @@ namespace kmc
         rate_tree_ = rate_tree::make_entry(lattice_.sites().size());
         site_rates_.resize(lattice_.sites().size());
         processes_.resize(lattice_.sites().size() + lattice_.neighbors().size());
-        block_updates_.reserve(2 * (lattice::max_coordination + 1));
+
+        // Static process keys occupy fixed slots, filled only on first use.
+        if constexpr (staticProcessKeys)
+        {
+            process_rates_.resize(Process::number_keys());
+            process_counts_.resize(Process::number_keys());
+        }
     }
 
     template <class Rules>
@@ -45,7 +51,7 @@ namespace kmc
             else
                 time_ += escape_time;
 
-            auto process{ select_random_process() };
+            auto process{ evaluate_event(select_random_location()) };
 
             analysis_plan.observe_selected(process);
 
@@ -53,7 +59,10 @@ namespace kmc
             {
                 ++step_;
 
-                process.execute(lattice_);
+                if (process.sites().size() == 1)
+                    rules_.site.execute(process.location(), lattice_);
+                else
+                    rules_.cluster.execute(process.location(), lattice_);
 
                 update_affected_rates(process);
 
@@ -75,11 +84,20 @@ namespace kmc
     void RejectionTreeSimulation<Rules>::update_affected_rates(process::Record const& process)
     {
         block_updates_.clear();
-        for (auto site : process.path.sites())
-        {
-            update_neighbors(*site);
-            update(*site);
-        }
+
+        // Model dependencies can extend beyond the nearest neighbors;
+        // the current event rules require at least one neighbor shell.
+        const auto radius{ std::max<std::size_t>(1, model_->invalidation_radius()) };
+
+        // First invalidate the entire region, then recalculate. Recomputing a
+        // source clears its dirty flag, so overlapping walks are inexpensive.
+        auto invalidate = [](lattice::Site& site) { site.set_dirty(true); };
+        for (auto* site : process.sites())
+            visit_neighbor_tree(*site, radius, invalidate);
+
+        auto recalculate = [this](lattice::Site& site) { update(site); };
+        for (auto* site : process.sites())
+            visit_neighbor_tree(*site, radius, recalculate);
 
         if (block_updates_.size() == 1)
         {
@@ -97,7 +115,7 @@ namespace kmc
     }
 
     template <class Rules>
-    process::Record RejectionTreeSimulation<Rules>::select_random_process()
+    event::Location RejectionTreeSimulation<Rules>::select_random_location()
     {
         auto selected_rate{ physics::ensure_non_negative(rate_tree_->rate_sum() * rng_.probability()) };
 
@@ -121,39 +139,48 @@ namespace kmc
                 throw std::runtime_error{ "tree not updated correctly" };
 
         if (process_index == site.process_index())
-            return process::Record{ site, decltype(rules_.site)::event, rules_.site.allowed(site) };
+            return event::Location{ site };
 
-        auto const path{ lattice::Path{ &site,
-            lattice_.neighbor(process_index - site_index - 1) } };
-
-        return process::Record{ path, decltype(rules_.path)::event, rules_.path.allowed(path) };
+        return event::Location{ lattice::Cluster<2>{
+            &site, lattice_.neighbor(process_index - site_index - 1) } };
     }
 
     template <class Rules>
-    void RejectionTreeSimulation<Rules>::update_neighbors(lattice::Site& site)
+    process::Record RejectionTreeSimulation<Rules>::evaluate_event(event::Location location) const
     {
-        for (auto neighbor : lattice_.neighbors(site))
-            update(*neighbor);
+        if (location.sites().size() == 1)
+            return { location, decltype(rules_.site)::event, rules_.site.is_rejected(location) };
+
+        if (location.sites().size() == 2)
+            return { location, decltype(rules_.cluster)::event, rules_.cluster.is_rejected(location) };
+
+        throw std::logic_error{ "Unsupported event location size." };
+    }
+
+    template <class Rules>
+    template <class Visitor>
+    void RejectionTreeSimulation<Rules>::visit_neighbor_tree(
+        lattice::Site& site, std::size_t radius, Visitor& visit)
+    {
+        // Enumerate graph walks without allocating a visited-site container.
+        // Sites may recur because the lattice graph contains cycles; the
+        // two-pass dirty flag mechanism prevents duplicate rate calculations.
+        if (radius > 0)
+            for (auto* neighbor : lattice_.neighbors(site))
+                visit_neighbor_tree(*neighbor, radius - 1, visit);
+
+        visit(site);
     }
 
     template <class Rules>
     void RejectionTreeSimulation<Rules>::update(lattice::Site& site)
     {
-        //site.setClassification(lattice_.classification(site));
-
         if (not site.is_dirty())
             return;
 
         auto& old_rate{ site_rates_.at(site.index()) };
 
-        //if constexpr (results::processesStats)
-        //	if (results_ and oldRate > Rate{})
-        //		results_->setActive(processRates_[processes_[site.processIndex()]].first, false);
-
         Rate new_rate{ rate_sum(site) };
-
-        //if constexpr (results::processesStats) if (results_ and newRate > Rate{})
-        //	results_->setActive(processRates_[processes_[site.processIndex()]].first, true);
 
         if (new_rate != old_rate)
         {
@@ -174,25 +201,26 @@ namespace kmc
     template <class Rules>
     Rate RejectionTreeSimulation<Rules>::rate_sum(lattice::Site& site)
     {
-        const bool site_active{ rules_.site.active(site) };
-        const bool path_active{ rules_.path.source_active(site) };
+        const bool site_source_candidate{ rules_.site.is_source_candidate(site) };
+        const bool cluster_source_candidate{ rules_.cluster.is_source_candidate(site) };
+        const event::Location source{ site };
 
         lattice::Index index{ site.process_index() };
 
         auto clear_site = [&] {
             set_process(index++, {});
         };
-        auto clear_paths = [&] {
+        auto clear_clusters = [&] {
             for (std::size_t i{}; i < site.max_neighbors(); ++i)
                 set_process(index++, {});
         };
 
-        if (not site_active and not path_active)
+        if (not site_source_candidate and not cluster_source_candidate)
         {
             if (site.is_active())
             {
                 clear_site();
-                clear_paths();
+                clear_clusters();
                 site.set_active(false);
             }
             return {};
@@ -207,22 +235,25 @@ namespace kmc
             sum += process_rates_.at(key).second;
         };
 
-        if (site_active)
-            add_process(process_key(Process{ decltype(rules_.site)::event, site }));
+        if (site_source_candidate and rules_.site.is_candidate(source))
+            add_process(process_key(Process{ decltype(rules_.site)::event, source }));
         else
             clear_site();
 
-        if (not path_active)
+        if (not cluster_source_candidate)
         {
-            clear_paths();
+            clear_clusters();
             site.set_active(has_processes);
             return sum;
         }
 
         for (auto neighbor : lattice_.neighbors(site))
         {
-            auto const path{ lattice::Path{ &site, neighbor } };
-            add_process(process_key(make_process(path, rules_.path)));
+            const event::Location location{ lattice::Cluster<2>{ &site, neighbor } };
+            if (rules_.cluster.is_candidate(location))
+                add_process(process_key(Process{ decltype(rules_.cluster)::event, location }));
+            else
+                add_process({});
         }
 
         site.set_active(has_processes);
@@ -272,7 +303,22 @@ namespace kmc
             return {};
 
         if constexpr (staticProcessKeys)
-            return process.static_key();
+        {
+            const auto key{ process.static_key() };
+            if (key == process::Key{})
+                throw std::logic_error{ "Active process maps to reserved static key zero." };
+
+            auto& [cached_process, rate]{ process_rates_.at(key) };
+            if (not cached_process.is_active())
+            {
+                rate = model_->rate(process);
+                cached_process = process;
+            }
+            else if (cached_process != process)
+                throw std::logic_error{ "Static process key collision." };
+
+            return key;
+        }
 
         if (auto it{ dynamic_keys_.find(process) }; it != dynamic_keys_.end())
             return it->second;
@@ -292,12 +338,11 @@ namespace kmc
     }
 
     template <class Rules>
-    void RejectionTreeSimulation<Rules>::update_rates()
+    void RejectionTreeSimulation<Rules>::update_all_rates()
     {
-        if constexpr (staticProcessKeys)
-            update_static_rates();
-        else
-            update_dynamic_rates();
+        for (auto& [process, rate] : process_rates_ | std::views::drop(1))
+            if (process.is_active())
+                rate = model_->rate(process);
 
         // A full-rate refresh bypasses per-event block collection. Rebuild each
         // block once after all site rates have been recalculated.
@@ -312,52 +357,5 @@ namespace kmc
         for (std::size_t index{}; index < site_rates_.size(); index += block_size)
             rate_tree_->update_rate(
                 static_cast<lattice::Index>(index), block_rate(lattice_.sites().at(index)));
-    }
-
-    template <class Rules>
-    void RejectionTreeSimulation<Rules>::update_static_rates()
-    {
-        process_rates_.clear();
-        process_rates_.reserve(Process::number_keys());
-        process_rates_.emplace_back(Process{}, Rate{});
-
-        constexpr auto elements{ utility::prepend(Element::none, lattice::active_elements) };
-
-        auto add_rule = [&](auto const& rule) {
-            using Rule = std::remove_cvref_t<decltype(rule)>;
-
-            for (auto element : elements)
-                for (lattice::Coordination coordination{}; coordination < lattice::max_coordination;
-                    ++coordination)
-                {
-                    Process process{ Rule::event, element, coordination };
-
-                    if (not rule.supports(process))
-                        continue;
-
-                    auto const key{ process.static_key() };
-                    auto const rate{ model_->rate(process) };
-
-                    if (key >= process_rates_.size())
-                        process_rates_.resize(key + 1);
-
-                    process_rates_.at(key) = { process, rate };
-                }
-        };
-
-        add_rule(rules_.site);
-        add_rule(rules_.path);
-
-        if (process_counts_.size() == 1)
-            process_counts_.resize(process_rates_.size());
-        else if (process_counts_.size() != process_rates_.size())
-            throw std::logic_error{ "Process key space changed after initialization." };
-    }
-
-    template <class Rules>
-    void RejectionTreeSimulation<Rules>::update_dynamic_rates()
-    {
-        for (auto& [process, rate] : process_rates_ | std::views::drop(1))
-            rate = model_->rate(process);
     }
 }

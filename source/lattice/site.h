@@ -67,7 +67,6 @@ public:
 
     void insert(Site*, Index);
 
-    void execute_process(Lattice&);
     void update_neighbors(Lattice&, std::int_fast8_t);
 
     physics::quantity::Displacement layer_position(math::Axis) const;
@@ -114,27 +113,3 @@ private:
     Position position_{};
     //Position original_{};
 };
-
-namespace lattice::site
-{
-    // TODO remove
-    enum class Type : std::uint32_t
-    {
-        none,
-        isolated,
-        kink,
-        bulk,
-
-        //_100__ad,
-        //_100__surface,
-
-        //_111__ad,
-        //_111__dimer_ad,
-        //_111__step_A_ad,
-        //_111__step_B_ad,
-        //_111__step_edge_A,
-        //_111__step_edge_B,
-        //_111__step_corner,
-        //_111__surface,
-    };
-}

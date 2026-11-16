@@ -10,14 +10,6 @@
 
 namespace kmc
 {
-    enum class Event : std::uint8_t
-    {
-        none,
-        diffusion,
-        dissolution,
-        deposition,
-    };
-
     using chemistry::Element;
 
     namespace process

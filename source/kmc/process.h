@@ -1,40 +1,11 @@
 #pragma once
-#include "lattice/path.h"
+#include "event.h"
 #include "lattice/types.h"
 
-namespace kmc
-{
-    template <class T>
-    concept EventLocation = std::same_as<T, lattice::Site> or std::same_as<T, lattice::Path>;
+#include <cassert>
+#include <cstdint>
+#include <span>
 
-    template <typename T, class Location>
-    concept Rule = EventLocation<Location> and
-                   requires(T const& rule, Location const& location, kmc::Process const& process) {
-                       { T::event } -> std::convertible_to<kmc::Event>;
-                       { rule.active(location) } -> std::convertible_to<bool>;
-                       { rule.allowed(location) } -> std::convertible_to<bool>;
-                       { rule.supports(process) } -> std::convertible_to<bool>;
-                   };
-
-    template <class Site, class Path>
-    requires Rule<Site, lattice::Site> && Rule<Path, lattice::Path>
-    struct EventRules
-    {
-        [[no_unique_address]] Site site;
-        [[no_unique_address]] Path path;
-
-        std::string settings() const
-        {
-            return std::format(
-                "[site: {}]\n{}\n\n"
-                "[path: {}]\n{}\n",
-                enum_name(Site::event),
-                site.settings(),
-                enum_name(Path::event),
-                path.settings());
-        }
-    };
-}
 /*
    Stores essential data required to identify strictly equivalent simulation processes.
 
@@ -45,7 +16,7 @@ namespace kmc
    - Functions to check process allowance and activity.
 
    Private Attributes:
-   - 'Event event_': Represents the specific event associated with the process.
+   - 'event::Type event_': Represents the specific event associated with the process.
    - 'lattice::Coordination coordination_': Stores the count of neighbors in the initial lattice site.
    - 'Element element_': Represents the chemical element related to the process.
 
@@ -57,14 +28,13 @@ class kmc::Process
 {
 public:
     explicit Process() = default;
-    explicit Process(Event, Element, lattice::Coordination);
-    explicit Process(Event, lattice::Site const&);
-    explicit Process(Event, lattice::Path const&);
+    explicit Process(event::Type, Element, lattice::Coordination);
+    explicit Process(event::Type, event::Location const&);
 
     process::Key static_key() const;
     static std::size_t number_keys();
 
-    bool is_active() const { return event_ != Event::none; }
+    bool is_active() const { return event_ != event::Type::none; }
 
     auto event() const { return event_; }
     auto element() const { return element_; }
@@ -76,29 +46,8 @@ public:
 
     static constexpr std::string_view header{ "key:event,key:element,key:coordination" };
 
-    constexpr int solid_change() const
-    {
-        switch (event_)
-        {
-            case kmc::Event::dissolution: return -1;
-            case kmc::Event::deposition: return 1;
-            default: return 0;
-        }
-    }
-
-    constexpr int neighbor_change(bool front) const
-    {
-        switch (event_)
-        {
-            case kmc::Event::dissolution: return front ? -1 : 0;
-            case kmc::Event::deposition: return front ? 1 : 0;
-            case kmc::Event::diffusion: return front ? -1 : 1;
-            default: return 0;
-        }
-    }
-
 private:
-    Event event_{};
+    event::Type event_{};
     Element element_{};
     lattice::Coordination coordination_{};
     //[[no_unique_address]] ElementNeighbors elementNeighbors_{};
@@ -108,28 +57,17 @@ private:
 class kmc::process::Record
 {
 public:
-    Record(lattice::Site&, Event, bool allowed);
-    Record(lattice::Path const&, Event, bool allowed);
+    Record(event::Location, event::Type, bool rejected);
 
-    void execute(Lattice&);
+    event::Location const& location() const noexcept { return location_; }
+    auto sites() const noexcept { return location_.sites(); }
 
+    event::Type type;
     Outcome outcome;
-    Process process;
-    lattice::Path path;
+
+private:
+    event::Location location_;
 };
-
-namespace kmc
-{
-    template <class Location, class R>
-    requires Rule<R, Location>
-    Process make_process(Location const& location, R const& rule)
-    {
-        if (not rule.active(location))
-            return Process{};
-
-        return Process{ R::event, location };
-    }
-}
 
 template <>
 struct std::hash<kmc::Process>

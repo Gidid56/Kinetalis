@@ -1,14 +1,19 @@
 #include "kmc/simulation.h"
 #include "kmc/analysis_plan.h"
 #include "lattice/lattice.h"
+#include "output/process_kinetics.h"
+#include "output/event_flux.h"
 
 #include <algorithm>
 #include <array>
 #include <bit>
 #include <boost/ut.hpp>
 #include <cmath>
+#include <chrono>
 #include <cstddef>
 #include <cstdint>
+#include <filesystem>
+#include <fstream>
 #include <memory>
 #include <numeric>
 #include <ranges>
@@ -24,79 +29,111 @@ namespace
 {
     using namespace kmc;
     using lattice::Site;
-    using lattice::Path;
+    using lattice::Cluster;
 
     struct SiteRule
     {
-        static constexpr Event event{ Event::dissolution };
+        static constexpr event::Type event{ event::Type::dissolution };
         bool enabled{ true };
+        bool allow_gold{ false };
+        std::vector<std::size_t>* source_checks{};
 
-        bool active(Site const& site) const
+        bool is_source_candidate(Site const& site) const
         {
-            return enabled and site.element() == Element::Ag and
+            if (source_checks and site.index() < source_checks->size())
+                ++(*source_checks)[site.index()];
+
+            return enabled and (site.element() == Element::Ag or
+                   (allow_gold and site.element() == Element::Au)) and
                    site.coordination() < lattice::max_coordination;
         }
 
-        bool allowed(Site const& site) const { return active(site) and site.coordination() <= 8; }
-
-        bool supports(Process const& process) const
+        bool is_candidate(event::Location const& location) const
         {
-            return process.event() == event and process.element() == Element::Ag;
+            return location.sites().size() == 1 and is_source_candidate(location.source());
         }
+
+        bool is_rejected(event::Location const& location) const
+        {
+            return location.source().coordination() > 8;
+        }
+
+        void execute(event::Location const& location, lattice::Lattice& lattice) const
+        {
+            assert(location.sites().size() == 1);
+            location.source().set_element(lattice, Element::none);
+        }
+
 
         std::string settings() const { return "test site rule"; }
     };
 
-    struct PathRule
+    struct ClusterRule
     {
-        static constexpr Event event{ Event::diffusion };
+        static constexpr event::Type event{ event::Type::diffusion };
         bool enabled{ true };
 
-        bool source_active(Site const& site) const
+        bool is_source_candidate(Site const& site) const
         {
             return enabled and site.is_occupied() and
                    site.coordination() < lattice::max_coordination;
         }
 
-        bool active(Path const& path) const
+        bool is_candidate(event::Location const& location) const
         {
-            return source_active(path.front()) and path.back().is_vacant();
+            return location.sites().size() == 2 and is_source_candidate(location.source()) and
+                   location.sites()[1]->is_vacant();
         }
 
-        bool allowed(Path const& path) const
+        bool is_rejected(event::Location const& location) const
         {
-            return active(path) and path.back().coordination() >= 9;
+            assert(location.sites().size() == 2);
+            return location.sites()[1]->coordination() < 9;
         }
 
-        bool supports(Process const& process) const
+        void execute(event::Location const& location, lattice::Lattice& lattice) const
         {
-            return process.event() == event and process.element() != Element::none;
+            assert(location.sites().size() == 2);
+            const auto element{ location.source().element() };
+            location.sites()[1]->set_element(lattice, element);
+            location.source().set_element(lattice, Element::none);
         }
 
-        std::string settings() const { return "test path rule"; }
+
+        std::string settings() const { return "test cluster rule"; }
     };
 
-    using Rules = EventRules<SiteRule, PathRule>;
+    static_assert(event::Rule<SiteRule>);
+    static_assert(event::Rule<ClusterRule>);
+
+    using Rules = event::Rules<SiteRule, ClusterRule>;
     using TestSimulation = RejectionTreeSimulation<Rules>;
 
     class TestModel final : public Model
     {
+    public:
+        explicit TestModel(std::size_t radius = 1) : radius_{ radius } { }
+
+        std::size_t invalidation_radius() const noexcept override { return radius_; }
+
     private:
         Ratio transmission_coefficient(Process const&) const override { return 1; }
 
         Energy activation_gibbs_energy(Process const& process) const override
         {
-            auto const base{ process.event() == Event::dissolution ? 0.24_eV : 0.30_eV };
+            auto const base{ process.event() == event::Type::dissolution ? 0.24_eV : 0.30_eV };
             return base + 0.005_eV * static_cast<double>(process.coordination());
         }
+
+        std::size_t radius_;
     };
 
-    Setup<Rules> make_setup()
+    Setup<Rules> make_setup(std::size_t radius = 1)
     {
         Setup<Rules> setup;
         setup.name = "KMC incremental update integration test";
         setup.seed = simulation::Seed{ 1, 2, 3, 4, 5, 6, 7, 8 };
-        setup.make_model = [] { return std::make_unique<TestModel>(); };
+        setup.make_model = [radius] { return std::make_unique<TestModel>(radius); };
         setup.make_lattice = [] {
             auto cell{ lattice::UnitCell::conventional<lattice::Bravais::cF>(400_pm)
                 .fill(chemistry::Atom{ Element::Au }) };
@@ -147,18 +184,20 @@ namespace
         {
             Rate site_sum{};
             auto has_processes{ false };
-            if (rules.site.active(site))
+            const event::Location source{ const_cast<Site&>(site) };
+            if (rules.site.is_source_candidate(site) and rules.site.is_candidate(source))
             {
-                add(site_sum, Process{ SiteRule::event, site });
+                add(site_sum, Process{ SiteRule::event, source });
                 has_processes = true;
             }
-            if (rules.path.source_active(site))
+            if (rules.cluster.is_source_candidate(site))
                 for (auto const* target : lattice.neighbors(site))
                 {
-                    auto const path{ Path{ const_cast<Site*>(&site), const_cast<Site*>(target) } };
-                    if (rules.path.active(path))
+                    const event::Location location{ Cluster<2>{
+                        const_cast<Site*>(&site), const_cast<Site*>(target) } };
+                    if (rules.cluster.is_candidate(location))
                     {
-                        add(site_sum, Process{ PathRule::event, path });
+                        add(site_sum, Process{ ClusterRule::event, location });
                         has_processes = true;
                     }
                 }
@@ -216,25 +255,30 @@ namespace
         void observe_selected(process::Record const& record) override
         {
             ++selections_;
-            bool allowed{};
-            if (&record.path.front() == &record.path.back())
+            bool rejected{};
+            auto const& source{ record.location().source() };
+            if (record.sites().size() == 1)
             {
                 ++site_selections_;
-                allowed = rules_.site.allowed(record.path.front());
-                ut::expect(rules_.site.active(record.path.front()))
-                    << "selected site process was active";
-                ut::expect(record.process == Process{ SiteRule::event, record.path.front() });
+                ut::expect(rules_.site.is_source_candidate(source))
+                    << "selected site has valid source";
+                ut::expect(rules_.site.is_candidate(record.location()))
+                    << "selected site is a candidate";
+                rejected = rules_.site.is_rejected(record.location());
+                ut::expect(record.type == SiteRule::event);
             }
             else
             {
-                ++path_selections_;
-                allowed = rules_.path.allowed(record.path);
-                ut::expect(rules_.path.active(record.path))
-                    << "selected path process was active";
-                ut::expect(record.process == Process{ PathRule::event, record.path });
+                ++cluster_selections_;
+                ut::expect(rules_.cluster.is_source_candidate(source))
+                    << "selected cluster has valid source";
+                ut::expect(rules_.cluster.is_candidate(record.location()))
+                    << "selected cluster is a candidate";
+                rejected = rules_.cluster.is_rejected(record.location());
+                ut::expect(record.type == ClusterRule::event);
             }
-            ut::expect(ut::eq(record.outcome == process::Outcome::accepted, allowed))
-                << "selected process's rejection result matches rule";
+            ut::expect(ut::eq(record.outcome == process::Outcome::rejected, rejected))
+                << "postselection rejection matches rule";
             if (record.outcome == process::Outcome::rejected)
                 ++rejections_;
         }
@@ -243,10 +287,10 @@ namespace
         {
             ut::expect(record.outcome == process::Outcome::accepted);
             ++processed_;
-            if (&record.path.front() == &record.path.back())
+            if (record.sites().size() == 1)
                 ++accepted_site_events_;
             else
-                ++accepted_path_events_;
+                ++accepted_cluster_events_;
         }
 
         void take_snapshot(Simulation const& simulation) override
@@ -266,8 +310,8 @@ namespace
         std::size_t processed_count() const { return processed_; }
         std::size_t site_selections() const { return site_selections_; }
         std::size_t accepted_site_events() const { return accepted_site_events_; }
-        std::size_t accepted_path_events() const { return accepted_path_events_; }
-        std::size_t path_selections() const { return path_selections_; }
+        std::size_t accepted_cluster_events() const { return accepted_cluster_events_; }
+        std::size_t cluster_selections() const { return cluster_selections_; }
 
     private:
         Step target_{};
@@ -277,9 +321,29 @@ namespace
         std::size_t rejections_{};
         std::size_t processed_{};
         std::size_t site_selections_{};
-        std::size_t path_selections_{};
+        std::size_t cluster_selections_{};
         std::size_t accepted_site_events_{};
-        std::size_t accepted_path_events_{};
+        std::size_t accepted_cluster_events_{};
+    };
+
+    class FirstAcceptedObserver final : public Observer
+    {
+    public:
+        std::string_view name() const override { return "first-accepted-event"; }
+        bool stop_requested() const override { return accepted_; }
+
+        void observe_processed(process::Record const& record) override
+        {
+            accepted_ = true;
+            source_index_ = record.sites()[0]->index();
+        }
+
+        lattice::Index source_index() const { return source_index_; }
+        bool accepted() const { return accepted_; }
+
+    private:
+        bool accepted_{};
+        lattice::Index source_index_{};
     };
 
     void expect_same_state(TestSimulation const& a, TestSimulation const& b)
@@ -302,10 +366,306 @@ namespace
     }
 
     ut::suite<"kmc.simulation"> simulation_tests = [] {
+        "process records own their site-pointer storage"_test = [] {
+            auto setup{ make_setup() };
+            TestSimulation simulation{ setup };
+            auto& lattice{ simulation.mutable_lattice() };
+            auto& first{ lattice.sites().at(0) };
+            auto& second{ lattice.sites().at(1) };
+
+            process::Record site_record{ event::Location{ first }, SiteRule::event, false };
+            ut::expect(ut::eq(site_record.sites().size(), std::size_t{ 1 }));
+            ut::expect(site_record.sites()[0] == &first);
+            ut::expect(site_record.type == SiteRule::event);
+
+            auto site_copy{ site_record };
+            ut::expect(site_copy.sites().data() != site_record.sites().data())
+                << "a record copy owns its own pointer storage";
+            ut::expect(ut::eq(site_copy.sites().size(), std::size_t{ 1 }));
+            ut::expect(site_copy.sites()[0] == &first);
+
+            Cluster<2> const cluster{ &first, &second };
+            process::Record cluster_record{ event::Location{ cluster }, ClusterRule::event, false };
+            ut::expect(ut::eq(cluster_record.sites().size(), std::size_t{ 2 }));
+            ut::expect(cluster_record.sites()[0] == &first);
+            ut::expect(cluster_record.sites()[1] == &second);
+            ut::expect(cluster_record.type == ClusterRule::event);
+            ut::expect(std::ranges::equal(cluster_record.sites(), cluster));
+
+            auto cluster_copy{ cluster_record };
+            ut::expect(cluster_copy.sites().data() != cluster_record.sites().data())
+                << "a cluster record copy owns its own pointer storage";
+            ut::expect(std::ranges::equal(cluster_copy.sites(), cluster));
+
+            auto cluster_move{ std::move(cluster_copy) };
+            ut::expect(ut::eq(cluster_move.sites().size(), std::size_t{ 2 }));
+            ut::expect(cluster_move.sites().data() != cluster_record.sites().data());
+            ut::expect(cluster_move.sites()[0] == &first);
+            ut::expect(cluster_move.sites()[1] == &second);
+        };
+
+        "site and cluster rules execute lattice transformations"_test = [] {
+            auto setup{ make_setup() };
+            TestSimulation simulation{ setup };
+            auto& lattice{ simulation.mutable_lattice() };
+            SiteRule site_rule;
+            ClusterRule cluster_rule;
+
+            auto source_it{ std::ranges::find_if(lattice.sites(), [&](Site const& site) {
+                return site_rule.is_candidate(event::Location{ const_cast<Site&>(site) });
+            }) };
+            ut::expect(source_it != lattice.sites().end()) << "site candidate exists";
+            if (source_it == lattice.sites().end())
+                return;
+
+            auto const atoms_before{ lattice.number_atoms() };
+            site_rule.execute(event::Location{ *source_it }, lattice);
+            ut::expect(source_it->is_vacant()) << "site rule removes selected atom";
+            ut::expect(ut::eq(lattice.number_atoms(), atoms_before - 1));
+
+            Site* source{};
+            Site* destination{};
+            for (auto& site : lattice.sites())
+            {
+                for (auto* neighbor : lattice.neighbors(site))
+                {
+                    Cluster<2> candidate{ &site, neighbor };
+                    if (cluster_rule.is_candidate(event::Location{ candidate }))
+                    {
+                        source = &site;
+                        destination = neighbor;
+                        break;
+                    }
+                }
+                if (source)
+                    break;
+            }
+
+            ut::expect(source != nullptr) << "cluster candidate exists";
+            if (not source)
+                return;
+
+            auto const element{ source->element() };
+            auto const atoms_before_move{ lattice.number_atoms() };
+            Cluster<2> cluster{ source, destination };
+            cluster_rule.execute(event::Location{ cluster }, lattice);
+            ut::expect(source->is_vacant()) << "source becomes vacant";
+            ut::expect(destination->element() == element) << "destination receives atom";
+            ut::expect(ut::eq(lattice.number_atoms(), atoms_before_move))
+                << "cluster execution conserves atom count";
+        };
+
+        "radius-two invalidation recalculates exactly two neighbor shells"_test = [] {
+            std::vector<std::size_t> source_checks;
+            auto setup{ make_setup(2) };
+            setup.rules.cluster.enabled = false;
+            setup.rules.site.source_checks = &source_checks;
+
+            TestSimulation simulation{ setup };
+            auto const& lattice{ simulation.lattice() };
+            source_checks.resize(lattice.sites().size());
+
+            AnalysisPlan plan;
+            auto& observer{ plan.add<FirstAcceptedObserver>() };
+            auto const status{ simulation.run(plan) };
+
+            ut::expect(status == simulation::Status::analysed);
+            ut::expect(observer.accepted());
+            if (not observer.accepted())
+                return;
+            ut::expect(ut::eq(simulation.step(), Step{ 1 }));
+
+            std::vector<bool> expected(lattice.sites().size());
+            auto& source{ lattice.sites().at(observer.source_index()) };
+            expected[source.index()] = true;
+            for (auto* first : lattice.neighbors(source))
+            {
+                expected[first->index()] = true;
+                for (auto* second : lattice.neighbors(*first))
+                    expected[second->index()] = true;
+            }
+
+            auto beyond_first_shell{ false };
+            for (std::size_t index{}; index < expected.size(); ++index)
+            {
+                const bool visited{ source_checks[index] != 0 };
+                ut::expect(ut::eq(visited, expected[index]))
+                    << "radius-two visit at source " << index;
+                ut::expect(not lattice.sites()[index].is_dirty())
+                    << "dirty flag cleared after second pass at source " << index;
+
+                if (expected[index] and index != source.index())
+                {
+                    const auto is_first_neighbor{ std::ranges::any_of(
+                        lattice.neighbors(source),
+                        [index](auto* site) { return site->index() == index; }) };
+                    beyond_first_shell |= not is_first_neighbor;
+                }
+            }
+            ut::expect(beyond_first_shell) << "second shell contains additional sites";
+            expect_reference_state(simulation, setup.rules, simulation.step());
+        };
+
+        "radius-two incremental updates match full reconstruction"_test = [] {
+            auto setup{ make_setup(2) };
+            TestSimulation simulation{ setup };
+            AnalysisPlan plan;
+            auto& checker{ plan.add<CheckingObserver>(40, setup.rules) };
+            const auto status{ simulation.run(plan) };
+            ut::expect(status == simulation::Status::analysed);
+            ut::expect(ut::eq(simulation.step(), Step{ 40 }));
+            ut::expect(ut::eq(checker.last_step(), simulation.step()));
+        };
+
+        "static process cache is lazy and only contains encountered classes"_test = [] {
+            auto setup{ make_setup() };
+            setup.rules.site.enabled = false;
+            setup.rules.cluster.enabled = false;
+            TestSimulation simulation{ setup };
+
+            auto const& rates{ simulation.process_rates() };
+            auto const& counts{ simulation.process_counts() };
+            ut::expect(ut::eq(rates.size(), Process::number_keys()));
+            ut::expect(ut::eq(counts.size(), rates.size()));
+            for (auto const& [process, rate] : rates)
+            {
+                ut::expect(not process.is_active()) << "unused class stays uninitialized";
+                ut::expect(rate == Rate{}) << "unused class has zero rate";
+            }
+        };
+
+        "static process cache initializes encountered processes only once"_test = [] {
+            auto setup{ make_setup() };
+            TestSimulation simulation{ setup };
+            auto const& rates{ simulation.process_rates() };
+
+            auto const initialized{ std::ranges::count_if(rates, [](auto const& entry) {
+                return entry.first.is_active();
+            }) };
+            ut::expect(ut::that % initialized > 0) << "at least one class created";
+
+            for (std::size_t i{}; i < rates.size(); ++i)
+                if (rates[i].first.is_active())
+                {
+                    ut::expect(ut::eq(static_cast<std::size_t>(
+                        rates[i].first.static_key()), i)) << "cached class owns its key";
+                    ut::expect(rates[i].second == simulation.model()->rate(rates[i].first))
+                        << "cached rate matches model";
+                }
+                else
+                    ut::expect(rates[i].second == Rate{})
+                        << "uninitialized rate remains zero";
+
+            expect_reference_state(simulation, setup.rules, 0);
+        };
+
+        "static process keys must distinguish different kinetic classes"_test = [] {
+            Process const silver{ event::Type::dissolution, Element::Ag, 5 };
+            Process const gold{ event::Type::dissolution, Element::Au, 5 };
+            ut::expect(silver != gold);
+            ut::expect(ut::eq(silver.static_key(), gold.static_key()))
+                << "current dissolution key intentionally omits element";
+        };
+
+        "distinct process classes sharing a static key are rejected"_test = [] {
+            auto setup{ make_setup() };
+            setup.rules.site.allow_gold = true;
+            setup.rules.cluster.enabled = false;
+
+            // Give both Au and Ag source sites coordination 11, forcing
+            // their dissolution processes to collide on the same static key.
+            auto make_lattice{ setup.make_lattice };
+            setup.make_lattice = [make_lattice] {
+                auto lattice{ make_lattice() };
+                lattice.set_fill_function([](lattice::Lattice& lattice, simulation::Engine&) {
+                    auto& vacancy{ lattice.sites().at(0) };
+                    auto* silver{ *lattice.neighbors(vacancy).begin() };
+                    vacancy.set_element(lattice, Element::none);
+                    silver->set_element(lattice, Element::Ag);
+                });
+                return lattice;
+            };
+
+            ut::expect(ut::throws<std::logic_error>([&] {
+                TestSimulation simulation{ setup };
+            })) << "dissolution Au and Ag must not reuse the same static key";
+        };
+
+        "kinetics and flux CSV columns stay stable as new process classes appear"_test = [] {
+            auto setup{ make_setup() };
+            TestSimulation simulation{ setup };
+            const auto root{ std::filesystem::temp_directory_path() /
+                std::format("kinetalis-csv-test-{}",
+                    std::chrono::steady_clock::now().time_since_epoch().count()) };
+
+            struct Cleanup
+            {
+                std::filesystem::path path;
+                ~Cleanup() { std::error_code error; std::filesystem::remove_all(path, error); }
+            } cleanup{ root };
+
+            AnalysisPlan plan;
+            plan.add<output::process::Kinetics>(root)
+                .set_resolution({ .min_snapshot_step = 1, .snapshot_scale_factor = 1.0 });
+            plan.add<output::process::EventFlux>(root)
+                .set_resolution({ .min_snapshot_step = 1, .snapshot_scale_factor = 1.0 });
+            plan.add<CheckingObserver>(32, setup.rules);
+
+            ut::expect(simulation.run(plan) == simulation::Status::analysed);
+
+            auto read_csv = [&](std::string const& filename, std::size_t expected_columns) {
+                auto path{ root / filename };
+                path += ".csv";
+                std::ifstream stream{ path };
+                ut::expect(stream.is_open()) << filename << " exists";
+                std::vector<std::string> lines;
+                for (std::string line; std::getline(stream, line);)
+                {
+                    ut::expect(ut::eq(static_cast<std::size_t>(
+                        std::ranges::count(line, ',')) + 1, expected_columns))
+                        << filename << " has a fixed number of CSV columns";
+                    lines.push_back(std::move(line));
+                }
+                ut::expect(ut::that % lines.size() > 2) << filename << " has snapshot rows";
+                return lines;
+            };
+
+            constexpr auto site_columns{
+                std::size(lattice::active_elements) * lattice::max_coordination + 2
+            };
+            for (auto const* file : {
+                "process_kinetics/site_count",
+                "process_kinetics/population",
+                "process_kinetics/time_weighted_site_count",
+                "process_kinetics/time_weighted_population"
+            })
+                read_csv(file, site_columns);
+
+            auto const& rates{ simulation.process_rates() };
+            auto lines{ read_csv("process_kinetics/activity", rates.size() + 1) };
+            read_csv("process_kinetics/time_weighted_activity", rates.size() + 1);
+
+            if (not lines.empty())
+                for (std::size_t key{ 1 }; key < rates.size(); ++key)
+                {
+                    auto const& process{ rates[key].first };
+                    auto const label{ process.is_active()
+                        ? std::format("{:_}", process)
+                        : std::format("not_encountered_{}", key) };
+                    ut::expect(lines.front().find("," + label) != std::string::npos)
+                        << "activity header includes final key label " << key;
+                }
+
+            // Three declared event types plus step and time, two fields per type.
+            auto const flux_columns{ std::size_t{ 2 } +
+                2 * (enum_values<event::Type>().size() - 1) };
+            read_csv("event_flux", flux_columns);
+        };
+
         "no active processes exhausts without selecting an event"_test = [] {
             auto setup{ make_setup() };
             setup.rules.site.enabled = false;
-            setup.rules.path.enabled = false;
+            setup.rules.cluster.enabled = false;
             TestSimulation simulation{ setup };
             expect_reference_state(simulation, setup.rules, 0);
             ut::expect(ut::eq(simulation.rate_tree()->rate_sum().value(), 0.0));
@@ -336,11 +696,11 @@ namespace
             ut::expect(ut::eq(checker.selected_count(),
                 checker.processed_count() + checker.rejected_count()));
             ut::expect(ut::that % checker.site_selections() > 0) << "site processes selected";
-            ut::expect(ut::that % checker.path_selections() > 0) << "path processes selected";
+            ut::expect(ut::that % checker.cluster_selections() > 0) << "cluster processes selected";
             ut::expect(ut::that % checker.rejected_count() > 0) << "rejection path exercised";
             ut::expect(ut::that % checker.accepted_site_events() > 0)
                 << "site update path exercised";
-            ut::expect(ut::that % checker.accepted_path_events() > 0)
+            ut::expect(ut::that % checker.accepted_cluster_events() > 0)
                 << "diffusion update path exercised";
         };
 

@@ -106,8 +106,6 @@ public:
     }
     Site& center_site();
 
-    site::Type site_type(Site const&) const;
-
     std::size_t number_atoms() const;
     double solid_fraction() const;
     double fraction(Element) const;

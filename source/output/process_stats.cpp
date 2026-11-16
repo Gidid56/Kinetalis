@@ -19,15 +19,17 @@ void process::Statistics::capture_init(kmc::Simulation const&)
 
 void process::Statistics::observe_selected(kmc::process::Record const& record)
 {
-    ++counts_[record.outcome][record.process];
+    // Capture the kinetic class before execution mutates the source site.
+    const kmc::Process process{ record.type, record.location() };
+    ++counts_[record.outcome][process];
 
     if (record.outcome == kmc::process::Outcome::rejected)
         return;
 
-    if (last_process_.event() != kmc::Event::none)
-        ++transitions_[last_process_][record.process];
+    if (last_process_.event() != kmc::event::Type::none)
+        ++transitions_[last_process_][process];
 
-    last_process_ = record.process;
+    last_process_ = process;
 }
 
 void process::Statistics::capture_snapshot(kmc::Simulation const& simulation)

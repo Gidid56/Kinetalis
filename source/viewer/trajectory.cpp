@@ -4,30 +4,43 @@
 
 #include "bridge.h"
 #include "kmc/process.h"
-#include "lattice/path.h"
 #include "lattice/site.h"
 
 using namespace viewer;
 
 void Trajectory::observe_selected(kmc::process::Record const& record)
 {
-    records_.emplace_back(record);
+    std::array<chemistry::Element, 2> elements{};
+    for (std::size_t i{}; i < record.sites().size(); ++i)
+        elements[i] = record.sites()[i]->element();
+
+    records_.push_back({ record, elements, elements });
     playbackStep_ = records_.size();
 }
 
-void Trajectory::makeStep()
+void Trajectory::observe_processed(kmc::process::Record const& record)
 {
-    auto& record{ records_.at(playbackStep_) };
+    assert(not records_.empty());
+    auto& after{ records_.back().after };
+    for (std::size_t i{}; i < record.sites().size(); ++i)
+        after[i] = record.sites()[i]->element();
+}
+
+void Trajectory::applyStep(Direction direction)
+{
+    auto& entry{ records_.at(playbackStep_) };
+    auto& record{ entry.record };
 
     if (viewerBridge_)
         viewerBridge_->observe_selected(record);
 
     if (record.outcome == kmc::process::Outcome::accepted)
     {
-        if (&record.path.front() == &record.path.back())
-            record.path.front().execute_process(lattice_);
-        else
-            record.path.execute_process(lattice_);
+        // Restore the recorded before/after states without interpreting the event type.
+        auto const& elements{ direction == Direction::Forwards ? entry.after : entry.before };
+        auto const sites{ record.sites() };
+        for (std::size_t i{ sites.size() }; i-- > 0;)
+            sites[i]->set_element(lattice_, elements[i]);
 
         if (viewerBridge_)
             viewerBridge_->observe_processed(record);
@@ -41,12 +54,12 @@ void Trajectory::makeStep(Direction direction)
         switch (direction)
         {
             case Direction::Forwards:
-                makeStep();
+                applyStep(Direction::Forwards);
                 ++playbackStep_;
                 break;
             case Direction::Backwards:
                 --playbackStep_;
-                makeStep();
+                applyStep(Direction::Backwards);
                 break;
         }
     }

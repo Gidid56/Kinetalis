@@ -2,6 +2,8 @@
 #include "types.h"
 #include "process.h"
 
+#include <cstddef>
+
 class kmc::Model
 {
 public:
@@ -14,6 +16,11 @@ public:
     };
 
     virtual ~Model() = default;
+
+    // Maximum nearest-neighbor graph distance from a modified event site
+    // to a source whose outgoing event rates may need recomputation.
+    // Radius one also covers the present rules' eligibility dependencies.
+    virtual std::size_t invalidation_radius() const noexcept { return 1; }
 
     auto& set_temperature(this auto& self, Temperature temperature)
     {

@@ -18,11 +18,12 @@ public:
     void setViewerBridge(Bridge* bridge) { viewerBridge_ = bridge; }
 
     void observe_selected(kmc::process::Record const&) override;
+    void observe_processed(kmc::process::Record const&) override;
 
 private:
     std::string_view name() const override { return "trajectory_recorder"; }
 
-    void makeStep();
+    void applyStep(Direction);
     void makeStep(Direction);
     bool finished(Direction) const;
 
@@ -37,5 +38,12 @@ private:
 
     kmc::Step playbackStep_{};
 
-    std::vector<kmc::process::Record> records_;
+    struct RecordedEvent
+    {
+        kmc::process::Record record;
+        std::array<chemistry::Element, 2> before;
+        std::array<chemistry::Element, 2> after;
+    };
+
+    std::vector<RecordedEvent> records_;
 };

@@ -8,10 +8,10 @@ using namespace lattice;
 
 void Site::set_element(Lattice& lattice, Element element)
 {
-    this->set_dirty(true);
-
     if (element_ == element)
         return;
+
+    set_pristine(false);
 
     if (element_ != Element::none)
         update_neighbors(lattice, -1);
@@ -37,25 +37,15 @@ void Site::insert(Site* neighbor, Index neighbor_index)
     ++max_neighbors_;
 }
 
-void Site::execute_process(Lattice& lattice)
-{
-    if (is_occupied())
-        set_element(lattice, Element::none);
-    else
-        set_element(lattice, Element::Ag);
-}
-
 void Site::update_neighbors(Lattice& lattice, std::int_fast8_t delta)
 {
     for (auto neighbor : lattice.neighbors(*this))
     {
-        neighbor->set_dirty(true);
         neighbor->coordination_ += delta;
         if constexpr (element_specific_neighbors)
             if (element_ != Element::none)
                 neighbor->element_neighbors_[elementKey(element_)] += delta;
     }
-    set_pristine(false);
 }
 
 physics::quantity::Displacement Site::layer_position(math::Axis axis) const
