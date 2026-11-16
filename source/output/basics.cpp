@@ -83,7 +83,7 @@ void output::Rates::write_final(kmc::Simulation const& kmc)
     std::string text{ kmc::ClassInfo::header };
     text += ",rate/Hz\n";
 
-    for (auto const& [info, rate] : kmc.process_rates())
+    for (auto const& [info, rate] : kmc.class_rates())
         std::format_to(std::back_inserter(text), "{},{:v:Hz}\n", info, rate);
 
     file::write<csv>(writer_path(), text);
