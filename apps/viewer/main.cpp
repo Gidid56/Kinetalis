@@ -11,13 +11,7 @@ int run_viewer()
 {
     Viewer viewer;
 
-    kmc::Model::Modulation modulation{
-        kmc::Process{ kmc::event::Type::dissolution, chemistry::Element::Ag, 9 },
-        0.5_ratio,
-    };
-
     viewer.createSimulation(
-        //setups::schematic(3),
         setups::pore_dealloying(CampaignType::passivation, 10, 20_mV, 300_K),
         analysis_plans::regime_outcome
         );

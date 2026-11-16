@@ -16,7 +16,7 @@ public:
     void showViewerControls();
     void showSimulationControls();
     void showSimulationStatus();
-    void showProcessStatistics();
+    void showKineticStatistics();
     void showDealloyingAnalysis();
     void showLatticeStats(Lattice const&);
     void showSelection(lattice::Index, Lattice const&);

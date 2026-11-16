@@ -13,9 +13,9 @@ void viewer::gui::Status::setData(kmc::Observer const& observer)
         reachedConditions = regime->reached_conditions();
     }
 
-    if (auto const* processStats{ dynamic_cast<output::process::Statistics const*>(&observer) })
+    if (auto const* kineticStats{ dynamic_cast<output::KineticStatistics<Status::KineticModel> const*>(&observer) })
     {
-        processCounts = processStats->counts();
+        kineticCounts = kineticStats->counts();
     }
 }
 
@@ -31,7 +31,7 @@ void viewer::gui::Sample::appendData(kmc::Observer const& observer)
         phasesData = regime->phases().last_data();
     }
 
-    if (auto const* eventFlux{ dynamic_cast<output::process::EventFlux const*>(&observer) })
+    if (auto const* eventFlux{ dynamic_cast<output::EventFlux const*>(&observer) })
     {
         eventFluxData = eventFlux->last_data();
     }

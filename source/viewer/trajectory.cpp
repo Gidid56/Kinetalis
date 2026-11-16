@@ -3,12 +3,12 @@
 #include "trajectory.h"
 
 #include "bridge.h"
-#include "kmc/process.h"
+#include "kmc/event.h"
 #include "lattice/site.h"
 
 using namespace viewer;
 
-void Trajectory::observe_selected(kmc::process::Record const& record)
+void Trajectory::observe_selected(kmc::event::Record const& record)
 {
     std::array<chemistry::Element, 2> elements{};
     for (std::size_t i{}; i < record.sites().size(); ++i)
@@ -18,7 +18,7 @@ void Trajectory::observe_selected(kmc::process::Record const& record)
     playbackStep_ = records_.size();
 }
 
-void Trajectory::observe_processed(kmc::process::Record const& record)
+void Trajectory::observe_processed(kmc::event::Record const& record)
 {
     assert(not records_.empty());
     auto& after{ records_.back().after };
@@ -34,7 +34,7 @@ void Trajectory::applyStep(Direction direction)
     if (viewerBridge_)
         viewerBridge_->observe_selected(record);
 
-    if (record.outcome == kmc::process::Outcome::accepted)
+    if (record.outcome == kmc::event::Outcome::accepted)
     {
         // Restore the recorded before/after states without interpreting the event type.
         auto const& elements{ direction == Direction::Forwards ? entry.after : entry.before };

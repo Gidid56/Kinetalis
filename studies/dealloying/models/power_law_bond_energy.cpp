@@ -1,12 +1,10 @@
 #include "pch.h"
-
 #include "power_law_bond_energy.h"
 
-#include "kmc/process.h"
-
 using namespace kmc;
+using namespace studies::dealloying::models;
 
-namespace kmc::models::power_law_bond_energy
+namespace studies::dealloying::models::power_law_bond_energy
 {
     using enum Element;
 
@@ -55,18 +53,17 @@ namespace kmc::models::power_law_bond_energy
     }
 }
 
-Energy models::PowerLawBondEnergy::lattice_energy_barrier(Process const& process) const
-{
-    auto coordination{ static_cast<double>(process.coordination()) };
 
-    return power_law_bond_energy::dimer_bond_energy(process.element()) *
-           std::pow(coordination, power_law_bond_energy::coordination_exponent(process.element()));
+Energy PowerLawBondEnergy::lattice_energy_barrier(RateClassKey key) const
+{
+    auto const& desc{ descriptor(key) };
+    return power_law_bond_energy::dimer_bond_energy(desc.element) *
+           std::pow(static_cast<double>(desc.coordination),
+                    power_law_bond_energy::coordination_exponent(desc.element));
 }
 
-std::string models::PowerLawBondEnergy::output_text() const
+std::string PowerLawBondEnergy::output_text() const
 {
-    return std::format(
-        "Model = Power law bond energy\n"
-        "{}",
+    return std::format("Model = Power law bond energy\n{}",
         ElectrochemicalInterface::output_text());
 }

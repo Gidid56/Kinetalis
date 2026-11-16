@@ -1,7 +1,7 @@
 #pragma once
 #include "simulation/base.h"
 #include "model.h"
-#include "process.h"
+#include "event.h"
 #include "rate_tree.h"
 #include "setup.h"
 
@@ -33,8 +33,8 @@ public:
     auto time() const { return time_; }
     auto& model() const { return model_; }
 
-    auto& process_rates() const { return process_rates_; }
-    auto& process_counts() const { return process_counts_; }
+    auto& class_rates() const { return class_rates_; }
+    auto& class_counts() const { return class_counts_; }
 
 protected:
     std::unique_ptr<kmc::Model> model_;
@@ -42,8 +42,8 @@ protected:
     Time time_{};
     std::size_t rejections_{};
 
-    std::vector<std::pair<Process, Rate>> process_rates_{ { Process{}, Rate{} } };
-    std::vector<std::size_t> process_counts_{ 0 };
+    std::vector<std::pair<ClassInfo, Rate>> class_rates_{ { ClassInfo{}, Rate{} } };
+    std::vector<std::size_t> class_counts_{ 0 };
 };
 
 template <class Rules>
@@ -66,16 +66,16 @@ public:
 
 private:
     Rate block_rate(lattice::Site&);
-    process::Key process_key(Process);
-    void set_process(lattice::Index, process::Key);
+    RateClassKey class_key(event::Type, event::Location const&);
+    void set_class_key(lattice::Index, RateClassKey);
 
     Rate rate_sum(lattice::Site&);
     event::Location select_random_location();
-    process::Record evaluate_event(event::Location) const;
+    event::Record evaluate_event(event::Location) const;
 
     void initialize_rates();
     void update_all_rates();
-    void update_affected_rates(process::Record const&);
+    void update_affected_rates(event::Record const&);
 
     void update(lattice::Site&);
 
@@ -84,10 +84,8 @@ private:
 
     std::unique_ptr<rate_tree::Interface> rate_tree_;
     Rates site_rates_;
-    process::Keys processes_;
+    RateClassKeys event_class_keys_;
     std::vector<rate_tree::BlockUpdate> block_updates_;
-
-    std::unordered_map<Process, process::Key> dynamic_keys_;
 
     [[no_unique_address]] Rules rules_;
 };

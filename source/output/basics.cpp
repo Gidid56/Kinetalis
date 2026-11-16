@@ -80,11 +80,11 @@ void output::Lattice::write_final(kmc::Simulation const& kmc)
 
 void output::Rates::write_final(kmc::Simulation const& kmc)
 {
-    std::string text{ kmc::Process::header };
+    std::string text{ kmc::ClassInfo::header };
     text += ",rate/Hz\n";
 
-    for (auto const& [process, rate] : kmc.process_rates())
-        std::format_to(std::back_inserter(text), "{},{:v:Hz}\n", process, rate);
+    for (auto const& [info, rate] : kmc.class_rates())
+        std::format_to(std::back_inserter(text), "{},{:v:Hz}\n", info, rate);
 
     file::write<csv>(writer_path(), text);
 }
@@ -122,9 +122,9 @@ void output::Composition::capture_init(kmc::Simulation const& kmc)
             ++element_counts_[site.element()];
 }
 
-void output::Composition::observe_selected(kmc::process::Record const& record)
+void output::Composition::observe_selected(kmc::event::Record const& record)
 {
-    if (record.outcome != kmc::process::Outcome::accepted)
+    if (record.outcome != kmc::event::Outcome::accepted)
         return;
 
     auto const delta{ kmc::event::solid_change(record.type) };
@@ -177,11 +177,5 @@ std::string global::settings()
         lattice::epsilon::length,
         lattice::epsilon::coordinate);
 
-    settings += std::format(
-        "\nSimulation Settings\n"
-        "staticProcessKeys = {}\n"
-        "stochasticResidenceTime = {}\n",
-        kmc::staticProcessKeys,
-        kmc::stochasticResidenceTime);
     return settings;
 }

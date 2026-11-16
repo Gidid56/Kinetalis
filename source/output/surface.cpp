@@ -29,20 +29,20 @@ void Surface::update(lattice::Site const& site, int change)
     bonds_ += change * (site.vacant_neighbors() - site.coordination());
 }
 
-void Surface::observe_selected(kmc::process::Record const& process)
+void Surface::observe_selected(kmc::event::Record const& record)
 {
-    if (process.outcome != kmc::process::Outcome::accepted)
+    if (record.outcome != kmc::event::Outcome::accepted)
         return;
 
-    update(*process.sites()[0], kmc::event::neighbor_change(process.type, true));
+    update(*record.sites()[0], kmc::event::neighbor_change(record.type, true));
 }
 
-void Surface::observe_processed(kmc::process::Record const& process)
+void Surface::observe_processed(kmc::event::Record const& record)
 {
-    if (process.type != kmc::event::Type::diffusion)
+    if (record.type != kmc::event::Type::diffusion)
         return;
 
-    update(*process.sites()[1], kmc::event::neighbor_change(process.type, false));
+    update(*record.sites()[1], kmc::event::neighbor_change(record.type, false));
 
     if constexpr (utility::is_debug)
         if (sites_ != lattice_->surface_atoms())

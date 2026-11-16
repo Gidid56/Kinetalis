@@ -22,14 +22,5 @@ namespace output
 	class Composition;
 	class Phases;
     class Surface;
-
-	namespace process
-	{
-		using Count = std::size_t;
-		using CountMap = std::map<kmc::Process, Count>;
-
-        class EventFlux;
-		class Statistics;
-        class Kinetics;
-	}
+    class EventFlux;
 }

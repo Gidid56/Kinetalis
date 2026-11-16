@@ -4,6 +4,10 @@ add_library(Kinetalis::dealloying ALIAS kinetalis_dealloying)
 target_sources(
     kinetalis_dealloying
     PRIVATE        
+        dealloying/models/electrochemical_interface.cpp
+        dealloying/models/linear_bond_breaking.cpp
+        dealloying/models/composition_dependent.cpp
+        dealloying/models/power_law_bond_energy.cpp
         dealloying/analysis/electrochemistry.cpp
         dealloying/gtc_model.cpp
         dealloying/analysis/regime.cpp

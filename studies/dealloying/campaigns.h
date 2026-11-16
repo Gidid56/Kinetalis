@@ -175,11 +175,11 @@ namespace studies::dealloying::campaigns
     {
         std::vector<Setup> setups;
 
-        for (auto& process : modulated_processes())
+        for (auto& descriptor : modulated_descriptors())
             for (auto ratio : ratios)
                 for (auto overpotential : critical_potential_wide_search_range)
                 {
-                    kmc::Model::Modulation modulation{ process, ratio };
+                    models::LinearBondBreaking::Modulation modulation{ descriptor, ratio };
                     setups.emplace_back(
                         setups::pore_dealloying(
                             CampaignType::bifurcation,

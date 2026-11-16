@@ -5,11 +5,11 @@ function(kinetalis_add_test_suite suite)
     set(executable kinetalis_test_${suite})
 
     add_library(${objects} OBJECT ${ARGN})
-    target_link_libraries(${objects} PRIVATE Kinetalis::core)
+    target_link_libraries(${objects} PRIVATE Kinetalis::dealloying)
     kinetalis_target_defaults(${objects})
 
     add_executable(${executable} "${PROJECT_SOURCE_DIR}/tests/main.cpp")
-    target_link_libraries(${executable} PRIVATE Kinetalis::core ${objects})
+    target_link_libraries(${executable} PRIVATE Kinetalis::dealloying ${objects})
     kinetalis_target_defaults(${executable})
 
     add_test(NAME ${suite} COMMAND ${executable})
@@ -37,7 +37,7 @@ add_subdirectory(physics)
 # It contains exactly the same suites as the individual CTest executables.
 get_property(test_objects GLOBAL PROPERTY KINETALIS_TEST_OBJECTS)
 add_executable(test_all "${PROJECT_SOURCE_DIR}/tests/main.cpp")
-target_link_libraries(test_all PRIVATE Kinetalis::core ${test_objects})
+target_link_libraries(test_all PRIVATE Kinetalis::dealloying ${test_objects})
 kinetalis_target_defaults(test_all)
 
 # Build everything; executing tests remains an explicit user action.

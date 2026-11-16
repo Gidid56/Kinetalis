@@ -1,6 +1,6 @@
 #pragma once
 #include "kmc/observer.h"
-#include "kmc/process.h"
+#include "kmc/event.h"
 #include "types.h"
 
 class viewer::Trajectory : public kmc::Observer
@@ -17,8 +17,8 @@ public:
 
     void setViewerBridge(Bridge* bridge) { viewerBridge_ = bridge; }
 
-    void observe_selected(kmc::process::Record const&) override;
-    void observe_processed(kmc::process::Record const&) override;
+    void observe_selected(kmc::event::Record const&) override;
+    void observe_processed(kmc::event::Record const&) override;
 
 private:
     std::string_view name() const override { return "trajectory_recorder"; }
@@ -40,7 +40,7 @@ private:
 
     struct RecordedEvent
     {
-        kmc::process::Record record;
+        kmc::event::Record record;
         std::array<chemistry::Element, 2> before;
         std::array<chemistry::Element, 2> after;
     };

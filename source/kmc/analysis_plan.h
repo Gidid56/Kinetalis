@@ -22,16 +22,16 @@ public:
             observer->observe_step(simulation);
     }
 
-    void observe_selected(process::Record const& process)
+    void observe_selected(event::Record const& record)
     {
         for (auto& observer : observers_)
-            observer->observe_selected(process);
+            observer->observe_selected(record);
     }
 
-    void observe_processed(process::Record const& process)
+    void observe_processed(event::Record const& record)
     {
         for (auto& observer : observers_)
-            observer->observe_processed(process);
+            observer->observe_processed(record);
     }
 
     void observe_completed(Simulation const& simulation)

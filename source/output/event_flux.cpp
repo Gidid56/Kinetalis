@@ -10,49 +10,46 @@ using enum file::Type;
 
 using namespace output;
 
-void process::EventFlux::capture_init(kmc::Simulation const& simulation)
+void EventFlux::capture_init(kmc::Simulation const& simulation)
 {
     simulation_ = &simulation;
     last_time_ = simulation.time();
     residence_time_ = {};
     data_.clear();
 
-    // Event types are fixed independently of the lazy process rate cache.
+    // Event types are fixed independently of the lazy kinetic-class rate cache.
     for (auto event : enum_values<kmc::event::Type>())
         if (event != kmc::event::Type::none)
             data_.try_emplace(event);
 }
 
-void process::EventFlux::observe_selected(kmc::process::Record const& record)
+void EventFlux::observe_selected(kmc::event::Record const& record)
 {
-    if (record.outcome != kmc::process::Outcome::accepted)
-        return;
-
     auto const& simulation{ *simulation_ };
     auto const time_delta{ simulation.time() - last_time_ };
 
     last_time_ = simulation.time();
     residence_time_ += time_delta;
 
-    auto const& process_counts{ simulation.process_counts() };
-    auto const& process_rates{ simulation.process_rates() };
+    auto const& class_counts{ simulation.class_counts() };
+    auto const& class_rates{ simulation.class_rates() };
 
-    for (kmc::process::Key key{ 1 }; key < process_counts.size(); ++key)
+    for (std::size_t key{ 1 }; key < class_counts.size(); ++key)
     {
-        auto const count{ process_counts[key] };
+        auto const count{ class_counts[key] };
 
         if (count == 0)
             continue;
 
-        auto const& [process, rate]{ process_rates[key] };
-        auto const event{ process.event() };
+        auto const& [info, rate]{ class_rates[key] };
+        auto const event{ info.event() };
 
         if (event != kmc::event::Type::none)
             data_[event].integral += count * rate * time_delta;
     }
 }
 
-void process::EventFlux::capture_snapshot(kmc::Simulation const&)
+void EventFlux::capture_snapshot(kmc::Simulation const&)
 {
     for (auto& [_, flux] : data_)
         flux.value.reset();
@@ -70,7 +67,7 @@ void process::EventFlux::capture_snapshot(kmc::Simulation const&)
     residence_time_ = {};
 }
 
-std::optional<double> process::EventFlux::relative_flux(kmc::event::Type event) const
+std::optional<double> EventFlux::relative_flux(kmc::event::Type event) const
 {
     auto const iterator{ data_.find(event) };
 
@@ -85,7 +82,7 @@ std::optional<double> process::EventFlux::relative_flux(kmc::event::Type event) 
     return *flux.value / flux.maximum;
 }
 
-void process::EventFlux::write_init(kmc::Simulation const&)
+void EventFlux::write_init(kmc::Simulation const&)
 {
     std::string header{ Writer::default_header };
 
@@ -101,7 +98,7 @@ void process::EventFlux::write_init(kmc::Simulation const&)
     file::write<csv>(writer_path(), header);
 }
 
-void process::EventFlux::write_snapshot(kmc::Simulation const& simulation)
+void EventFlux::write_snapshot(kmc::Simulation const& simulation)
 {
     if (data_.empty() or not data_.begin()->second.value)
         return;

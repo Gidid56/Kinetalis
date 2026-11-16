@@ -97,17 +97,17 @@ static constexpr ElectricPotential critical_potential(
     return potentials.back();
 }
 
-static constexpr std::vector<kmc::Process> modulated_processes()
+static std::vector<studies::dealloying::models::LinearBondBreaking::Descriptor> modulated_descriptors()
 {
-    std::vector<kmc::Process> processes;
+    std::vector<studies::dealloying::models::LinearBondBreaking::Descriptor> descriptors;
 
     for (lattice::Coordination coordination{ 7 }; coordination <= 10; ++coordination)
-        processes.emplace_back(kmc::event::Type::dissolution, chemistry::Element::Ag, coordination);
+        descriptors.emplace_back(kmc::event::Type::dissolution, chemistry::Element::Ag, coordination);
 
     for (lattice::Coordination coordination{ 5 }; coordination <= 7; ++coordination)
-        processes.emplace_back(kmc::event::Type::diffusion, chemistry::Element::Au, coordination);
+        descriptors.emplace_back(kmc::event::Type::diffusion, chemistry::Element::Au, coordination);
 
-    return processes;
+    return descriptors;
 }
 
 static constexpr std::array ratios{ 0.5, 1.0 / std::numbers::sqrt2, std::numbers::sqrt2, 2.0 };

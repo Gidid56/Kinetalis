@@ -11,22 +11,13 @@ target_sources(
         lattice/site.cpp
         lattice/unitcell.cpp
         
-        kmc/model.cpp
-        kmc/process.cpp
         kmc/observer.cpp
-
-        models/electrochemical_interface.cpp
-        models/composition_dependent.cpp
-        models/linear_bond_breaking.cpp
-        models/power_law_bond_energy.cpp
 
         output/writer.cpp
         output/basics.cpp
         output/phases.cpp
         output/surface.cpp
         output/event_flux.cpp
-        output/process_stats.cpp
-        output/process_kinetics.cpp
         utility/csv.cpp
 
         "simulation/engine.cpp"

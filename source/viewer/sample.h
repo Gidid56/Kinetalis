@@ -1,11 +1,12 @@
 #pragma once
 
-#include "../studies/dealloying/analysis/regime.h"
+#include "dealloying/analysis/regime.h"
+#include "dealloying/models/linear_bond_breaking.h"
 #include "kmc/model.h"
 #include "kmc/observer.h"
 #include "output/event_flux.h"
 #include "output/phases.h"
-#include "output/process_stats.h"
+#include "output/kinetic_statistics.h"
 
 namespace viewer::gui
 {
@@ -19,7 +20,9 @@ namespace viewer::gui
         ElectricPotential potential{};
         studies::dealloying::analysis::Regime::Condition reachedConditions{};
 
-        std::map<kmc::process::Outcome, output::process::CountMap> processCounts;
+        using KineticModel = studies::dealloying::models::LinearBondBreaking;
+        using KineticCounts = output::KineticStatistics<KineticModel>::CountMap;
+        std::map<kmc::event::Outcome, KineticCounts> kineticCounts;
 
         void setData(kmc::Observer const&);
     };
@@ -29,7 +32,7 @@ namespace viewer::gui
         kmc::Observer::Snapshot snapshot{};
 
         std::optional<output::Phases::Data> phasesData;
-        std::optional<output::process::EventFlux::Data> eventFluxData;
+        std::optional<output::EventFlux::Data> eventFluxData;
 
         void appendData(kmc::Observer const&);
     };
