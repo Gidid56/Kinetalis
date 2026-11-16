@@ -41,9 +41,9 @@ public:
 
     virtual void observe_completed(Simulation const&) { }
 
-    virtual void observe_selected(process::Record const&) { }
+    virtual void observe_selected(event::Record const&) { }
 
-    virtual void observe_processed(process::Record const&) { }
+    virtual void observe_processed(event::Record const&) { }
 
     virtual bool stop_requested() const { return false; }
 

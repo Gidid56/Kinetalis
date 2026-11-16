@@ -7,6 +7,7 @@
 #include <format>
 #include <string>
 #include <type_traits>
+#include <utility>
 
 namespace kmc::event
 {
@@ -18,8 +19,14 @@ namespace kmc::event
         deposition,
     };
 
-    // Lattice occupancy changes associated with an event type. These are
-    // independent of the kinetic Process representation.
+    enum class Outcome : std::uint8_t
+    {
+        active,
+        accepted,
+        rejected,
+    };
+
+    // Lattice occupancy changes associated with an event type.
     constexpr int solid_change(Type type) noexcept
     {
         switch (type)
@@ -66,6 +73,25 @@ namespace kmc::event
     private:
         lattice::Cluster<capacity> cluster_{};
         std::uint8_t size_{};
+    };
+
+    class Record
+    {
+    public:
+        Record(Location location, Type event, bool rejected) noexcept
+            : type{ event },
+              outcome{ rejected ? Outcome::rejected : Outcome::accepted },
+              location_{ std::move(location) }
+        { }
+
+        Location const& location() const noexcept { return location_; }
+        auto sites() const noexcept { return location_.sites(); }
+
+        Type type;
+        Outcome outcome;
+
+    private:
+        Location location_;
     };
 
     // Source prefiltering only needs the source site; all other rule

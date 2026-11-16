@@ -12,16 +12,6 @@ namespace kmc
 {
     using chemistry::Element;
 
-    namespace process
-    {
-        enum class Outcome : std::uint8_t
-        {
-            active,
-            accepted,
-            rejected,
-        };
-    }
-
     inline constexpr bool stochasticResidenceTime{ true };
 }
 
@@ -42,15 +32,10 @@ namespace kmc
 
     namespace rate_tree { struct Interface; }
 
-    namespace process
-    {
-        using Key = std::uint8_t;
-        using Keys = std::vector<Key>;
+    using RateClassKey = std::uint8_t;
+    using RateClassKeys = std::vector<RateClassKey>;
 
-        class Record;
-
-        class Statistics;
-    }
+    namespace event { class Record; }
 
     class Model;
     class Simulation;

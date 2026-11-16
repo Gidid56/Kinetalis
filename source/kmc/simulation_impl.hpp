@@ -48,24 +48,24 @@ namespace kmc
             else
                 time_ += escape_time;
 
-            auto process{ evaluate_event(select_random_location()) };
+            auto record{ evaluate_event(select_random_location()) };
 
-            analysis_plan.observe_selected(process);
+            analysis_plan.observe_selected(record);
 
-            if (process.outcome == process::Outcome::accepted)
+            if (record.outcome == event::Outcome::accepted)
             {
                 ++step_;
 
-                if (process.sites().size() == 1)
-                    rules_.site.execute(process.location(), lattice_);
+                if (record.sites().size() == 1)
+                    rules_.site.execute(record.location(), lattice_);
                 else
-                    rules_.cluster.execute(process.location(), lattice_);
+                    rules_.cluster.execute(record.location(), lattice_);
 
-                update_affected_rates(process);
+                update_affected_rates(record);
 
-                analysis_plan.observe_processed(process);
+                analysis_plan.observe_processed(record);
             }
-            else if (process.outcome == process::Outcome::rejected)
+            else if (record.outcome == event::Outcome::rejected)
             {
                 ++rejections_;
             }
@@ -78,7 +78,7 @@ namespace kmc
     }
 
     template <class Rules>
-    void RejectionTreeSimulation<Rules>::update_affected_rates(process::Record const& process)
+    void RejectionTreeSimulation<Rules>::update_affected_rates(event::Record const& record)
     {
         block_updates_.clear();
 
@@ -89,11 +89,11 @@ namespace kmc
         // First invalidate the entire region, then recalculate. Recomputing a
         // source clears its dirty flag, so overlapping walks are inexpensive.
         auto invalidate = [](lattice::Site& site) { site.set_dirty(true); };
-        for (auto* site : process.sites())
+        for (auto* site : record.sites())
             visit_neighbor_tree(*site, radius, invalidate);
 
         auto recalculate = [this](lattice::Site& site) { update(site); };
-        for (auto* site : process.sites())
+        for (auto* site : record.sites())
             visit_neighbor_tree(*site, radius, recalculate);
 
         if (block_updates_.size() == 1)
@@ -143,7 +143,7 @@ namespace kmc
     }
 
     template <class Rules>
-    process::Record RejectionTreeSimulation<Rules>::evaluate_event(event::Location location) const
+    event::Record RejectionTreeSimulation<Rules>::evaluate_event(event::Location location) const
     {
         if (location.sites().size() == 1)
             return { location, decltype(rules_.site)::event, rules_.site.is_rejected(location) };
@@ -226,9 +226,9 @@ namespace kmc
         Rate sum{};
         bool has_processes{};
 
-        auto add_process = [&](process::Key key) {
+        auto add_process = [&](RateClassKey key) {
             set_process(index++, key);
-            has_processes |= key != process::Key{};
+            has_processes |= key != RateClassKey{};
             sum += process_rates_.at(key).second;
         };
 
@@ -258,7 +258,7 @@ namespace kmc
     }
 
     template <class Rules>
-    void RejectionTreeSimulation<Rules>::set_process(lattice::Index index, process::Key new_key)
+    void RejectionTreeSimulation<Rules>::set_process(lattice::Index index, RateClassKey new_key)
     {
         auto& old_key{ processes_.at(index) };
 
@@ -266,12 +266,12 @@ namespace kmc
             return;
 
         // key 0 is the empty / invalid process for static process keys
-        if (old_key != process::Key{})
+        if (old_key != RateClassKey{})
             --process_counts_.at(old_key);
 
         old_key = new_key;
 
-        if (new_key != process::Key{})
+        if (new_key != RateClassKey{})
             ++process_counts_.at(new_key);
     }
 
@@ -294,11 +294,11 @@ namespace kmc
     }
 
     template <class Rules>
-    process::Key RejectionTreeSimulation<Rules>::process_key(
+    RateClassKey RejectionTreeSimulation<Rules>::process_key(
         event::Type type, event::Location const& location)
     {
         const auto key{ model_->classify(type, location, lattice_) };
-        if (key == process::Key{})
+        if (key == RateClassKey{})
             throw std::logic_error{ "Active event maps to reserved key zero." };
 
         if (key >= process_rates_.size())
@@ -326,7 +326,7 @@ namespace kmc
         model_->refresh_rates();
         for (std::size_t key{ 1 }; key < process_rates_.size(); ++key)
             if (process_rates_[key].first.is_active())
-                process_rates_[key].second = model_->rate(static_cast<process::Key>(key));
+                process_rates_[key].second = model_->rate(static_cast<RateClassKey>(key));
 
         // A full-rate refresh bypasses per-event block collection. Rebuild each
         // block once after all site rates have been recalculated.

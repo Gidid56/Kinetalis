@@ -1,7 +1,7 @@
 #pragma once
 #include "simulation/base.h"
 #include "model.h"
-#include "process.h"
+#include "event.h"
 #include "rate_tree.h"
 #include "setup.h"
 
@@ -66,16 +66,16 @@ public:
 
 private:
     Rate block_rate(lattice::Site&);
-    process::Key process_key(event::Type, event::Location const&);
-    void set_process(lattice::Index, process::Key);
+    RateClassKey process_key(event::Type, event::Location const&);
+    void set_process(lattice::Index, RateClassKey);
 
     Rate rate_sum(lattice::Site&);
     event::Location select_random_location();
-    process::Record evaluate_event(event::Location) const;
+    event::Record evaluate_event(event::Location) const;
 
     void initialize_rates();
     void update_all_rates();
-    void update_affected_rates(process::Record const&);
+    void update_affected_rates(event::Record const&);
 
     void update(lattice::Site&);
 
@@ -84,7 +84,7 @@ private:
 
     std::unique_ptr<rate_tree::Interface> rate_tree_;
     Rates site_rates_;
-    process::Keys processes_;
+    RateClassKeys processes_;
     std::vector<rate_tree::BlockUpdate> block_updates_;
 
     [[no_unique_address]] Rules rules_;
