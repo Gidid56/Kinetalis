@@ -88,7 +88,7 @@ namespace output
             last_data_ = std::exchange(accumulation_, {});
         }
 
-        static std::string header(kmc::Simulation const& simulation)
+        static std::string header(kmc::Simulation const& simulation, ModelType const& model)
         {
             std::string text{ Writer::default_header };
             auto const& rates{ simulation.class_rates() };
@@ -97,7 +97,7 @@ namespace output
                 if (simulation.class_initialized(static_cast<kmc::RateClassKey>(key)))
                     std::format_to(std::back_inserter(text), ",{}",
                         DescriptorFormat<Descriptor>::label(
-                            static_cast<ModelType const&>(*simulation.model()).descriptor(
+                            model.descriptor(
                                 static_cast<kmc::RateClassKey>(key))));
                 else
                     std::format_to(std::back_inserter(text), ",not_encountered_{}", key);
@@ -134,7 +134,7 @@ namespace output
 
         void write_init(kmc::Simulation const& simulation) override
         {
-            class_header_ = header(simulation);
+            class_header_ = header(simulation, *model_);
             class_columns_ = simulation.class_rates().size() - 1;
             utility::file::write<utility::file::Type::csv>(
                 writer_path() / "activity", class_header_ + '\n');
@@ -148,7 +148,7 @@ namespace output
                 last_data_.residence_time <= physics::quantity::TimeDifference{})
                 return;
 
-            auto const new_header{ header(simulation) };
+            auto const new_header{ header(simulation, *model_) };
             if (new_header != class_header_)
             {
                 auto const new_columns{ simulation.class_rates().size() - 1 };
