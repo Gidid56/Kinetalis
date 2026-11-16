@@ -53,10 +53,10 @@ namespace kmc
             {
                 ++step_;
 
-                if (process.cluster[0] == process.cluster[1])
-                    rules_.site.execute(*process.cluster[0], lattice_);
+                if (process.sites().size() == 1)
+                    rules_.site.execute(*process.sites()[0], lattice_);
                 else
-                    rules_.cluster.execute(process.cluster, lattice_);
+                    rules_.cluster.execute(process.cluster(), lattice_);
 
                 update_affected_rates(process);
 
@@ -78,7 +78,7 @@ namespace kmc
     void RejectionTreeSimulation<Rules>::update_affected_rates(process::Record const& process)
     {
         block_updates_.clear();
-        for (auto site : process.cluster)
+        for (auto* site : process.sites())
         {
             update_neighbors(*site);
             update(*site);

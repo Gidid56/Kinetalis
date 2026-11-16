@@ -116,11 +116,13 @@ std::formatter<Process>::format(Process const& process, std::format_context& con
 process::Record::Record(Site& site, event::Type event, bool rejected)
     : outcome{ rejected ? Outcome::rejected : Outcome::accepted },
       process{ event, site },
-      cluster{ &site, &site }
+      cluster_{ &site, nullptr },
+      size_{ 1 }
 { }
 
 process::Record::Record(Cluster<2> const& event_cluster, event::Type event, bool rejected)
     : outcome{ rejected ? Outcome::rejected : Outcome::accepted },
       process{ event, event_cluster },
-      cluster{ event_cluster }
+      cluster_{ event_cluster },
+      size_{ 2 }
 { }

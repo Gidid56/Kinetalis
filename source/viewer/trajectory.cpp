@@ -10,7 +10,10 @@ using namespace viewer;
 
 void Trajectory::observe_selected(kmc::process::Record const& record)
 {
-    const std::array elements{ record.cluster[0]->element(), record.cluster[1]->element() };
+    std::array<chemistry::Element, 2> elements{};
+    for (std::size_t i{}; i < record.sites().size(); ++i)
+        elements[i] = record.sites()[i]->element();
+
     records_.push_back({ record, elements, elements });
     playbackStep_ = records_.size();
 }
@@ -18,7 +21,9 @@ void Trajectory::observe_selected(kmc::process::Record const& record)
 void Trajectory::observe_processed(kmc::process::Record const& record)
 {
     assert(not records_.empty());
-    records_.back().after = { record.cluster[0]->element(), record.cluster[1]->element() };
+    auto& after{ records_.back().after };
+    for (std::size_t i{}; i < record.sites().size(); ++i)
+        after[i] = record.sites()[i]->element();
 }
 
 void Trajectory::applyStep(Direction direction)
@@ -33,9 +38,9 @@ void Trajectory::applyStep(Direction direction)
     {
         // Restore the recorded before/after states without interpreting the event type.
         auto const& elements{ direction == Direction::Forwards ? entry.after : entry.before };
-        if (record.cluster[0] != record.cluster[1])
-            record.cluster[1]->set_element(lattice_, elements[1]);
-        record.cluster[0]->set_element(lattice_, elements[0]);
+        auto const sites{ record.sites() };
+        for (std::size_t i{ sites.size() }; i-- > 0;)
+            sites[i]->set_element(lattice_, elements[i]);
 
         if (viewerBridge_)
             viewerBridge_->observe_processed(record);

@@ -233,25 +233,25 @@ namespace
         {
             ++selections_;
             bool rejected{};
-            if (record.cluster[0] == record.cluster[1])
+            if (record.sites().size() == 1)
             {
                 ++site_selections_;
-                ut::expect(rules_.site.is_source_candidate(*record.cluster[0]))
+                ut::expect(rules_.site.is_source_candidate(*record.sites()[0]))
                     << "selected site has valid source";
-                ut::expect(rules_.site.is_candidate(*record.cluster[0]))
+                ut::expect(rules_.site.is_candidate(*record.sites()[0]))
                     << "selected site is a candidate";
-                rejected = rules_.site.is_rejected(*record.cluster[0]);
-                ut::expect(record.process == Process{ SiteRule::event, *record.cluster[0] });
+                rejected = rules_.site.is_rejected(*record.sites()[0]);
+                ut::expect(record.process == Process{ SiteRule::event, *record.sites()[0] });
             }
             else
             {
                 ++cluster_selections_;
-                ut::expect(rules_.cluster.is_source_candidate(*record.cluster[0]))
+                ut::expect(rules_.cluster.is_source_candidate(*record.sites()[0]))
                     << "selected cluster has valid source";
-                ut::expect(rules_.cluster.is_candidate(record.cluster))
+                ut::expect(rules_.cluster.is_candidate(record.cluster()))
                     << "selected cluster is a candidate";
-                rejected = rules_.cluster.is_rejected(record.cluster);
-                ut::expect(record.process == Process{ ClusterRule::event, record.cluster });
+                rejected = rules_.cluster.is_rejected(record.cluster());
+                ut::expect(record.process == Process{ ClusterRule::event, record.cluster() });
             }
             ut::expect(ut::eq(record.outcome == process::Outcome::rejected, rejected))
                 << "postselection rejection matches rule";
@@ -263,7 +263,7 @@ namespace
         {
             ut::expect(record.outcome == process::Outcome::accepted);
             ++processed_;
-            if (record.cluster[0] == record.cluster[1])
+            if (record.sites().size() == 1)
                 ++accepted_site_events_;
             else
                 ++accepted_cluster_events_;
@@ -322,6 +322,42 @@ namespace
     }
 
     ut::suite<"kmc.simulation"> simulation_tests = [] {
+        "process records own their site-pointer storage"_test = [] {
+            auto setup{ make_setup() };
+            TestSimulation simulation{ setup };
+            auto& lattice{ simulation.mutable_lattice() };
+            auto& first{ lattice.sites().at(0) };
+            auto& second{ lattice.sites().at(1) };
+
+            process::Record site_record{ first, SiteRule::event, false };
+            ut::expect(ut::eq(site_record.sites().size(), std::size_t{ 1 }));
+            ut::expect(site_record.sites()[0] == &first);
+
+            auto site_copy{ site_record };
+            ut::expect(site_copy.sites().data() != site_record.sites().data())
+                << "a record copy owns its own pointer storage";
+            ut::expect(ut::eq(site_copy.sites().size(), std::size_t{ 1 }));
+            ut::expect(site_copy.sites()[0] == &first);
+
+            Cluster<2> const cluster{ &first, &second };
+            process::Record cluster_record{ cluster, ClusterRule::event, false };
+            ut::expect(ut::eq(cluster_record.sites().size(), std::size_t{ 2 }));
+            ut::expect(cluster_record.sites()[0] == &first);
+            ut::expect(cluster_record.sites()[1] == &second);
+            ut::expect(cluster_record.cluster() == cluster);
+
+            auto cluster_copy{ cluster_record };
+            ut::expect(cluster_copy.sites().data() != cluster_record.sites().data())
+                << "a cluster record copy owns its own pointer storage";
+            ut::expect(cluster_copy.cluster() == cluster);
+
+            auto cluster_move{ std::move(cluster_copy) };
+            ut::expect(ut::eq(cluster_move.sites().size(), std::size_t{ 2 }));
+            ut::expect(cluster_move.sites().data() != cluster_record.sites().data());
+            ut::expect(cluster_move.sites()[0] == &first);
+            ut::expect(cluster_move.sites()[1] == &second);
+        };
+
         "site and cluster rules execute lattice transformations"_test = [] {
             auto setup{ make_setup() };
             TestSimulation simulation{ setup };
