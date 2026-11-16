@@ -143,6 +143,7 @@ if(KINETALIS_BUILD_VIEWER)
         kinetalis_viewer_runtime
         PUBLIC
             Kinetalis::core
+            Kinetalis::dealloying
             Kinetalis::implot
             Corrade::Main
             Corrade::PluginManager
