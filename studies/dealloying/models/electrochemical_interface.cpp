@@ -85,7 +85,6 @@ std::string ElectrochemicalInterface::class_csv_row(RateClassKey key) const
 
 Rate ElectrochemicalInterface::rate(RateClassKey key) const
 {
-    auto const& info{ class_info(key) };
     return physics::equations::kinetics::tst_rate(
         transmission_coefficient(key),
         std::max<Energy>(0_eV, activation_gibbs_energy(key)),
