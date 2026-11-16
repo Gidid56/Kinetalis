@@ -80,22 +80,6 @@ Element CompositionDependent::class_element(RateClassKey key) const
     return descriptor(key).element;
 }
 
-lattice::Coordination CompositionDependent::class_coordination(RateClassKey key) const
-{
-    return descriptor(key).coordination;
-}
-
-std::string CompositionDependent::class_details(RateClassKey key) const
-{
-    std::string details;
-    for (auto&& [element, count] :
-        std::views::zip(lattice::active_elements, descriptor(key).element_neighbors))
-        if (count)
-            std::format_to(std::back_inserter(details), "{}x{};",
-                static_cast<unsigned>(count), element);
-    return details;
-}
-
 Energy CompositionDependent::lattice_energy_barrier(RateClassKey key) const
 {
     auto const& desc{ descriptors_.at(key) };
