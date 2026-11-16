@@ -153,7 +153,7 @@ namespace
                 std::array{ -1, -1, 2 },
                 std::array{ 1, 1, 1 },
             };
-            auto const parameter{ 400_pm.value() };
+            auto const parameter{ (400_pm).value() };
             for (std::size_t i{}; i < 3; ++i)
                 for (std::size_t j{}; j < 3; ++j)
                     ut::expect(ut::that %
