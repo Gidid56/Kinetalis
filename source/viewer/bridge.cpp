@@ -94,7 +94,7 @@ void Bridge::observe_processed(kmc::process::Record const& record)
     if (record.outcome != kmc::process::Outcome::accepted)
         return;
 
-    if (&*record.cluster[0] == &*record.cluster[1])
+    if (record.cluster[0] == record.cluster[1])
     {
         auto& site{ *record.cluster[0] };
 
@@ -105,7 +105,7 @@ void Bridge::observe_processed(kmc::process::Record const& record)
     {
         auto& cluster{ record.cluster };
 
-        swapHighlight(*cluster[0].index(), *cluster[1].index());
+        swapHighlight(cluster[0]->index(), cluster[1]->index());
 
         publishNeighborhood(*cluster[0]);
         publishNeighborhood(*cluster[1]);

@@ -71,14 +71,14 @@ namespace
 
         bool is_rejected(Cluster<2> const& cluster) const
         {
-            return *cluster[1].coordination() < 9;
+            return cluster[1]->coordination() < 9;
         }
 
         void execute(Cluster<2>& cluster, lattice::Lattice& lattice) const
         {
-            const auto element{ *cluster[0].element() };
-            *cluster[1].set_element(lattice, element);
-            *cluster[0].set_element(lattice, Element::none);
+            const auto element{ cluster[0]->element() };
+            cluster[1]->set_element(lattice, element);
+            cluster[0]->set_element(lattice, Element::none);
         }
 
         bool supports(Process const& process) const
@@ -233,7 +233,7 @@ namespace
         {
             ++selections_;
             bool rejected{};
-            if (&*record.cluster[0] == &*record.cluster[1])
+            if (record.cluster[0] == record.cluster[1])
             {
                 ++site_selections_;
                 ut::expect(rules_.site.is_source_candidate(*record.cluster[0]))
@@ -263,7 +263,7 @@ namespace
         {
             ut::expect(record.outcome == process::Outcome::accepted);
             ++processed_;
-            if (&*record.cluster[0] == &*record.cluster[1])
+            if (record.cluster[0] == record.cluster[1])
                 ++accepted_site_events_;
             else
                 ++accepted_cluster_events_;

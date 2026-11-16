@@ -11,7 +11,7 @@ using namespace viewer;
 
 void Trajectory::observe_selected(kmc::process::Record const& record)
 {
-    const std::array elements{ *record.cluster[0].element(), *record.cluster[1].element() };
+    const std::array elements{ record.cluster[0]->element(), record.cluster[1]->element() };
     records_.push_back({ record, elements, elements });
     playbackStep_ = records_.size();
 }
@@ -19,7 +19,7 @@ void Trajectory::observe_selected(kmc::process::Record const& record)
 void Trajectory::observe_processed(kmc::process::Record const& record)
 {
     assert(not records_.empty());
-    records_.back().after = { *record.cluster[0].element(), *record.cluster[1].element() };
+    records_.back().after = { record.cluster[0]->element(), record.cluster[1]->element() };
 }
 
 void Trajectory::applyStep(Direction direction)
@@ -34,9 +34,9 @@ void Trajectory::applyStep(Direction direction)
     {
         // Restore the recorded before/after states without interpreting the event type.
         auto const& elements{ direction == Direction::Forwards ? entry.after : entry.before };
-        if (&*record.cluster[0] != &*record.cluster[1])
-            *record.cluster[1].set_element(lattice_, elements[1]);
-        *record.cluster[0].set_element(lattice_, elements[0]);
+        if (record.cluster[0] != record.cluster[1])
+            record.cluster[1]->set_element(lattice_, elements[1]);
+        record.cluster[0]->set_element(lattice_, elements[0]);
 
         if (viewerBridge_)
             viewerBridge_->observe_processed(record);

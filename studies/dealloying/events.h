@@ -60,21 +60,21 @@ namespace studies::dealloying::events
 
         bool is_candidate(lattice::Cluster<2> const& cluster) const
         {
-            return is_source_candidate(*cluster[0]) and *cluster[1].is_vacant();
+            return is_source_candidate(*cluster[0]) and cluster[1]->is_vacant();
         }
 
         // A selected candidate can still be rejected by the target constraint.
         bool is_rejected(lattice::Cluster<2> const& cluster) const
         {
-            return *cluster[1].coordination() <= min_target_coordination and
-                   *cluster[0].coordination() != 0;
+            return cluster[1]->coordination() <= min_target_coordination and
+                   cluster[0]->coordination() != 0;
         }
 
         void execute(lattice::Cluster<2>& cluster, lattice::Lattice& lattice) const
         {
-            const auto element{ *cluster[0].element() };
-            *cluster[1].set_element(lattice, element);
-            *cluster[0].set_element(lattice, kmc::Element::none);
+            const auto element{ cluster[0]->element() };
+            cluster[1]->set_element(lattice, element);
+            cluster[0]->set_element(lattice, kmc::Element::none);
         }
 
         bool supports(kmc::Process const& process) const
