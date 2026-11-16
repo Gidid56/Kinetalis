@@ -6,6 +6,7 @@
 #include "output/kinetic_activity.h"
 #include "output/kinetic_statistics.h"
 #include "output/site_population.h"
+#include "dealloying/models/descriptor_format.h"
 #include "output/event_flux.h"
 
 #include <algorithm>
@@ -631,7 +632,7 @@ namespace
             auto& statistics{ plan.add<output::KineticStatistics<ModelBase>>(root)
                 .set_output_transitions(true)
                 .set_resolution({ .min_snapshot_step = 1, .snapshot_scale_factor = 1.0 }) };
-            plan.add<output::SitePopulation<ModelBase>>(root)
+            plan.add<output::SitePopulation>(root)
                 .set_resolution({ .min_snapshot_step = 1, .snapshot_scale_factor = 1.0 });
             plan.add<output::EventFlux>(root)
                 .set_resolution({ .min_snapshot_step = 1, .snapshot_scale_factor = 1.0 });
@@ -679,7 +680,9 @@ namespace
                 for (std::size_t key{ 1 }; key < rates.size(); ++key)
                 {
                     auto const label{ simulation.class_initialized(static_cast<RateClassKey>(key))
-                        ? simulation.model()->class_label(static_cast<RateClassKey>(key))
+                        ? output::DescriptorFormat<Descriptor>::label(
+                            dynamic_cast<ModelBase const&>(*simulation.model()).descriptor(
+                                static_cast<RateClassKey>(key)))
                         : std::format("not_encountered_{}", key) };
                     ut::expect(lines.front().find("," + label) != std::string::npos)
                         << "activity header includes final key label " << key;
