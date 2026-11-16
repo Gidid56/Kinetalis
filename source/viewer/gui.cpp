@@ -417,9 +417,9 @@ void GUI::showProcessStatistics()
 
                 for (auto& [process, count] : processes)
                 {
-                    if (not countMap.contains(process.element()))
-                        countMap[process.element()].resize(1 + maxCoord);
-                    countMap[process.element()][process.coordination()] += (int)count;
+                    if (not countMap.contains(process.element))
+                        countMap[process.element].resize(1 + maxCoord);
+                    countMap[process.element][process.coordination] += (int)count;
                 }
 
                 if (ImPlot::BeginPlot(title.c_str(), {}))
