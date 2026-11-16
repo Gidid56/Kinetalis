@@ -80,11 +80,13 @@ void output::Lattice::write_final(kmc::Simulation const& kmc)
 
 void output::Rates::write_final(kmc::Simulation const& kmc)
 {
-    std::string text{ kmc::ClassInfo::header };
-    text += ",rate/Hz\n";
+    std::string text{ std::format("key:class,{},rate/Hz\n", kmc.model()->class_csv_header()) };
 
-    for (auto const& [info, rate] : kmc.class_rates())
-        std::format_to(std::back_inserter(text), "{},{:v:Hz}\n", info, rate);
+    for (std::size_t index{ 1 }; index < kmc.class_rates().size(); ++index)
+        if (kmc.class_initialized(static_cast<kmc::RateClassKey>(index)))
+            std::format_to(std::back_inserter(text), "{},{},{:v:Hz}\n",
+                index, kmc.model()->class_csv_row(static_cast<kmc::RateClassKey>(index)),
+                kmc.class_rates()[index]);
 
     file::write<csv>(writer_path(), text);
 }
