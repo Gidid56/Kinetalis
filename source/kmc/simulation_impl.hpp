@@ -16,6 +16,7 @@ namespace kmc
 
         // Each model decides whether to preallocate or register classes lazily.
         class_rates_.resize(model_->number_keys());
+        class_initialized_.resize(model_->number_keys());
         class_counts_.resize(model_->number_keys());
     }
 
@@ -125,8 +126,8 @@ namespace kmc
         auto& site{ lattice_.sites().at(site_index) };
         auto event_offset{ site.event_offset() };
 
-        while (selected_rate >= class_rates_.at(event_class_keys_.at(event_offset)).second)
-            selected_rate -= class_rates_.at(event_class_keys_.at(event_offset++)).second;
+        while (selected_rate >= class_rates_.at(event_class_keys_.at(event_offset)))
+            selected_rate -= class_rates_.at(event_class_keys_.at(event_offset++));
 
         if constexpr (utility::is_debug)
             if (event_offset > site.event_offset() + site.max_neighbors())
@@ -226,7 +227,7 @@ namespace kmc
         auto add_event = [&](RateClassKey key) {
             set_class_key(index++, key);
             has_events |= key != RateClassKey{};
-            sum += class_rates_.at(key).second;
+            sum += class_rates_.at(key);
         };
 
         if (site_source_candidate and rules_.site.is_candidate(source))
@@ -301,18 +302,15 @@ namespace kmc
         if (key >= class_rates_.size())
         {
             class_rates_.resize(static_cast<std::size_t>(key) + 1);
+            class_initialized_.resize(static_cast<std::size_t>(key) + 1);
             class_counts_.resize(static_cast<std::size_t>(key) + 1);
         }
 
-        auto& [cached_info, cached_rate]{ class_rates_.at(key) };
-        auto const& info{ model_->class_info(key) };
-        if (not cached_info.is_active())
+        if (not class_initialized_[key])
         {
-            cached_rate = model_->rate(key);
-            cached_info = info;
+            class_rates_[key] = model_->rate(key);
+            class_initialized_[key] = true;
         }
-        else if (cached_info != info)
-            throw std::logic_error{ "Rate class key collision." };
 
         return key;
     }
@@ -322,8 +320,8 @@ namespace kmc
     {
         model_->refresh_rates();
         for (std::size_t key{ 1 }; key < class_rates_.size(); ++key)
-            if (class_rates_[key].first.is_active())
-                class_rates_[key].second = model_->rate(static_cast<RateClassKey>(key));
+            if (class_initialized_[key])
+                class_rates_[key] = model_->rate(static_cast<RateClassKey>(key));
 
         // A full-rate refresh bypasses per-event block collection. Rebuild each
         // block once after all site rates have been recalculated.
