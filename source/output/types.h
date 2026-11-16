@@ -16,7 +16,6 @@ namespace output
 	class Config;
 	class Time;
 	class Lattice;
-	class Rates;
 	class Performance;
 
 	class Composition;
