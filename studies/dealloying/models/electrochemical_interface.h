@@ -42,7 +42,7 @@ namespace studies::dealloying::models
             return self;
         }
 
-        kmc::Rate rate(kmc::process::Key) const override;
+        kmc::Rate rate(kmc::RateClassKey) const override;
         void refresh_rates() override {}
         std::string output_text() const override;
 
@@ -51,12 +51,12 @@ namespace studies::dealloying::models
         auto& constants() const { return constants_; }
 
     protected:
-        virtual Energy lattice_energy_barrier(kmc::process::Key) const = 0;
-        virtual Ratio modulation_ratio(kmc::process::Key) const { return 1; }
+        virtual Energy lattice_energy_barrier(kmc::RateClassKey) const = 0;
+        virtual Ratio modulation_ratio(kmc::RateClassKey) const { return 1; }
 
     private:
         Ratio transmission_coefficient(kmc::ClassInfo const&) const;
-        Energy activation_gibbs_energy(kmc::process::Key) const;
+        Energy activation_gibbs_energy(kmc::RateClassKey) const;
 
         ElectricPotential potential_{ Constants{}.reference_potential };
         MolarConcentration concentration_{ standard_concentration };

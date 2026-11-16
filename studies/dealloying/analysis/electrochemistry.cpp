@@ -10,7 +10,7 @@ using enum utility::file::Type;
 
 using namespace studies::dealloying::analysis;
 
-void Electrochemistry::observe_processed(kmc::process::Record const& record)
+void Electrochemistry::observe_processed(kmc::event::Record const& record)
 {
     auto const event{ record.type };
 

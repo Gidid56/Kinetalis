@@ -54,7 +54,7 @@ namespace studies::dealloying::analysis
                 if (count == 0)
                     continue;
 
-                auto const key{ static_cast<kmc::process::Key>(index) };
+                auto const key{ static_cast<kmc::RateClassKey>(index) };
                 auto const& descriptor{ model.descriptor(key) };
                 if (descriptor.event == kmc::event::Type::none or
                     descriptor.element == lattice::Element::none)
@@ -97,9 +97,9 @@ namespace studies::dealloying::analysis
             accumulation_ = {};
         }
 
-        void observe_selected(kmc::process::Record const& record) override
+        void observe_selected(kmc::event::Record const& record) override
         {
-            if (record.outcome != kmc::process::Outcome::accepted)
+            if (record.outcome != kmc::event::Outcome::accepted)
                 return;
 
             auto const delta{ simulation_->time() - last_time_ };

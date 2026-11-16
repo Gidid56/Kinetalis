@@ -54,7 +54,7 @@ namespace studies::dealloying::models::power_law_bond_energy
 }
 
 
-Energy PowerLawBondEnergy::lattice_energy_barrier(process::Key key) const
+Energy PowerLawBondEnergy::lattice_energy_barrier(RateClassKey key) const
 {
     auto const& desc{ descriptor(key) };
     return power_law_bond_energy::dimer_bond_energy(desc.element) *

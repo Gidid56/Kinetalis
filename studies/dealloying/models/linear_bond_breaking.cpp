@@ -10,7 +10,7 @@ void LinearBondBreaking::ensure_range(Energy bond_energy)
         throw std::invalid_argument{ "Bond energy must be finite." };
 }
 
-process::Key LinearBondBreaking::static_key(Descriptor const& desc)
+RateClassKey LinearBondBreaking::static_key(Descriptor const& desc)
 {
     const auto max{ static_cast<std::size_t>(lattice::max_coordination) };
     const auto offset_dissolution{ 1 + max * std::size(lattice::active_elements) };
@@ -31,10 +31,10 @@ process::Key LinearBondBreaking::static_key(Descriptor const& desc)
     }
     if (desc.coordination >= lattice::max_coordination or key >= key_count)
         throw std::out_of_range{ "Coordination outside static kinetic classes." };
-    return static_cast<process::Key>(key);
+    return static_cast<RateClassKey>(key);
 }
 
-process::Key LinearBondBreaking::classify(
+RateClassKey LinearBondBreaking::classify(
     event::Type type, event::Location const& location, lattice::Lattice const&)
 {
     const Descriptor desc{ type, location.source().element(), location.source().coordination() };
@@ -53,24 +53,24 @@ process::Key LinearBondBreaking::classify(
 
 std::size_t LinearBondBreaking::number_keys() const noexcept { return key_count; }
 
-ClassInfo const& LinearBondBreaking::class_info(process::Key key) const
+ClassInfo const& LinearBondBreaking::class_info(RateClassKey key) const
 {
     return infos_.at(key);
 }
 
-LinearBondBreaking::Descriptor const& LinearBondBreaking::descriptor(process::Key key) const
+LinearBondBreaking::Descriptor const& LinearBondBreaking::descriptor(RateClassKey key) const
 {
     if (not infos_.at(key).is_active())
         throw std::logic_error{ "Uninitialized kinetic class." };
     return descriptors_.at(key);
 }
 
-Energy LinearBondBreaking::lattice_energy_barrier(process::Key key) const
+Energy LinearBondBreaking::lattice_energy_barrier(RateClassKey key) const
 {
     return constants_.bond_energy * descriptor(key).coordination;
 }
 
-Ratio LinearBondBreaking::modulation_ratio(process::Key key) const
+Ratio LinearBondBreaking::modulation_ratio(RateClassKey key) const
 {
     if (modulation_ and descriptor(key) == modulation_->process)
         return modulation_->ratio;

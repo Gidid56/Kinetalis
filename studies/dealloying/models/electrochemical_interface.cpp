@@ -46,7 +46,7 @@ Ratio ElectrochemicalInterface::transmission_coefficient(ClassInfo const& info) 
     }
 }
 
-Energy ElectrochemicalInterface::activation_gibbs_energy(process::Key key) const
+Energy ElectrochemicalInterface::activation_gibbs_energy(RateClassKey key) const
 {
     using physics::constant::symbols::e;
     const auto& info{ class_info(key) };
@@ -64,7 +64,7 @@ Energy ElectrochemicalInterface::activation_gibbs_energy(process::Key key) const
     }
 }
 
-Rate ElectrochemicalInterface::rate(process::Key key) const
+Rate ElectrochemicalInterface::rate(RateClassKey key) const
 {
     auto const& info{ class_info(key) };
     return physics::equations::kinetics::tst_rate(

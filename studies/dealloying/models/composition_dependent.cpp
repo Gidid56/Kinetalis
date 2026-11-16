@@ -51,7 +51,7 @@ namespace studies::dealloying::models::composition_dependent
 
 CompositionDependent::CompositionDependent() = default;
 
-process::Key CompositionDependent::classify(
+RateClassKey CompositionDependent::classify(
     event::Type type, event::Location const& location, lattice::Lattice const& lattice)
 {
     auto const& source{ location.source() };
@@ -61,10 +61,10 @@ process::Key CompositionDependent::classify(
             ++desc.element_neighbors[lattice::elementKey(neighbor->element())];
     if (auto it{ keys_.find(desc) }; it != keys_.end()) return it->second;
 
-    if (infos_.size() > std::numeric_limits<process::Key>::max())
-        throw std::overflow_error{ "Increase process::Key size." };
+    if (infos_.size() > std::numeric_limits<RateClassKey>::max())
+        throw std::overflow_error{ "Increase RateClassKey size." };
 
-    auto const key{ static_cast<process::Key>(infos_.size()) };
+    auto const key{ static_cast<RateClassKey>(infos_.size()) };
     std::string details;
     for (auto&& [element, count] : std::views::zip(lattice::active_elements, desc.element_neighbors))
         if (count) std::format_to(std::back_inserter(details), "{}x{};",
@@ -76,12 +76,12 @@ process::Key CompositionDependent::classify(
     return key;
 }
 
-ClassInfo const& CompositionDependent::class_info(process::Key key) const
+ClassInfo const& CompositionDependent::class_info(RateClassKey key) const
 {
     return infos_.at(key);
 }
 
-Energy CompositionDependent::lattice_energy_barrier(process::Key key) const
+Energy CompositionDependent::lattice_energy_barrier(RateClassKey key) const
 {
     auto const& desc{ descriptors_.at(key) };
     Energy energy{};
