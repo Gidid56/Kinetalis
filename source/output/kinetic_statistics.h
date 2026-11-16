@@ -3,6 +3,7 @@
 #include "kmc/simulation.h"
 #include "utility/file.h"
 
+#include <algorithm>
 #include <concepts>
 #include <map>
 #include <stdexcept>
