@@ -3,6 +3,8 @@
 #include "dealloying/analysis/regime.h"
 #include "kmc/analysis_plan.h"
 #include "output/basics.h"
+#include "output/rates.h"
+#include "dealloying/models/descriptor_format.h"
 #include "output/phases.h"
 #include "output/kinetic_activity.h"
 #include "output/site_population.h"
@@ -18,7 +20,7 @@ namespace studies::dealloying::analysis_plans
         kmc::AnalysisPlan plan;
 
         plan.add<output::Config>(path);
-        plan.add<output::Rates>(path);
+        plan.add<output::Rates<models::LinearBondBreaking>>(path);
         plan.add<output::Composition>(path);
         plan.add<output::Performance>(path);
 
@@ -85,7 +87,7 @@ namespace studies::dealloying::analysis_plans
         //    { .min_snapshot_step = 10, .snapshot_scale_factor = 1.01 });
 
         plan.add<output::KineticActivity<models::LinearBondBreaking>>(path);
-        plan.add<output::SitePopulation<models::LinearBondBreaking>>(path);
+        plan.add<output::SitePopulation>(path);
         //plan.add<output::KineticStatistics<models::LinearBondBreaking>>(path).set_resolution(
         //    { .min_snapshot_step = 1000, .snapshot_scale_factor = 1.2 });
 
