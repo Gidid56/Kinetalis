@@ -206,7 +206,7 @@ void Lattice::construct_neighbor_list()
 
     auto const site_count{ sites_.size() };
 
-    neighbors_.reserve(site_count * max_coordination);
+    neighbors_.reserve(site_count);
 
     {
         utility::SizeGuard original_sites{ sites_ };

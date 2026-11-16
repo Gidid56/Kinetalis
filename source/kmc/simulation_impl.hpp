@@ -13,7 +13,6 @@ namespace kmc
         rate_tree_ = rate_tree::make_entry(lattice_.sites().size());
         site_rates_.resize(lattice_.sites().size());
         processes_.resize(lattice_.sites().size() + lattice_.neighbors().size());
-        block_updates_.reserve(2 * (lattice::max_coordination + 1));
 
         // Static process keys occupy fixed slots, filled only on first use.
         if constexpr (staticProcessKeys)
