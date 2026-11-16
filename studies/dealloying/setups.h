@@ -3,7 +3,7 @@
 #include "lattice/lattice.h"
 #include "models/linear_bond_breaking.h"
 #include "parameters.h"
-#include "rules.h"
+#include "events.h"
 #include "simulation/engine.h"
 
 namespace studies::dealloying::setups

@@ -1,15 +1,16 @@
 #pragma once
 #include "batch/campaign.h"
+#include "kmc/event.h"
 #include "kmc/process.h"
 #include "kmc/setup.h"
 #include "lattice/path.h"
 #include "lattice/site.h"
 
-namespace studies::dealloying::rules
+namespace studies::dealloying::events
 {
     struct Dissolution
     {
-        static constexpr auto event = kmc::Event::dissolution;
+        static constexpr auto event = kmc::event::Type::dissolution;
 
         kmc::Element element{ kmc::Element::Ag };
         lattice::Coordination max_coordination{ 11 };
@@ -49,7 +50,7 @@ namespace studies::dealloying::rules
 
     struct Diffusion
     {
-        static constexpr auto event = kmc::Event::diffusion;
+        static constexpr auto event = kmc::event::Type::diffusion;
 
         lattice::Coordination max_source_coordination{ 9 }, min_target_coordination{ 2 };
 
@@ -95,7 +96,7 @@ namespace studies::dealloying::rules
 
 namespace studies::dealloying
 {
-    using Rules = kmc::EventRules<rules::Dissolution, rules::Diffusion>;
+    using Rules = kmc::EventRules<events::Dissolution, events::Diffusion>;
     using Setup = kmc::Setup<Rules>;
     using Campaign = batch::Campaign<Rules>;
 }
