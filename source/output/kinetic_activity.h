@@ -1,5 +1,6 @@
 #pragma once
 #include "writer.h"
+#include "descriptor_format.h"
 #include "kmc/simulation.h"
 #include "utility/file.h"
 
@@ -95,7 +96,9 @@ namespace output
             {
                 if (simulation.class_initialized(static_cast<kmc::RateClassKey>(key)))
                     std::format_to(std::back_inserter(text), ",{}",
-                        simulation.model()->class_label(static_cast<kmc::RateClassKey>(key)));
+                        DescriptorFormat<Descriptor>::label(
+                            static_cast<ModelType const&>(*simulation.model()).descriptor(
+                                static_cast<kmc::RateClassKey>(key))));
                 else
                     std::format_to(std::back_inserter(text), ",not_encountered_{}", key);
             }
