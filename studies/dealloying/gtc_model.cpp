@@ -124,7 +124,7 @@ std::vector<Position> studies::dealloying::gtc::transition_states(Cluster<2> con
     };
 
     auto ends_closer_to_final = [&](Position const& begin, Position const& end) {
-        return (end - final).norm() + length_tolerance < (begin - final).norm();
+        return Length{ (end - final).norm() } + length_tolerance < Length{ (begin - final).norm() };
     };
 
     struct Arc
@@ -259,7 +259,7 @@ std::vector<Position> studies::dealloying::gtc::transition_states(Cluster<2> con
 
     auto append_unique = [&](Position const& point) {
         if (std::ranges::none_of(transition_states, [&](Position const& existing) {
-                return (existing - point).norm() <= length_tolerance;
+                return Length{ (existing - point).norm() } <= length_tolerance;
             }))
             transition_states.emplace_back(point);
     };
@@ -309,8 +309,8 @@ std::vector<Position> studies::dealloying::gtc::transition_states(Cluster<2> con
                          first_support->position,
                          second_support->position))
                 {
-                    if ((junction - initial).norm() <= length_tolerance or
-                        (junction - final).norm() <= length_tolerance)
+                    if (Length{ (junction - initial).norm() } <= length_tolerance or
+                        Length{ (junction - final).norm() } <= length_tolerance)
                         continue;
 
                     auto first_arcs{ admissible_arcs(
