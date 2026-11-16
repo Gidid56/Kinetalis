@@ -422,14 +422,6 @@ math::Vector<3, Displacement> Lattice::displacement(Site const& from, Site const
     return shape_.vectors().transpose_dot(coordinate);
 }
 
-//std::span<Site* const> Lattice::neighbors(Site const& site) const
-//{
-//    if (site.max_neighbors() == 0)
-//        return {};
-//    return { &neighbors_.at(site.neighbor_index()),
-//        static_cast<std::size_t>(site.max_neighbors()) };
-//}
-
 Site& Lattice::center_site()
 {
     if (sites_.empty())
@@ -579,56 +571,4 @@ std::formatter<Lattice>::format(Lattice const& lattice, std::format_context& con
         out = std::format_to(out, "{} neighbors/site ({}x).\n", neighbors, number);
 
     return out;
-}
-
-site::Type Lattice::site_type(Site const& site) const
-{
-    if (site.coordination() == 0)
-        return site::Type::isolated;
-    if (site.vacant_neighbors() == 0)
-        return site::Type::bulk;
-
-    std::array<Coordination, 8> n_i{}, v_i{};
-
-    auto neighbors{ this->neighbors(site) | std::views::filter(&Site::is_occupied) };
-    for (auto neighbor : neighbors)
-    {
-        ++n_i[std::ranges::count_if(
-            this->neighbors(*neighbor) | std::views::filter(&Site::is_occupied),
-            [&](auto site) { return std::ranges::contains(neighbors, site); })];
-    }
-    auto vacancies{ this->neighbors(site) | std::views::filter(&Site::is_vacant) };
-    for (auto vacancy : vacancies)
-    {
-        ++v_i[std::ranges::count_if(
-            this->neighbors(*vacancy) | std::views::filter(&Site::is_vacant),
-            [&](auto site) { return std::ranges::contains(vacancies, site); })];
-    }
-
-    //if (site.coordination() == 4 and nI[2] == 4)
-    //    return site::Type::_100__ad;
-    //if (site.coordination() == 3 and nI[2] == 3)
-    //    return site::Type::_111__ad;
-    //if (site.coordination() == 4 and nI[1] == 1 and nI[2] == 2 and nI[3] == 1)
-    //    return site::Type::_111__dimer_ad;
-    //if (site.coordination() == 5 and nI[2] == 3 and nI[3] == 2)
-    //    return site::Type::_111__step_A_ad;
-    //if (site.coordination() == 5 and nI[2] == 4 and nI[4] == 1)
-    //    return site::Type::_111__step_B_ad;
-
-    //if (site.coordination() == 6 and nI[2] == 3 and nI[3] == 2 and nI[4] == 1)
-    //    return site::Type::Kink;
-
-    //if (site.vacantNeighbors() == 5 and vI[2] == 3 and vI[3] == 2)
-    //    return site::Type::_111__step_edge_A;
-    //if (site.vacantNeighbors() == 5 and vI[2] == 4 and vI[4] == 1)
-    //    return site::Type::_111__step_edge_B;
-    //if (site.vacantNeighbors() == 4 and vI[1] == 1 and vI[2] == 2 and vI[3] == 1)
-    //    return site::Type::_111__step_corner;
-    //if (site.vacantNeighbors() == 3 and vI[2] == 3)
-    //    return site::Type::_111__surface;
-    //if (site.vacantNeighbors() == 4 and vI[2] == 4)
-    //    return site::Type::_100__surface;
-
-    return site::Type::none;
 }
