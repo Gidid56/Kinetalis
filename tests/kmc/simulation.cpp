@@ -507,6 +507,10 @@ namespace
             TestSimulation simulation{ setup };
             auto const& lattice{ simulation.lattice() };
             source_checks.resize(lattice.sites().size());
+            ut::expect(not simulation.model().transformations().get<ClusterRule>().enabled)
+                << "disabled diffusion remains disabled in copied model";
+            ut::expect(ut::eq(simulation.model().kinetics().invalidation_radius(), std::size_t{ 2 }))
+                << "radius from statically typed kinetics";
 
             AnalysisPlan plan;
             auto& observer{ plan.add<FirstAcceptedObserver>() };
@@ -517,6 +521,8 @@ namespace
             if (not observer.accepted())
                 return;
             ut::expect(ut::eq(simulation.step(), Step{ 1 }));
+            std::println("DEBUG: selected site {} radius {}",
+                observer.source_index(), simulation.model().kinetics().invalidation_radius());
 
             std::vector<bool> expected(lattice.sites().size());
             auto& source{ lattice.sites().at(observer.source_index()) };
