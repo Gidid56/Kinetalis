@@ -31,14 +31,13 @@ patch(p, "            auto const selection{ select_random_location() };", """#if
             auto const selection{ select_random_location() };
 #endif""")
 patch(p, """    RejectionTreeSimulation<ModelType>::select_random_location()
-    {
-        auto selected_rate{ physics::ensure_non_negative(rate_tree_->rate_sum() * rng_.probability()) };""", """    RejectionTreeSimulation<ModelType>::select_random_location(
+    {""", """    RejectionTreeSimulation<ModelType>::select_random_location(
 #ifdef KMC_PERF_REUSE_TOTAL_RATE
         Rate total_rate
 #endif
     )
-    {
-#ifdef KMC_PERF_REUSE_TOTAL_RATE
+    {""")
+patch(p, """        auto selected_rate{ physics::ensure_non_negative(rate_tree_->rate_sum() * rng_.probability()) };""", """#ifdef KMC_PERF_REUSE_TOTAL_RATE
         auto selected_rate{ physics::ensure_non_negative(total_rate * rng_.probability()) };
 #else
         auto selected_rate{ physics::ensure_non_negative(rate_tree_->rate_sum() * rng_.probability()) };
