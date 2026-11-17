@@ -9,8 +9,8 @@ import subprocess
 import sys
 from pathlib import Path
 
-MAIN = Path(sys.argv[1])
-REFACTOR = Path(sys.argv[2])
+MAIN = Path(sys.argv[1]) if len(sys.argv) > 1 else Path()
+REFACTOR = Path(sys.argv[2]) if len(sys.argv) > 2 else Path()
 SIZES = [(4.0, 1800), (6.0, 2200)]
 REPEATS = 7
 REPORT = {"environment": {}, "scenarios": []}
