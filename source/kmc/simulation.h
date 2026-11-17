@@ -60,6 +60,7 @@ public:
 
     auto& model(this auto& self) noexcept { return self.model_; }
     auto& rate_tree() const { return rate_tree_; }
+    auto const& event_class_keys() const noexcept { return event_class_keys_; }
 
 private:
     struct Selection
