@@ -1,6 +1,7 @@
 #pragma once
 #include "batch/campaign.h"
 #include "kmc/event.h"
+#include "kmc/transformations.h"
 #include "kmc/setup.h"
 #include "lattice/lattice.h"
 #include "dealloying/models/linear_bond_breaking.h"
@@ -121,7 +122,7 @@ namespace studies::dealloying::events
 
 namespace studies::dealloying
 {
-    using Transformations = kmc::event::Transformations<events::Dissolution, events::Diffusion>;
+    using Transformations = kmc::Transformations<events::Dissolution, events::Diffusion>;
     using Model = kmc::Model<models::LinearBondBreaking, Transformations>;
     using Setup = kmc::Setup<Model>;
     using Campaign = batch::Campaign<Model>;

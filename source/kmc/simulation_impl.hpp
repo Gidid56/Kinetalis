@@ -70,7 +70,7 @@ namespace kmc
                 ++rejections_;
             }
 
-            analysis_plan.observe_step(*this);
+            analysis_plan.observe_step(*this, step_);
         }
 
         analysis_plan.observe_completed(*this);
@@ -238,7 +238,7 @@ namespace kmc
                     // The source precondition has already been checked.
                     // Transformations without an optimized predicate retain
                     // the original full candidate check.
-                    if (event::is_candidate_after_source_check(transformation, *location))
+                    if (kmc::is_candidate_after_source_check(transformation, *location))
                         key = register_class(std::remove_cvref_t<decltype(transformation)>::event,
                                              *location);
                 }

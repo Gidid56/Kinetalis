@@ -1,4 +1,5 @@
 #include "kmc/simulation.h"
+#include "kmc/transformations.h"
 #include "dealloying/models/linear_bond_breaking.h"
 #include "dealloying/models/composition_dependent.h"
 #include "output/basics.h"
@@ -129,10 +130,10 @@ namespace
         std::string settings() const { return "test cluster rule"; }
     };
 
-    static_assert(event::Transformation<SiteRule>);
-    static_assert(event::Transformation<ClusterRule>);
+    static_assert(kmc::Transformation<SiteRule>);
+    static_assert(kmc::Transformation<ClusterRule>);
 
-    using Transformations = event::Transformations<SiteRule, ClusterRule>;
+    using Transformations = kmc::Transformations<SiteRule, ClusterRule>;
 
     using Descriptor = studies::dealloying::models::LinearBondBreaking::Descriptor;
     using ModelBase = studies::dealloying::models::LinearBondBreaking;

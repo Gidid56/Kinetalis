@@ -23,7 +23,7 @@ void Writer::observe_started(kmc::Simulation const& kmc)
     }
 
     if (uses_snapshot_resolution())
-        kmc::Observer::observe_step(kmc);
+        kmc::Observer::observe_step(kmc, kmc.step());
 }
 
 void Writer::take_snapshot(kmc::Simulation const& kmc)

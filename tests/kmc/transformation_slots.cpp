@@ -1,4 +1,5 @@
 #include "kmc/simulation.h"
+#include "kmc/transformations.h"
 #include "kmc/analysis_plan.h"
 #include "output/basics.h"
 #include "lattice/lattice.h"
@@ -105,11 +106,11 @@ namespace
         std::string settings() const { return "sparse probe"; }
     };
 
-    static_assert(event::Transformation<SiteProbe>);
-    static_assert(event::Transformation<NeighborProbe>);
-    static_assert(event::Transformation<SparseProbe>);
+    static_assert(kmc::Transformation<SiteProbe>);
+    static_assert(kmc::Transformation<NeighborProbe>);
+    static_assert(kmc::Transformation<SparseProbe>);
 
-    using Probes = event::Transformations<SiteProbe, NeighborProbe, SparseProbe>;
+    using Probes = kmc::Transformations<SiteProbe, NeighborProbe, SparseProbe>;
     static_assert(Probes::slot_count == 10);
 
     struct ProbeKinetics : Kinetics
