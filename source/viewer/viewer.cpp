@@ -104,7 +104,7 @@ void viewer::Viewer::createAnalysisPlan(kmc::PlanFactory planFactory)
     std::print(
         "\nCreated KMC simulation.\n\n{}\n{}\n{}\n",
         simulation_->lattice(),
-        simulation_->model()->output_text(),
+        simulation_->model_settings(),
         simulation_->rng());
 }
 

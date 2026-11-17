@@ -62,6 +62,12 @@ Energy PowerLawBondEnergy::lattice_energy_barrier(RateClassKey key) const
                     power_law_bond_energy::coordination_exponent(desc.element));
 }
 
+Rate PowerLawBondEnergy::rate(RateClassKey key) const
+{
+    return ElectrochemicalInterface::rate(
+        class_event(key), class_element(key), lattice_energy_barrier(key), modulation_ratio(key));
+}
+
 std::string PowerLawBondEnergy::output_text() const
 {
     return std::format("Model = Power law bond energy\n{}",

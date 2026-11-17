@@ -1,12 +1,13 @@
 #pragma once
-#include "kmc/model.h"
+#include "kmc/kinetics.h"
+#include "kmc/event.h"
 
 namespace studies::dealloying::models
 {
     using namespace kmc;
     using namespace physics::unit::literals;
 
-    class ElectrochemicalInterface : public kmc::Model
+    class ElectrochemicalInterface : public kmc::Kinetics
     {
         using MolarConcentration = physics::quantity::MolarConcentration;
 
@@ -42,22 +43,19 @@ namespace studies::dealloying::models
             return self;
         }
 
-        kmc::Rate rate(kmc::RateClassKey) const override;
-        void refresh_rates() override {}
-        std::string output_text() const override;
+        void refresh_rates() {}
+        std::string output_text() const;
 
         auto potential() const { return potential_; }
         auto concentration() const { return concentration_; }
         auto& constants() const { return constants_; }
 
     protected:
-        virtual kmc::Element class_element(kmc::RateClassKey) const = 0;
-        virtual Energy lattice_energy_barrier(kmc::RateClassKey) const = 0;
-        virtual Ratio modulation_ratio(kmc::RateClassKey) const { return 1; }
+        kmc::Rate rate(kmc::event::Type, kmc::Element, Energy, Ratio = Ratio{ 1 }) const;
 
     private:
-        Ratio transmission_coefficient(kmc::RateClassKey) const;
-        Energy activation_gibbs_energy(kmc::RateClassKey) const;
+        Ratio transmission_coefficient(kmc::event::Type, kmc::Element) const;
+        Energy activation_gibbs_energy(kmc::event::Type, Energy) const;
 
         ElectricPotential potential_{ Constants{}.reference_potential };
         MolarConcentration concentration_{ standard_concentration };

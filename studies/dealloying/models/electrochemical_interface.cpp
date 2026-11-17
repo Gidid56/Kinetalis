@@ -34,41 +34,42 @@ namespace
     }
 }
 
-Ratio ElectrochemicalInterface::transmission_coefficient(RateClassKey key) const
+Ratio ElectrochemicalInterface::transmission_coefficient(event::Type type, Element element) const
 {
-    switch (class_event(key))
+    switch (type)
     {
         case event::Type::diffusion:
         case event::Type::dissolution: return 1;
         case event::Type::deposition:
-            return physics::ensure_unit_interval(fcc_molar_volume(class_element(key)) * concentration_);
+            return physics::ensure_unit_interval(fcc_molar_volume(element) * concentration_);
         default: return {};
     }
 }
 
-Energy ElectrochemicalInterface::activation_gibbs_energy(RateClassKey key) const
+Energy ElectrochemicalInterface::activation_gibbs_energy(event::Type type, Energy lattice_barrier) const
 {
     using physics::constant::symbols::e;
     const auto alpha{ constants_.charge_transfer_coefficient };
     const auto E_0{ constants_.reference_potential };
     const auto E{ potential_ };
-    switch (class_event(key))
+    switch (type)
     {
-        case event::Type::diffusion: return lattice_energy_barrier(key);
+        case event::Type::diffusion: return lattice_barrier;
         case event::Type::dissolution:
-            return lattice_energy_barrier(key) - alpha * e * (E - E_0);
+            return lattice_barrier - alpha * e * (E - E_0);
         case event::Type::deposition:
             return constants_.solvation_energy + (1 - alpha) * e * (E - E_0);
         default: throw std::logic_error{ "Activation Gibbs energy is not defined for event." };
     }
 }
 
-Rate ElectrochemicalInterface::rate(RateClassKey key) const
+Rate ElectrochemicalInterface::rate(event::Type type, Element element, Energy barrier,
+                                     Ratio modulation) const
 {
     return physics::equations::kinetics::tst_rate(
-        transmission_coefficient(key),
-        std::max<Energy>(0_eV, activation_gibbs_energy(key)),
-        temperature()) * modulation_ratio(key);
+        transmission_coefficient(type, element),
+        std::max<Energy>(0_eV, activation_gibbs_energy(type, barrier)),
+        temperature()) * modulation;
 }
 
 using namespace physics::equations::kinetics;

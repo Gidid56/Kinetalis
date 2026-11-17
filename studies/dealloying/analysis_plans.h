@@ -9,6 +9,7 @@
 #include "output/kinetic_activity.h"
 #include "output/site_population.h"
 #include "dealloying/models/linear_bond_breaking.h"
+#include "dealloying/events.h"
 #include "output/kinetic_statistics.h"
 
 namespace studies::dealloying::analysis_plans
@@ -20,7 +21,7 @@ namespace studies::dealloying::analysis_plans
         kmc::AnalysisPlan plan;
 
         plan.add<output::Config>(path);
-        plan.add<output::Rates<models::LinearBondBreaking>>(path);
+        plan.add<output::Rates<Model>>(path);
         plan.add<output::Composition>(path);
         plan.add<output::Performance>(path);
 
@@ -35,7 +36,7 @@ namespace studies::dealloying::analysis_plans
         plan.add<output::Phases>(path);
         plan.add<output::Surface>(path);
         plan.add<output::EventFlux>(path);
-        plan.add<output::KineticStatistics<models::LinearBondBreaking>>(path).set_resolution(
+        plan.add<output::KineticStatistics<Model>>(path).set_resolution(
             { .min_snapshot_step = 1000, .snapshot_scale_factor = 1.2 });
 
         return plan;
@@ -48,8 +49,8 @@ namespace studies::dealloying::analysis_plans
         plan.add<control::DurationLimit>(1_h);
 
         //plan.add<analysis::Electrochemistry>(path);
-        //plan.add<output::KineticActivity<models::LinearBondBreaking>>(path);
-        //plan.add<output::KineticStatistics<models::LinearBondBreaking>>(path).set_resolution(
+        //plan.add<output::KineticActivity<Model>>(path);
+        //plan.add<output::KineticStatistics<Model>>(path).set_resolution(
         //    { .min_snapshot_step = 1000, .snapshot_scale_factor = 1.2 });
 
         using enum analysis::Regime::Condition;
@@ -86,9 +87,9 @@ namespace studies::dealloying::analysis_plans
         //plan.add<output::Lattice>(path).set_save_bulk(false).set_resolution(
         //    { .min_snapshot_step = 10, .snapshot_scale_factor = 1.01 });
 
-        plan.add<output::KineticActivity<models::LinearBondBreaking>>(path);
+        plan.add<output::KineticActivity<Model>>(path);
         plan.add<output::SitePopulation>(path);
-        //plan.add<output::KineticStatistics<models::LinearBondBreaking>>(path).set_resolution(
+        //plan.add<output::KineticStatistics<Model>>(path).set_resolution(
         //    { .min_snapshot_step = 1000, .snapshot_scale_factor = 1.2 });
 
         return plan;

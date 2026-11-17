@@ -36,17 +36,18 @@ namespace studies::dealloying::models
 
         auto constants() const { return constants_; }
 
-        kmc::RateClassKey classify(kmc::event::Type, kmc::event::Location const&, lattice::Lattice const&) override;
-        std::size_t number_keys() const noexcept override;
-        kmc::event::Type class_event(kmc::RateClassKey) const override;
-        std::string output_text() const override;
+        kmc::RateClassKey classify(kmc::event::Type, kmc::event::Location const&, lattice::Lattice const&);
+        std::size_t number_keys() const noexcept;
+        kmc::event::Type class_event(kmc::RateClassKey) const;
+        std::string output_text() const;
+        kmc::Rate rate(kmc::RateClassKey) const;
         static kmc::RateClassKey static_key(Descriptor const&);
         Descriptor const& descriptor(kmc::RateClassKey) const;
 
     protected:
-        kmc::Element class_element(kmc::RateClassKey) const override;
-        Energy lattice_energy_barrier(kmc::RateClassKey) const override;
-        Ratio modulation_ratio(kmc::RateClassKey) const override;
+        kmc::Element class_element(kmc::RateClassKey) const;
+        Energy lattice_energy_barrier(kmc::RateClassKey) const;
+        Ratio modulation_ratio(kmc::RateClassKey) const;
 
     private:
         static constexpr std::size_t key_count{

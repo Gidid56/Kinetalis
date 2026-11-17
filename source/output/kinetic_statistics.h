@@ -15,12 +15,11 @@ namespace output
     // The model owns its descriptor and kinetic equivalence relation. The writer
     // aggregates event observations and active kinetic-class populations.
     template <class ModelType>
-    requires std::derived_from<ModelType, kmc::Model>
     class KineticStatistics : public Writer
     {
     public:
         using Writer::Writer;
-        using Descriptor = typename ModelType::Descriptor;
+        using Descriptor = typename ModelType::KineticsType::Descriptor;
         using CountMap = std::map<Descriptor, std::size_t>;
 
         auto& set_output_transitions(bool enabled)
@@ -43,7 +42,7 @@ namespace output
         void capture_init(kmc::Simulation const& simulation) override
         {
             simulation_ = &simulation;
-            model_ = dynamic_cast<ModelType const*>(simulation.model().get());
+            model_ = &dynamic_cast<kmc::RejectionTreeSimulation<ModelType> const&>(simulation).model();
             if (not model_)
                 throw std::logic_error{ "KineticStatistics requires the selected model type." };
 
@@ -56,7 +55,7 @@ namespace output
         {
             // The selected event already carries its registered kinetic class.
             auto const key{ record.class_key };
-            Descriptor descriptor{ model_->descriptor(key) };
+            Descriptor descriptor{ model_->kinetics().descriptor(key) };
             ++counts_[record.outcome][descriptor];
 
             if (record.outcome == kmc::event::Outcome::rejected)
@@ -78,7 +77,7 @@ namespace output
                 if (counts[i] == 0)
                     continue;
                 auto key{ static_cast<kmc::RateClassKey>(i) };
-                Descriptor descriptor{ model_->descriptor(key) };
+                Descriptor descriptor{ model_->kinetics().descriptor(key) };
                 active[descriptor] += counts[i];
             }
         }

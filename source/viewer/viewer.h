@@ -13,8 +13,8 @@ public:
     explicit Viewer(const Arguments& = { argc, argv });
     ~Viewer();
 
-    template <class Rules>
-    kmc::Simulation& createSimulation(kmc::Setup<Rules> const&, kmc::PlanFactory);
+    template <class ModelType>
+    kmc::Simulation& createSimulation(kmc::Setup<ModelType> const&, kmc::PlanFactory);
 
     void createAnalysisPlan(kmc::PlanFactory);
 
@@ -69,13 +69,13 @@ private:
     Lattice* lattice_{ nullptr };
 };
 
-template <class Rules>
+template <class ModelType>
 kmc::Simulation&
-viewer::Viewer::createSimulation(kmc::Setup<Rules> const& setup, kmc::PlanFactory planFactory)
+viewer::Viewer::createSimulation(kmc::Setup<ModelType> const& setup, kmc::PlanFactory planFactory)
 {
     stopWorker();
 
-    simulation_ = std::make_unique<kmc::RejectionTreeSimulation<Rules>>(setup);
+    simulation_ = std::make_unique<kmc::RejectionTreeSimulation<ModelType>>(setup);
     createAnalysisPlan(planFactory);
 
     return *simulation_;

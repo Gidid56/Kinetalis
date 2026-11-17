@@ -2,13 +2,15 @@
 #include "batch/campaign.h"
 #include "kmc/event.h"
 #include "kmc/setup.h"
-#include "lattice/site.h"
+#include "lattice/lattice.h"
+#include "dealloying/models/linear_bond_breaking.h"
 
 namespace studies::dealloying::events
 {
     struct Dissolution
     {
         static constexpr auto event = kmc::event::Type::dissolution;
+        static constexpr std::size_t slot_count{ 1 };
 
         kmc::Element element{ kmc::Element::Ag };
         lattice::Coordination max_coordination{ 11 };
@@ -20,6 +22,13 @@ namespace studies::dealloying::events
                 "max_coordination = {}",
                 element,
                 static_cast<unsigned>(max_coordination));
+        }
+
+        std::optional<kmc::event::Location> location(
+            lattice::Site& source, std::size_t slot, lattice::Lattice&) const
+        {
+            if (slot != 0) return std::nullopt;
+            return kmc::event::Location{ source };
         }
 
         bool is_source_candidate(lattice::Site const& source) const
@@ -46,8 +55,19 @@ namespace studies::dealloying::events
     struct Diffusion
     {
         static constexpr auto event = kmc::event::Type::diffusion;
+        static constexpr std::size_t slot_count{ lattice::max_coordination };
 
         lattice::Coordination max_source_coordination{ 9 }, min_target_coordination{ 2 };
+
+        std::optional<kmc::event::Location> location(
+            lattice::Site& source, std::size_t slot, lattice::Lattice& lattice) const
+        {
+            if (slot >= source.max_neighbors()) return std::nullopt;
+            return kmc::event::Location{ lattice::Cluster<2>{
+                &source,
+                lattice.neighbor(source.neighbor_index() + static_cast<lattice::Index>(slot))
+            } };
+        }
 
         bool is_source_candidate(lattice::Site const& source) const
         {
@@ -90,7 +110,8 @@ namespace studies::dealloying::events
 
 namespace studies::dealloying
 {
-    using Rules = kmc::event::Rules<events::Dissolution, events::Diffusion>;
-    using Setup = kmc::Setup<Rules>;
-    using Campaign = batch::Campaign<Rules>;
+    using Transformations = kmc::event::Transformations<events::Dissolution, events::Diffusion>;
+    using Model = kmc::Model<models::LinearBondBreaking, Transformations>;
+    using Setup = kmc::Setup<Model>;
+    using Campaign = batch::Campaign<Model>;
 }

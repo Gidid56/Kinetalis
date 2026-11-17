@@ -5,6 +5,10 @@
 #include <concepts>
 #include <cstdint>
 #include <format>
+#include <functional>
+#include <optional>
+#include <stdexcept>
+#include <tuple>
 #include <string>
 #include <type_traits>
 #include <utility>
@@ -96,35 +100,70 @@ namespace kmc::event
         Location location_;
     };
 
-    // Source prefiltering only needs the source site; all other rule
-    // operations receive the complete ordered event location.
+    // A transformation maps a local slot to an optional geometrical location.
     template <class T>
-    concept Rule = requires(T const& rule, lattice::Site const& source,
-                            Location const& location, lattice::Lattice& lattice) {
-        { T::event } -> std::convertible_to<kmc::event::Type>;
-        { rule.is_source_candidate(source) } -> std::convertible_to<bool>;
-        { rule.is_candidate(location) } -> std::convertible_to<bool>;
-        { rule.is_rejected(location) } -> std::convertible_to<bool>;
-        { rule.execute(location, lattice) } -> std::same_as<void>;
-        { rule.settings() } -> std::convertible_to<std::string>;
+    concept Transformation = requires(T const& transformation, lattice::Site& source,
+                                      std::size_t slot, lattice::Lattice& lattice,
+                                      Location const& location) {
+        { T::event } -> std::convertible_to<Type>;
+        { T::slot_count } -> std::convertible_to<std::size_t>;
+        { transformation.location(source, slot, lattice) } -> std::same_as<std::optional<Location>>;
+        { transformation.is_source_candidate(source) } -> std::convertible_to<bool>;
+        { transformation.is_candidate(location) } -> std::convertible_to<bool>;
+        { transformation.is_rejected(location) } -> std::convertible_to<bool>;
+        { transformation.execute(location, lattice) } -> std::same_as<void>;
+        { transformation.settings() } -> std::convertible_to<std::string>;
     };
 
-    template <class SiteRule, class ClusterRule>
-    requires Rule<SiteRule> && Rule<ClusterRule>
-    struct Rules
+    template <class... Ts>
+    requires (Transformation<Ts> && ...)
+    class Transformations
     {
-        [[no_unique_address]] SiteRule site;
-        [[no_unique_address]] ClusterRule cluster;
+    public:
+        static constexpr std::size_t slot_count{ (Ts::slot_count + ... + std::size_t{}) };
+
+        template <class T>
+        auto& get(this auto& self) noexcept { return std::get<T>(self.transformations_); }
+
+        template <class Function>
+        void for_each(Function&& function) const
+        {
+            std::size_t offset{};
+            std::apply([&](auto const&... transformations) {
+                ((std::invoke(function, transformations,
+                    std::exchange(offset, offset +
+                        std::remove_cvref_t<decltype(transformations)>::slot_count))), ...);
+            }, transformations_);
+        }
+
+        template <class Function>
+        void visit(std::size_t slot, Function&& function) const
+        {
+            bool found{};
+            for_each([&](auto const& transformation, std::size_t offset) {
+                constexpr auto count{ std::remove_cvref_t<decltype(transformation)>::slot_count };
+                if (slot >= offset and slot - offset < count)
+                {
+                    std::invoke(function, transformation, slot - offset);
+                    found = true;
+                }
+            });
+            if (not found)
+                throw std::out_of_range{ "Event slot outside transformation layout." };
+        }
 
         std::string settings() const
         {
-            return std::format(
-                "[site: {}]\n{}\n\n"
-                "[cluster: {}]\n{}\n",
-                enum_name(SiteRule::event),
-                site.settings(),
-                enum_name(ClusterRule::event),
-                cluster.settings());
+            std::string result;
+            for_each([&](auto const& transformation, std::size_t) {
+                result += std::format("[{}]\n{}\n\n",
+                    enum_name(std::remove_cvref_t<decltype(transformation)>::event),
+                    transformation.settings());
+            });
+            return result;
         }
+
+    private:
+        std::tuple<Ts...> transformations_{};
     };
 }

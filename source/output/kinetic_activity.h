@@ -12,12 +12,11 @@
 namespace output
 {
     template <class ModelType>
-    requires std::derived_from<ModelType, kmc::Model>
     class KineticActivity : public Writer
     {
     public:
         using Writer::Writer;
-        using Descriptor = typename ModelType::Descriptor;
+        using Descriptor = typename ModelType::KineticsType::Descriptor;
 
         struct Accumulation
         {
@@ -40,7 +39,7 @@ namespace output
         void capture_init(kmc::Simulation const& simulation) override
         {
             simulation_ = &simulation;
-            model_ = dynamic_cast<ModelType const*>(simulation.model().get());
+            model_ = &dynamic_cast<kmc::RejectionTreeSimulation<ModelType> const&>(simulation).model();
             if (not model_)
                 throw std::logic_error{ "KineticActivity requires the selected model type." };
             last_time_ = simulation.time();
@@ -74,7 +73,7 @@ namespace output
 
                 auto const key{ static_cast<kmc::RateClassKey>(i) };
                 auto const fraction{ counts[i] * rates[i] / total };
-                auto& value{ accumulation_.classes[model_->descriptor(key)] };
+                auto& value{ accumulation_.classes[model_->kinetics().descriptor(key)] };
                 value.activity_fraction += fraction;
                 value.activity_time += fraction * delta;
             }
@@ -97,7 +96,7 @@ namespace output
                 if (simulation.class_initialized(static_cast<kmc::RateClassKey>(key)))
                     std::format_to(std::back_inserter(text), ",{}",
                         DescriptorFormat<Descriptor>::label(
-                            model.descriptor(
+                            model.kinetics().descriptor(
                                 static_cast<kmc::RateClassKey>(key))));
                 else
                     std::format_to(std::back_inserter(text), ",not_encountered_{}", key);
@@ -176,7 +175,7 @@ namespace output
                 }
 
                 Accumulation value{};
-                auto const& descriptor{ model_->descriptor(static_cast<kmc::RateClassKey>(i)) };
+                auto const& descriptor{ model_->kinetics().descriptor(static_cast<kmc::RateClassKey>(i)) };
                 if (auto it{ last_data_.classes.find(descriptor) };
                     it != last_data_.classes.end())
                     value = it->second;

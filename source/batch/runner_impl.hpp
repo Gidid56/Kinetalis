@@ -12,8 +12,8 @@ namespace batch
     using namespace utility;
     using enum file::Type;
 
-    template <class Rules>
-    bool Runner<Rules>::run(CampaignFactory<Rules> campaign)
+    template <class ModelType>
+    bool Runner<ModelType>::run(CampaignFactory<ModelType> campaign)
     {
         if (std::exchange(used_, true))
             throw std::logic_error{ "Runner can only be used once." };
@@ -37,8 +37,8 @@ namespace batch
         }
     }
 
-    template <class Rules>
-    void Runner<Rules>::initialize(CampaignFactory<Rules> campaign)
+    template <class ModelType>
+    void Runner<ModelType>::initialize(CampaignFactory<ModelType> campaign)
     {
         campaign_ = campaign();
 
@@ -52,8 +52,8 @@ namespace batch
         terminal_ = std::make_unique<Terminal>(campaign_.sample_count(), worker_count());
     }
 
-    template <class Rules>
-    void Runner<Rules>::generate_seeds()
+    template <class ModelType>
+    void Runner<ModelType>::generate_seeds()
     {
         simulation::Engine campaign_engine{ campaign_.seed };
 
@@ -80,8 +80,8 @@ namespace batch
         }
     }
 
-    template <class Rules>
-    std::string Runner<Rules>::campaign_info() const
+    template <class ModelType>
+    std::string Runner<ModelType>::campaign_info() const
     {
         return std::format(
             "Campaign Seed {}\n"
@@ -92,8 +92,8 @@ namespace batch
             campaign_.sample_count());
     }
 
-    template <class Rules>
-    void Runner<Rules>::write_init() const
+    template <class ModelType>
+    void Runner<ModelType>::write_init() const
     {
         std::print(
             "\n[{:%T}] Starting campaign '{}'.\n{}\n",
@@ -106,8 +106,8 @@ namespace batch
         write_samples();
     }
 
-    template <class Rules>
-    void Runner<Rules>::write_campaign() const
+    template <class ModelType>
+    void Runner<ModelType>::write_campaign() const
     {
         file::write<txt>(campaign_path_ / "campaign", campaign_info());
         auto analysis_plan{ std::invoke(campaign_.analysis_plan, campaign_path_) };
@@ -117,8 +117,8 @@ namespace batch
         file::write<txt>(campaign_path_ / "observer_settings", analysis_plan.output_settings());
     }
 
-    template <class Rules>
-    void Runner<Rules>::write_setups() const
+    template <class ModelType>
+    void Runner<ModelType>::write_setups() const
     {
         std::string text{ "setup,description\n" };
 
@@ -132,8 +132,8 @@ namespace batch
         file::write<file::Type::csv>(campaign_path_ / "setups", text);
     }
 
-    template <class Rules>
-    void Runner<Rules>::write_samples() const
+    template <class ModelType>
+    void Runner<ModelType>::write_samples() const
     {
         std::string text{ "sample,setup,replicate,seed\n" };
 
@@ -149,8 +149,8 @@ namespace batch
         file::write<file::Type::csv>(campaign_path_ / "samples", text);
     }
 
-    template <class Rules>
-    void Runner<Rules>::write_final() const
+    template <class ModelType>
+    void Runner<ModelType>::write_final() const
     {
         file::append<txt>(
             campaign_path_ / "campaign",
@@ -159,20 +159,20 @@ namespace batch
         std::print("\n[{:%T}] Campaign completed successfully.\n", WallClock::now());
     }
 
-    template <class Rules>
-    std::size_t Runner<Rules>::sample_count() const
+    template <class ModelType>
+    std::size_t Runner<ModelType>::sample_count() const
     {
         return campaign_.sample_count();
     }
 
-    template <class Rules>
-    std::size_t Runner<Rules>::worker_count() const
+    template <class ModelType>
+    std::size_t Runner<ModelType>::worker_count() const
     {
         return std::min(concurrency_count_, sample_count());
     }
 
-    template <class Rules>
-    void Runner<Rules>::run_samples()
+    template <class ModelType>
+    void Runner<ModelType>::run_samples()
     {
         std::vector<std::jthread> workers;
         workers.reserve(worker_count());
@@ -181,8 +181,8 @@ namespace batch
             workers.emplace_back([this] { run_worker(); });
     }
 
-    template <class Rules>
-    void Runner<Rules>::run_worker()
+    template <class ModelType>
+    void Runner<ModelType>::run_worker()
     {
         while (true)
         {
@@ -208,8 +208,8 @@ namespace batch
         }
     }
 
-    template <class Rules>
-    void Runner<Rules>::run_sample(std::size_t sample_index) const
+    template <class ModelType>
+    void Runner<ModelType>::run_sample(std::size_t sample_index) const
     {
         auto setup{ campaign_.setups[sample_setup_index(sample_index)] };
         setup.seed = seeds_[sample_index];
@@ -217,21 +217,21 @@ namespace batch
         auto const path{ sample_path(sample_index) };
         std::filesystem::create_directories(path);
 
-        kmc::RejectionTreeSimulation<Rules> simulation{ setup };
+        kmc::RejectionTreeSimulation<ModelType> simulation{ setup };
         auto analysis_plan{ std::invoke(campaign_.analysis_plan, path) };
 
         simulation.run(analysis_plan);
     }
 
-    template <class Rules>
-    void Runner<Rules>::record(sample::State state)
+    template <class ModelType>
+    void Runner<ModelType>::record(sample::State state)
     {
         std::scoped_lock lock{ counts_mutex_ };
         ++counts_.at(state);
     }
 
-    template <class Rules>
-    void Runner<Rules>::postprocess() const
+    template <class ModelType>
+    void Runner<ModelType>::postprocess() const
     {
         std::print("\n[{:%T}] Starting postprocessor.\n", WallClock::now());
 
@@ -245,22 +245,22 @@ namespace batch
         std::print("[{:%T}] Postprocessing completed successfully.\n", WallClock::now());
     }
 
-    template <class Rules>
-    std::size_t Runner<Rules>::sample_setup_index(std::size_t sample_index) const
+    template <class ModelType>
+    std::size_t Runner<ModelType>::sample_setup_index(std::size_t sample_index) const
     {
         return sample_index % campaign_.setups.size();
     }
 
-    template <class Rules>
-    std::size_t Runner<Rules>::sample_replicate_index(std::size_t sample_index) const
+    template <class ModelType>
+    std::size_t Runner<ModelType>::sample_replicate_index(std::size_t sample_index) const
     {
         return sample_index / campaign_.setups.size();
     }
 
     inline std::size_t index_width(std::size_t count) { return std::to_string(count - 1).size(); };
 
-    template <class Rules>
-    std::string Runner<Rules>::sample_name(std::size_t sample_index) const
+    template <class ModelType>
+    std::string Runner<ModelType>::sample_name(std::size_t sample_index) const
     {
         return std::format(
             "{:0{}}/{:0{}}",
@@ -270,8 +270,8 @@ namespace batch
             index_width(campaign_.replicate_count));
     }
 
-    template <class Rules>
-    std::filesystem::path Runner<Rules>::sample_path(std::size_t sample_index) const
+    template <class ModelType>
+    std::filesystem::path Runner<ModelType>::sample_path(std::size_t sample_index) const
     {
         auto const setup_index{ sample_setup_index(sample_index) };
         auto const setup_count{ campaign_.setups.size() };

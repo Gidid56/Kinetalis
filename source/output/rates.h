@@ -10,12 +10,11 @@
 namespace output
 {
     template <class ModelType>
-    requires std::derived_from<ModelType, kmc::Model>
     class Rates : public Writer
     {
     public:
         using Writer::Writer;
-        using Descriptor = typename ModelType::Descriptor;
+        using Descriptor = typename ModelType::KineticsType::Descriptor;
 
     private:
         std::string_view name() const override { return "rates"; }
@@ -23,7 +22,7 @@ namespace output
 
         void write_final(kmc::Simulation const& simulation) override
         {
-            auto const* model{ dynamic_cast<ModelType const*>(simulation.model().get()) };
+            auto const* model{ &dynamic_cast<kmc::RejectionTreeSimulation<ModelType> const&>(simulation).model() };
             if (not model)
                 throw std::logic_error{ "Rates requires the selected model type." };
 
@@ -36,7 +35,7 @@ namespace output
                     continue;
 
                 std::format_to(std::back_inserter(csv), "{},{},{:v:Hz}\n",
-                    i, DescriptorFormat<Descriptor>::row(model->descriptor(key)),
+                    i, DescriptorFormat<Descriptor>::row(model->kinetics().descriptor(key)),
                     simulation.class_rates()[i]);
             }
             utility::file::write<utility::file::Type::csv>(writer_path(), csv);

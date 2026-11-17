@@ -158,7 +158,7 @@ gui::Status Bridge::capture(kmc::Simulation const& simulation) noexcept
         .rejectionFraction = simulation.rejection_fraction(),
         .physicalTime = simulation.time(),
         .runTime = simulation.run_duration(),
-        .temperature = simulation.model()->temperature(),
+        .temperature = simulation.temperature(),
     };
 }
 

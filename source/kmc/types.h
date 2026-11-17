@@ -32,16 +32,17 @@ namespace kmc
 
     namespace event { class Record; }
 
-    class Model;
+    class Kinetics;
+    template <class KineticModel, class TransformationSet> class Model;
     class Simulation;
 
-    template <class Rules>
+    using SlotId = std::size_t;
+
+    template <class ModelType>
     struct Setup;
 
-    template <class Rules>
+    template <class ModelType>
     class RejectionTreeSimulation;
-
-    namespace model { using Generator = std::function<std::unique_ptr<Model>()>; }
 
     class Observer;
 
