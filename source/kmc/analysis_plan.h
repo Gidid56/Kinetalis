@@ -16,10 +16,10 @@ public:
             observer->observe_started(simulation);
     }
 
-    void observe_step(Simulation const& simulation)
+    void observe_step(Simulation const& simulation, Step step)
     {
         for (auto& observer : observers_)
-            observer->observe_step(simulation);
+            observer->observe_step(simulation, step);
     }
 
     void observe_selected(event::Record const& record)

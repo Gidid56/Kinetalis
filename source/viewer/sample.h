@@ -1,7 +1,7 @@
 #pragma once
 
 #include "dealloying/analysis/regime.h"
-#include "dealloying/models/linear_bond_breaking.h"
+#include "dealloying/events.h"
 #include "dealloying/models/descriptor_format.h"
 #include "kmc/model.h"
 #include "kmc/observer.h"
@@ -21,8 +21,8 @@ namespace viewer::gui
         ElectricPotential potential{};
         studies::dealloying::analysis::Regime::Condition reachedConditions{};
 
-        using KineticModel = studies::dealloying::models::LinearBondBreaking;
-        using KineticCounts = output::KineticStatistics<KineticModel>::CountMap;
+        using Model = studies::dealloying::Model;
+        using KineticCounts = output::KineticStatistics<Model>::CountMap;
         std::map<kmc::event::Outcome, KineticCounts> kineticCounts;
 
         void setData(kmc::Observer const&);

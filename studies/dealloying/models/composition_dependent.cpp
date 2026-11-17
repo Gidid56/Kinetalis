@@ -90,6 +90,12 @@ Energy CompositionDependent::lattice_energy_barrier(RateClassKey key) const
     return energy;
 }
 
+Rate CompositionDependent::rate(RateClassKey key) const
+{
+    return ElectrochemicalInterface::rate(
+        class_event(key), class_element(key), lattice_energy_barrier(key));
+}
+
 std::string CompositionDependent::output_text() const
 {
     return std::format("Model = Composition dependent bond energy\n{}",

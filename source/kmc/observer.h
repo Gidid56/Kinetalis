@@ -1,4 +1,9 @@
 #pragma once
+#include "types.h"
+
+#include <algorithm>
+#include <stdexcept>
+#include <string_view>
 
 class kmc::Observer
 {
@@ -24,7 +29,14 @@ public:
         validate(resolution);
     }
 
-    static void validate(Resolution const& resolution);
+    static void validate(Resolution const& resolution)
+    {
+        if (resolution.min_snapshot_step == 0)
+            throw std::invalid_argument{ "Minimum snapshot step must be positive." };
+
+        if (resolution.snapshot_scale_factor < 1)
+            throw std::invalid_argument{ "Update snapshot scale factor must be at least one." };
+    }
 
     virtual ~Observer() = default;
 
@@ -37,7 +49,17 @@ public:
 
     virtual void observe_started(Simulation const&) { }
 
-    virtual void observe_step(Simulation const&) final;
+    virtual void observe_step(Simulation const& simulation, Step step) final
+    {
+        if (step >= next_snapshot_step_)
+        {
+            take_snapshot(simulation);
+
+            next_snapshot_step_ = std::max(
+                next_snapshot_step_ + resolution_.min_snapshot_step,
+                math::round<Step>(next_snapshot_step_ * resolution_.snapshot_scale_factor));
+        }
+    }
 
     virtual void observe_completed(Simulation const&) { }
 

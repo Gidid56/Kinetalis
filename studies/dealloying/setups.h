@@ -112,13 +112,10 @@ namespace studies::dealloying::setups
         };
         auto potential{ critical_potential(x0, temperature) + overpotential };
 
-        setup.make_model = [potential, temperature, modulation] {
-            auto model{ std::make_unique<models::LinearBondBreaking>() };
-            (*model).set_potential(potential).set_temperature(temperature);
-            if (modulation)
-                (*model).set_modulation(*modulation);
-            return model;
-        };
+        auto& kinetics{ setup.model.kinetics() };
+        kinetics.set_potential(potential).set_temperature(temperature);
+        if (modulation)
+            kinetics.set_modulation(*modulation);
         setup.name = std::format("T = {:K};x_Au = {};E = {:V}", temperature, x0, potential);
         if (modulation)
             setup.name += std::format("{}_{}_{} = {}", enum_name(modulation->descriptor.event),
@@ -135,7 +132,6 @@ namespace studies::dealloying::setups
         setup.make_lattice = [radius, inverted] {
             return cut_sphere(2 * radius + 1_nm, radius, inverted);
         };
-        setup.make_model = &std::make_unique<models::LinearBondBreaking>;
         setup.name = std::format("nano{};r = {:nm}", inverted ? "void" : "particle", radius);
 
         return setup;
@@ -148,7 +144,6 @@ namespace studies::dealloying::setups
         setup.make_lattice = [layer] {
             return passivation_schematic(layer);
         };
-        setup.make_model = &std::make_unique<models::LinearBondBreaking>;
         setup.name = std::format("schematic");
         setup.seed = simulation::Engine::parse_seed(seeds[0]);
 

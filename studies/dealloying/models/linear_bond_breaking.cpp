@@ -79,6 +79,12 @@ Ratio LinearBondBreaking::modulation_ratio(RateClassKey key) const
     return 1;
 }
 
+Rate LinearBondBreaking::rate(RateClassKey key) const
+{
+    return ElectrochemicalInterface::rate(
+        class_event(key), class_element(key), lattice_energy_barrier(key), modulation_ratio(key));
+}
+
 std::string LinearBondBreaking::output_text() const
 {
     auto result{ std::format(

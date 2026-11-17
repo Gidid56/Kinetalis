@@ -11,7 +11,6 @@ target_sources(
         lattice/site.cpp
         lattice/unitcell.cpp
         
-        kmc/observer.cpp
 
         output/writer.cpp
         output/basics.cpp

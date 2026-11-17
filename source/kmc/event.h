@@ -2,11 +2,11 @@
 #include "lattice/site.h"
 #include "types.h"
 
-#include <concepts>
+#include <algorithm>
+#include <array>
+#include <cstddef>
 #include <cstdint>
-#include <format>
-#include <string>
-#include <type_traits>
+#include <span>
 #include <utility>
 
 namespace kmc::event
@@ -94,37 +94,5 @@ namespace kmc::event
 
     private:
         Location location_;
-    };
-
-    // Source prefiltering only needs the source site; all other rule
-    // operations receive the complete ordered event location.
-    template <class T>
-    concept Rule = requires(T const& rule, lattice::Site const& source,
-                            Location const& location, lattice::Lattice& lattice) {
-        { T::event } -> std::convertible_to<kmc::event::Type>;
-        { rule.is_source_candidate(source) } -> std::convertible_to<bool>;
-        { rule.is_candidate(location) } -> std::convertible_to<bool>;
-        { rule.is_rejected(location) } -> std::convertible_to<bool>;
-        { rule.execute(location, lattice) } -> std::same_as<void>;
-        { rule.settings() } -> std::convertible_to<std::string>;
-    };
-
-    template <class SiteRule, class ClusterRule>
-    requires Rule<SiteRule> && Rule<ClusterRule>
-    struct Rules
-    {
-        [[no_unique_address]] SiteRule site;
-        [[no_unique_address]] ClusterRule cluster;
-
-        std::string settings() const
-        {
-            return std::format(
-                "[site: {}]\n{}\n\n"
-                "[cluster: {}]\n{}\n",
-                enum_name(SiteRule::event),
-                site.settings(),
-                enum_name(ClusterRule::event),
-                cluster.settings());
-        }
     };
 }

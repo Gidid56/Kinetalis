@@ -96,7 +96,6 @@ public:
     auto flags() const { return flags_; }
     auto index() const { return site_index_; }
     auto neighbor_index() const { return neighbor_index_; }
-    auto event_offset() const { return site_index_ + neighbor_index_; }
     auto& position() const { return position_; }
     Layer layer() const { return layer_.get(); }
     //auto& original() const { return original_; }

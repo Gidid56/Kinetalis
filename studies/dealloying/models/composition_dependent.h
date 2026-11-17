@@ -17,17 +17,18 @@ namespace studies::dealloying::models
         };
 
         CompositionDependent();
-        kmc::RateClassKey classify(kmc::event::Type, kmc::event::Location const&, lattice::Lattice const&) override;
-        std::size_t number_keys() const noexcept override { return descriptors_.size(); }
-        kmc::event::Type class_event(kmc::RateClassKey) const override;
+        kmc::RateClassKey classify(kmc::event::Type, kmc::event::Location const&, lattice::Lattice const&);
+        std::size_t number_keys() const noexcept { return descriptors_.size(); }
+        kmc::event::Type class_event(kmc::RateClassKey) const;
         Descriptor const& descriptor(kmc::RateClassKey key) const { return descriptors_.at(key); }
-        std::string output_text() const override;
+        std::string output_text() const;
+        kmc::Rate rate(kmc::RateClassKey) const;
 
     protected:
-        kmc::Element class_element(kmc::RateClassKey) const override;
+        kmc::Element class_element(kmc::RateClassKey) const;
 
     private:
-        Energy lattice_energy_barrier(kmc::RateClassKey) const override;
+        Energy lattice_energy_barrier(kmc::RateClassKey) const;
         std::map<Descriptor, kmc::RateClassKey> keys_;
         std::vector<Descriptor> descriptors_{ Descriptor{} };
     };

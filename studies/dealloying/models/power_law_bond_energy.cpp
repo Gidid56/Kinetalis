@@ -46,11 +46,6 @@ namespace studies::dealloying::models::power_law_bond_energy
         }
     }
 
-    Energy binding_energy(Element element, lattice::Coordination coordination)
-    {
-        return dimer_bond_energy(element) *
-               std::pow(static_cast<double>(coordination), coordination_exponent(element));
-    }
 }
 
 
@@ -60,6 +55,12 @@ Energy PowerLawBondEnergy::lattice_energy_barrier(RateClassKey key) const
     return power_law_bond_energy::dimer_bond_energy(desc.element) *
            std::pow(static_cast<double>(desc.coordination),
                     power_law_bond_energy::coordination_exponent(desc.element));
+}
+
+Rate PowerLawBondEnergy::rate(RateClassKey key) const
+{
+    return ElectrochemicalInterface::rate(
+        class_event(key), class_element(key), lattice_energy_barrier(key), modulation_ratio(key));
 }
 
 std::string PowerLawBondEnergy::output_text() const

@@ -20,6 +20,7 @@ endfunction()
 kinetalis_add_test_suite(kmc
     kmc/rate_tree.cpp
     kmc/simulation.cpp
+    kmc/transformation_slots.cpp
 )
 kinetalis_add_test_suite(lattice
     lattice/unitcell.cpp
