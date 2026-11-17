@@ -83,7 +83,7 @@ namespace kmc
         block_updates_.clear();
 
         // Model dependencies can extend beyond the nearest neighbors;
-        // the current event rules require at least one neighbor shell.
+        // the current transformations require at least one neighbor shell.
         const auto radius{ std::max<std::size_t>(1, model_.kinetics().invalidation_radius()) };
 
         // Mark first, then recompute: every source must see the completed

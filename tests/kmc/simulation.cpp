@@ -188,7 +188,7 @@ namespace
         return setup;
     }
 
-    void expect_reference_state(TestSimulation const& simulation, Transformations const& rules, Step step)
+    void expect_reference_state(TestSimulation const& simulation, Transformations const& transformations, Step step)
     {
         auto const& lattice{ simulation.lattice() };
         auto const& rates{ simulation.class_rates() };
@@ -219,17 +219,17 @@ namespace
             Rate site_sum{};
             auto has_events{ false };
             const event::Location source{ const_cast<Site&>(site) };
-            if (rules.get<SiteRule>().is_source_candidate(site) and rules.get<SiteRule>().is_candidate(source))
+            if (transformations.get<SiteRule>().is_source_candidate(site) and transformations.get<SiteRule>().is_candidate(source))
             {
                 add(site_sum, Descriptor{ SiteRule::event, source.source().element(), source.source().coordination() });
                 has_events = true;
             }
-            if (rules.get<ClusterRule>().is_source_candidate(site))
+            if (transformations.get<ClusterRule>().is_source_candidate(site))
                 for (auto const* target : lattice.neighbors(site))
                 {
                     const event::Location location{ Cluster<2>{
                         const_cast<Site*>(&site), const_cast<Site*>(target) } };
-                    if (rules.get<ClusterRule>().is_candidate(location))
+                    if (transformations.get<ClusterRule>().is_candidate(location))
                     {
                         add(site_sum, Descriptor{ ClusterRule::event, location.source().element(), location.source().coordination() });
                         has_events = true;
@@ -273,9 +273,9 @@ namespace
     class CheckingObserver final : public Observer
     {
     public:
-        explicit CheckingObserver(Step target, Transformations rules = {}, Step initial_step = 0)
+        explicit CheckingObserver(Step target, Transformations transformations = {}, Step initial_step = 0)
             : Observer{ Resolution{ 1, 1.0 } }, target_{ target },
-              last_step_{ initial_step }, rules_{ rules }
+              last_step_{ initial_step }, transformations_{ transformations }
         { }
 
         std::string_view name() const override { return "kmc-integration-test"; }
@@ -283,7 +283,7 @@ namespace
 
         void observe_started(Simulation const& simulation) override
         {
-            expect_reference_state(dynamic_cast<TestSimulation const&>(simulation), rules_, simulation.step());
+            expect_reference_state(dynamic_cast<TestSimulation const&>(simulation), transformations_, simulation.step());
         }
 
         void observe_selected(event::Record const& record) override
@@ -294,21 +294,21 @@ namespace
             if (record.sites().size() == 1)
             {
                 ++site_selections_;
-                ut::expect(rules_.get<SiteRule>().is_source_candidate(source))
+                ut::expect(transformations_.get<SiteRule>().is_source_candidate(source))
                     << "selected site has valid source";
-                ut::expect(rules_.get<SiteRule>().is_candidate(record.location()))
+                ut::expect(transformations_.get<SiteRule>().is_candidate(record.location()))
                     << "selected site is a candidate";
-                rejected = rules_.get<SiteRule>().is_rejected(record.location());
+                rejected = transformations_.get<SiteRule>().is_rejected(record.location());
                 ut::expect(record.type == SiteRule::event);
             }
             else
             {
                 ++cluster_selections_;
-                ut::expect(rules_.get<ClusterRule>().is_source_candidate(source))
+                ut::expect(transformations_.get<ClusterRule>().is_source_candidate(source))
                     << "selected cluster has valid source";
-                ut::expect(rules_.get<ClusterRule>().is_candidate(record.location()))
+                ut::expect(transformations_.get<ClusterRule>().is_candidate(record.location()))
                     << "selected cluster is a candidate";
-                rejected = rules_.get<ClusterRule>().is_rejected(record.location());
+                rejected = transformations_.get<ClusterRule>().is_rejected(record.location());
                 ut::expect(record.type == ClusterRule::event);
             }
             auto const expected_key{ ModelBase::static_key(Descriptor{
@@ -339,7 +339,7 @@ namespace
                 << "one accepted event per validated snapshot";
             last_step_ = simulation.step();
             expect_reference_state(dynamic_cast<TestSimulation const&>(simulation),
-                rules_, last_step_);
+                transformations_, last_step_);
         }
 
         Step last_step() const { return last_step_; }
@@ -354,7 +354,7 @@ namespace
     private:
         Step target_{};
         Step last_step_{};
-        Transformations rules_;
+        Transformations transformations_;
         std::size_t selections_{};
         std::size_t rejections_{};
         std::size_t processed_{};
@@ -447,7 +447,7 @@ namespace
             ut::expect(ut::eq(cluster_move.class_key, cluster_record.class_key));
         };
 
-        "site and cluster rules execute lattice transformations"_test = [] {
+        "site and cluster transformations execute lattice changes"_test = [] {
             auto setup{ make_setup() };
             TestSimulation simulation{ setup };
             auto& lattice{ simulation.mutable_lattice() };

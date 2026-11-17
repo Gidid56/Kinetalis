@@ -116,6 +116,20 @@ namespace kmc::event
         { transformation.settings() } -> std::convertible_to<std::string>;
     };
 
+    // The source precondition is established before a slot is examined.
+    // Transformations may offer a cheaper residual predicate; otherwise
+    // the full candidate check remains the fallback.
+    template <Transformation T>
+    bool is_candidate_after_source_check(T const& transformation, Location const& location)
+    {
+        if constexpr (requires {
+            { transformation.is_candidate_after_source_check(location) } -> std::convertible_to<bool>;
+        })
+            return transformation.is_candidate_after_source_check(location);
+        else
+            return transformation.is_candidate(location);
+    }
+
     template <class... Ts>
     requires (Transformation<Ts> && ...)
     class Transformations
@@ -134,13 +148,6 @@ namespace kmc::event
         {
             return std::apply([&](auto const&... transformations) {
                 return SourceCandidates{ transformations.is_source_candidate(source)... };
-            }, transformations_);
-        }
-
-        bool any_source_candidate(lattice::Site const& source) const
-        {
-            return std::apply([&](auto const&... transformations) {
-                return (transformations.is_source_candidate(source) or ...);
             }, transformations_);
         }
 

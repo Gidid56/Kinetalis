@@ -5,7 +5,6 @@
 #include "utility/file.h"
 
 #include <concepts>
-#include <stdexcept>
 
 namespace output
 {
@@ -22,9 +21,10 @@ namespace output
 
         void write_final(kmc::Simulation const& simulation) override
         {
-            auto const* model{ &dynamic_cast<kmc::RejectionTreeSimulation<ModelType> const&>(simulation).model() };
-            if (not model)
-                throw std::logic_error{ "Rates requires the selected model type." };
+            auto const& kinetics{
+                dynamic_cast<kmc::RejectionTreeSimulation<ModelType> const&>(simulation)
+                    .model().kinetics()
+            };
 
             std::string csv{ std::format("key:class,{},rate/Hz\n",
                 DescriptorFormat<Descriptor>::header()) };
@@ -35,7 +35,7 @@ namespace output
                     continue;
 
                 std::format_to(std::back_inserter(csv), "{},{},{:v:Hz}\n",
-                    i, DescriptorFormat<Descriptor>::row(model->kinetics().descriptor(key)),
+                    i, DescriptorFormat<Descriptor>::row(kinetics.descriptor(key)),
                     simulation.class_rates()[i]);
             }
             utility::file::write<utility::file::Type::csv>(writer_path(), csv);

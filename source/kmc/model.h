@@ -7,16 +7,16 @@
 namespace kmc
 {
     // A model contains the kinetic model and its statically typed transformations.
-    template <class KineticModel, class TransformationSet>
+    template <class KineticsT, class TransformationsT>
     class Model
     {
     public:
-        using KineticsType = KineticModel;
-        using TransformationsType = TransformationSet;
+        using KineticsType = KineticsT;
+        using TransformationsType = TransformationsT;
 
-        static constexpr std::size_t slots_per_site{ TransformationSet::slot_count };
+        static constexpr std::size_t slots_per_site{ TransformationsT::slot_count };
 
-        explicit Model(KineticModel kinetics = KineticModel{}, TransformationSet transformations = TransformationSet{})
+        explicit Model(KineticsT kinetics = KineticsT{}, TransformationsT transformations = TransformationsT{})
             : kinetics_{ std::move(kinetics) },
               transformations_{ std::move(transformations) }
         { }
@@ -25,7 +25,7 @@ namespace kmc
         auto& transformations(this auto& self) noexcept { return self.transformations_; }
 
     private:
-        KineticModel kinetics_;
-        TransformationSet transformations_;
+        KineticsT kinetics_;
+        TransformationsT transformations_;
     };
 }

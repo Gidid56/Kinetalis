@@ -192,10 +192,10 @@ namespace studies::dealloying::campaigns
         return setups;
     }
 
-    inline Campaign sesitivity_test()
+    inline Campaign sensitivity_test()
     {
         return {
-            .name = "sesitivity test",
+            .name = "sensitivity test",
             .seed = seeds.at(6),
             .replicate_count = 20,
             .setups = generate_modulation(),

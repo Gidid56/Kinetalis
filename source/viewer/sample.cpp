@@ -13,7 +13,7 @@ void viewer::gui::Status::setData(kmc::Observer const& observer)
         reachedConditions = regime->reached_conditions();
     }
 
-    if (auto const* kineticStats{ dynamic_cast<output::KineticStatistics<Status::KineticModel> const*>(&observer) })
+    if (auto const* kineticStats{ dynamic_cast<output::KineticStatistics<Status::Model> const*>(&observer) })
     {
         kineticCounts = kineticStats->counts();
     }

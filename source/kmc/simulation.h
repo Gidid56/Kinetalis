@@ -14,8 +14,8 @@ public:
         : simulation::Base{ make_lattice, seed }
     { }
 
-    virtual std::string output_settings() const = 0;
-    virtual std::string model_settings() const = 0;
+    virtual std::string transformation_settings() const = 0;
+    virtual std::string kinetics_settings() const = 0;
     virtual Temperature temperature() const = 0;
     virtual simulation::Status run(AnalysisPlan&, std::stop_token = {}) = 0;
 
@@ -54,8 +54,8 @@ public:
     }
 
     simulation::Status run(AnalysisPlan&, std::stop_token = {}) override;
-    std::string output_settings() const override { return model_.transformations().settings(); }
-    std::string model_settings() const override { return model_.kinetics().output_text(); }
+    std::string transformation_settings() const override { return model_.transformations().settings(); }
+    std::string kinetics_settings() const override { return model_.kinetics().output_text(); }
     Temperature temperature() const override { return model_.kinetics().temperature(); }
 
     auto& model(this auto& self) noexcept { return self.model_; }
@@ -71,17 +71,17 @@ private:
     };
 
     Rate block_rate(lattice::Site&);
-    RateClassKey class_key(event::Type, event::Location const&);
+    RateClassKey register_class(event::Type, event::Location const&);
     void set_class_key(std::size_t, RateClassKey);
 
-    Rate rate_sum(lattice::Site&);
-    Selection select_random_location(Rate total_rate);
+    Rate update_site_classes(lattice::Site&);
+    Selection select_event_slot(Rate total_rate);
     event::Record evaluate_event(Selection const&);
 
     void initialize_rates();
     void update_all_rates();
     void update_affected_rates(event::Record const&);
-    void update(lattice::Site&);
+    void update_site_rate(lattice::Site&);
 
     template <class Visitor>
     void visit_neighbor_tree(lattice::Site&, std::size_t radius, Visitor&);

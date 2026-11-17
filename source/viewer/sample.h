@@ -21,8 +21,8 @@ namespace viewer::gui
         ElectricPotential potential{};
         studies::dealloying::analysis::Regime::Condition reachedConditions{};
 
-        using KineticModel = studies::dealloying::Model;
-        using KineticCounts = output::KineticStatistics<KineticModel>::CountMap;
+        using Model = studies::dealloying::Model;
+        using KineticCounts = output::KineticStatistics<Model>::CountMap;
         std::map<kmc::event::Outcome, KineticCounts> kineticCounts;
 
         void setData(kmc::Observer const&);

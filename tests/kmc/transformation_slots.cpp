@@ -259,12 +259,16 @@ namespace
 
             auto lattice{ setup.make_lattice() };
             auto& source{ lattice.sites().front() };
-            ut::expect(transformations.any_source_candidate(source));
+            auto has_candidate = [&] {
+                return std::ranges::any_of(transformations.source_candidates(source),
+                                           std::identity{});
+            };
+            ut::expect(has_candidate());
 
             transformations.get<SiteProbe>().enabled = false;
-            ut::expect(transformations.any_source_candidate(source));
+            ut::expect(has_candidate());
             transformations.get<NeighborProbe>().enabled = false;
-            ut::expect(transformations.any_source_candidate(source));
+            ut::expect(has_candidate());
 
             // Only SparseProbe remains; the first five slots are inactive
             // even though their positions remain allocated at every site.
@@ -281,7 +285,7 @@ namespace
             ut::expect(ut::eq(sparse_only.class_counts().at(3), sparse_only.lattice().sites().size()));
 
             transformations.get<SparseProbe>().enabled = false;
-            ut::expect(not transformations.any_source_candidate(source));
+            ut::expect(not has_candidate());
             ProbeSimulation empty{ setup };
             ut::expect(ut::eq(empty.rate_tree()->rate_sum().value(), 0.0));
             ut::expect(ut::eq(empty.class_counts().at(1), std::size_t{}));

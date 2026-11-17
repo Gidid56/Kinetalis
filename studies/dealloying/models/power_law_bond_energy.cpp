@@ -46,11 +46,6 @@ namespace studies::dealloying::models::power_law_bond_energy
         }
     }
 
-    Energy binding_energy(Element element, lattice::Coordination coordination)
-    {
-        return dimer_bond_energy(element) *
-               std::pow(static_cast<double>(coordination), coordination_exponent(element));
-    }
 }
 
 

@@ -41,10 +41,8 @@ namespace output
 
         void capture_init(kmc::Simulation const& simulation) override
         {
-            simulation_ = &simulation;
-            model_ = &dynamic_cast<kmc::RejectionTreeSimulation<ModelType> const&>(simulation).model();
-            if (not model_)
-                throw std::logic_error{ "KineticStatistics requires the selected model type." };
+            model_ = &dynamic_cast<kmc::RejectionTreeSimulation<ModelType> const&>(
+                simulation).model();
 
             last_descriptor_.reset();
             counts_.clear();
@@ -116,7 +114,6 @@ namespace output
         }
 
         bool output_transitions_{ false };
-        kmc::Simulation const* simulation_{};
         ModelType const* model_{};
         std::optional<Descriptor> last_descriptor_{};
         std::map<kmc::event::Outcome, CountMap> counts_;

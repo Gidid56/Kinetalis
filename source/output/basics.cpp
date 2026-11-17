@@ -24,11 +24,11 @@ bool control::DurationLimit::stop_requested() const
 
 void output::Config::write_init(kmc::Simulation const& kmc)
 {
-    file::write<txt>(root_path() / "model", std::format("{}", kmc.model_settings()));
+    file::write<txt>(root_path() / "kinetics", kmc.kinetics_settings());
     file::write<txt>(root_path() / "lattice", std::format("{}", kmc.lattice()));
     file::write<txt>(root_path() / "seed", std::format("{}", kmc.rng()));
     file::write<txt>(root_path() / "settings", global::settings());
-    file::write<txt>(root_path() / "rules", kmc.output_settings());
+    file::write<txt>(root_path() / "transformations", kmc.transformation_settings());
 }
 
 void output::Time::write_init(kmc::Simulation const&)

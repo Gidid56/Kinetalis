@@ -39,9 +39,8 @@ namespace output
         void capture_init(kmc::Simulation const& simulation) override
         {
             simulation_ = &simulation;
-            model_ = &dynamic_cast<kmc::RejectionTreeSimulation<ModelType> const&>(simulation).model();
-            if (not model_)
-                throw std::logic_error{ "KineticActivity requires the selected model type." };
+            model_ = &dynamic_cast<kmc::RejectionTreeSimulation<ModelType> const&>(
+                simulation).model();
             last_time_ = simulation.time();
             last_data_ = {};
             accumulation_ = {};
