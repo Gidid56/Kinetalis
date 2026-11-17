@@ -82,10 +82,6 @@ namespace kmc
     {
         block_updates_.clear();
 
-        // Model dependencies can extend beyond the nearest neighbors;
-        // the current transformations require at least one neighbor shell.
-        const auto radius{ std::max<std::size_t>(1, model_.kinetics().invalidation_radius()) };
-
         // Mark first, then recompute: every source must see the completed
         // lattice transformation. Deduplicate overlapping neighborhood walks
         // through the existing dirty flag and retain first-visit order.
@@ -97,7 +93,7 @@ namespace kmc
             affected_sites_.push_back(&site);
         };
         for (auto* site : record.sites())
-            visit_neighbor_tree(*site, radius, invalidate);
+            visit_neighbor_tree(*site, model_.kinetics().invalidation_radius(), invalidate);
 
         for (auto* site : affected_sites_)
             update_site_rate(*site);
