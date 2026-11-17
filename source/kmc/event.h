@@ -125,6 +125,13 @@ namespace kmc::event
         template <class T>
         auto& get(this auto& self) noexcept { return std::get<T>(self.transformations_); }
 
+        bool any_source_candidate(lattice::Site const& source) const
+        {
+            return std::apply([&](auto const&... transformations) {
+                return (transformations.is_source_candidate(source) or ...);
+            }, transformations_);
+        }
+
         template <class Function>
         void for_each(Function&& function) const
         {

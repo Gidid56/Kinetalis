@@ -36,7 +36,6 @@ jobs:
           mkdir -p main/tools/performance
           cp refactor/tools/performance/benchmark.cpp refactor/tools/performance/perf_probe.h main/tools/performance/
           python3 refactor/tools/performance/instrument.py main/source/kmc/simulation_impl.hpp refactor/source/kmc/simulation_impl.hpp
-          python3 refactor/tools/performance/ablate.py refactor/source/kmc/simulation_impl.hpp
 
           for tree in main refactor; do
             cat >> "$tree/CMakeLists.txt" <<'EOF'
@@ -58,16 +57,6 @@ jobs:
           cat >> refactor/CMakeLists.txt <<'EOF'
           target_compile_definitions(kmc_benchmark PRIVATE KINETALIS_PERF_REFACTOR)
           target_compile_definitions(kmc_benchmark_trace PRIVATE KINETALIS_PERF_REFACTOR)
-          foreach(variant IN ITEMS skip_inactive skip_zero early_exit)
-            add_executable(kmc_benchmark_${variant} tools/performance/benchmark.cpp)
-            target_link_libraries(kmc_benchmark_${variant} PRIVATE Kinetalis::dealloying)
-            kinetalis_target_defaults(kmc_benchmark_${variant})
-            target_include_directories(kmc_benchmark_${variant} PRIVATE tools/performance)
-            target_compile_definitions(kmc_benchmark_${variant} PRIVATE KINETALIS_PERF_REFACTOR)
-          endforeach()
-          target_compile_definitions(kmc_benchmark_skip_inactive PRIVATE KINETALIS_PERF_SKIP_INACTIVE)
-          target_compile_definitions(kmc_benchmark_skip_zero PRIVATE KINETALIS_PERF_SKIP_ZERO)
-          target_compile_definitions(kmc_benchmark_early_exit PRIVATE KINETALIS_PERF_EARLY_SITE_EXIT)
           EOF
 
       - name: Configure and build both Release variants
@@ -81,9 +70,6 @@ jobs:
               -DKINETALIS_BUILD_BATCH=OFF -DKINETALIS_BUILD_VIEWER=OFF \
               -DKINETALIS_BUILD_TESTS=OFF -DKINETALIS_ENABLE_PCH=ON
             cmake --build "$tree/build/perf" --target kmc_benchmark kmc_benchmark_trace --parallel 2
-            if [ "$tree" = refactor ]; then
-              cmake --build "$tree/build/perf" --target kmc_benchmark_skip_inactive kmc_benchmark_skip_zero kmc_benchmark_early_exit --parallel 2
-            fi
           done
 
       - name: Record host hardware
@@ -95,8 +81,6 @@ jobs:
         run: |
           python3 refactor/tools/performance/run_compare.py \
             "$PWD/main/build/perf/Release/bin/kmc_benchmark" \
-            "$PWD/refactor/build/perf/Release/bin/kmc_benchmark"
-          python3 refactor/tools/performance/run_ablate.py \
             "$PWD/refactor/build/perf/Release/bin/kmc_benchmark"
 
       - name: Publish raw samples and traces

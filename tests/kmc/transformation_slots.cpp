@@ -29,13 +29,15 @@ namespace
         static constexpr event::Type event{ event::Type::dissolution };
         static constexpr std::size_t slot_count{ 2 };
 
+        bool enabled{ true };
+
         std::optional<event::Location> location(Site& source, SlotId slot, lattice::Lattice&) const
         {
             if (slot != 0) return std::nullopt;
             return event::Location{ source };
         }
 
-        bool is_source_candidate(Site const&) const { return true; }
+        bool is_source_candidate(Site const&) const { return enabled; }
         bool is_candidate(event::Location const&) const { return true; }
         bool is_rejected(event::Location const&) const { return false; }
         void execute(event::Location const&, lattice::Lattice&) const {}
@@ -47,6 +49,8 @@ namespace
         static constexpr event::Type event{ event::Type::diffusion };
         static constexpr std::size_t slot_count{ 3 };
 
+        bool enabled{ true };
+
         std::optional<event::Location> location(
             Site& source, SlotId slot, lattice::Lattice& lattice) const
         {
@@ -57,7 +61,7 @@ namespace
             } };
         }
 
-        bool is_source_candidate(Site const&) const { return true; }
+        bool is_source_candidate(Site const&) const { return enabled; }
         bool is_candidate(event::Location const&) const { return true; }
         bool is_rejected(event::Location const&) const { return false; }
         void execute(event::Location const&, lattice::Lattice&) const {}
@@ -69,6 +73,8 @@ namespace
         static constexpr event::Type event{ event::Type::deposition };
         static constexpr std::size_t slot_count{ 5 };
 
+        bool enabled{ true };
+
         std::optional<event::Location> location(Site& source, SlotId slot, lattice::Lattice&) const
         {
             // Slots 0, 1 and 2 never exist. Sites of different parity have
@@ -77,7 +83,7 @@ namespace
             return event::Location{ source };
         }
 
-        bool is_source_candidate(Site const&) const { return true; }
+        bool is_source_candidate(Site const&) const { return enabled; }
         bool is_candidate(event::Location const&) const { return true; }
         bool is_rejected(event::Location const&) const { return false; }
         void execute(event::Location const&, lattice::Lattice&) const {}
@@ -217,6 +223,49 @@ namespace
             ut::expect(ut::throws<std::out_of_range>([&] {
                 transformations.visit(Probes::slot_count, [](auto const&, SlotId) {});
             }));
+        };
+
+        "source-candidate aggregation and inactive blocks preserve homogeneous keys"_test = [] {
+            auto setup{ make_probe_setup() };
+            auto& transformations{ setup.model.transformations() };
+
+            auto lattice{ setup.make_lattice() };
+            auto& source{ lattice.sites().front() };
+            ut::expect(transformations.any_source_candidate(source));
+
+            transformations.get<SiteProbe>().enabled = false;
+            ut::expect(transformations.any_source_candidate(source));
+            transformations.get<NeighborProbe>().enabled = false;
+            ut::expect(transformations.any_source_candidate(source));
+
+            // Only SparseProbe remains; the first five slots are inactive
+            // even though their positions remain allocated at every site.
+            ProbeSimulation sparse_only{ setup };
+            auto const& keys{ sparse_only.event_class_keys() };
+            for (auto const& site : sparse_only.lattice().sites())
+            {
+                const auto first{ static_cast<std::size_t>(site.index()) * Probes::slot_count };
+                for (SlotId slot{}; slot < 8; ++slot)
+                    ut::expect(ut::eq(keys.at(first + slot), RateClassKey{}));
+                ut::expect(ut::eq(keys.at(first + 8), site.index() % 2 == 0 ? RateClassKey{ 3 } : RateClassKey{}));
+                ut::expect(ut::eq(keys.at(first + 9), site.index() % 2 == 1 ? RateClassKey{ 3 } : RateClassKey{}));
+            }
+            ut::expect(ut::eq(sparse_only.class_counts().at(3), sparse_only.lattice().sites().size()));
+
+            transformations.get<SparseProbe>().enabled = false;
+            ut::expect(not transformations.any_source_candidate(source));
+            ProbeSimulation empty{ setup };
+            ut::expect(ut::eq(empty.rate_tree()->rate_sum().value(), 0.0));
+            ut::expect(ut::eq(empty.class_counts().at(1), std::size_t{}));
+            ut::expect(ut::eq(empty.class_counts().at(2), std::size_t{}));
+            ut::expect(ut::eq(empty.class_counts().at(3), std::size_t{}));
+            for (auto const key : empty.event_class_keys())
+                ut::expect(ut::eq(key, RateClassKey{}));
+            for (auto const& site : empty.lattice().sites())
+                ut::expect(not site.is_active());
+
+            AnalysisPlan plan;
+            ut::expect(empty.run(plan) == simulation::Status::exhausted);
         };
 
         "homogeneous class-key slots preserve permanently absent geometries"_test = [] {

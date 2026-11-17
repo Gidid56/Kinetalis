@@ -202,25 +202,44 @@ namespace kmc
     Rate RejectionTreeSimulation<ModelType>::rate_sum(lattice::Site& site)
     {
         const auto first{ static_cast<std::size_t>(site.index()) * ModelType::slots_per_site };
+
+        if (not model_.transformations().any_source_candidate(site))
+        {
+            // An inactive site has no registered event classes to clear.
+            if (site.is_active())
+                for (SlotId slot{}; slot < ModelType::slots_per_site; ++slot)
+                    set_class_key(first + slot, RateClassKey{});
+
+            site.set_active(false);
+            return {};
+        }
+
         Rate sum{};
         bool has_events{};
 
         model_.transformations().for_each([&](auto const& transformation, std::size_t offset) {
             constexpr auto count{ std::remove_cvref_t<decltype(transformation)>::slot_count };
-            const bool source_candidate{ transformation.is_source_candidate(site) };
+            if (not transformation.is_source_candidate(site))
+            {
+                for (SlotId local{}; local < count; ++local)
+                    set_class_key(first + offset + local, RateClassKey{});
+                return;
+            }
 
             for (SlotId local{}; local < count; ++local)
             {
                 RateClassKey key{};
-                if (source_candidate)
-                    if (auto location{ transformation.location(site, local, lattice_) };
-                        location and transformation.is_candidate(*location))
-                        key = class_key(std::remove_cvref_t<decltype(transformation)>::event,
-                                        *location);
+                if (auto location{ transformation.location(site, local, lattice_) };
+                    location and transformation.is_candidate(*location))
+                    key = class_key(std::remove_cvref_t<decltype(transformation)>::event,
+                                    *location);
 
                 set_class_key(first + offset + local, key);
-                has_events |= key != RateClassKey{};
-                sum += class_rates_.at(key);
+                if (key != RateClassKey{})
+                {
+                    has_events = true;
+                    sum += class_rates_.at(key);
+                }
             }
         });
 
