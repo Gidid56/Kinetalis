@@ -36,9 +36,15 @@ namespace studies::dealloying::events
             return source.element() == element and source.coordination() <= max_coordination;
         }
 
+        bool is_candidate_after_source_check(kmc::event::Location const& location) const
+        {
+            return location.sites().size() == 1;
+        }
+
         bool is_candidate(kmc::event::Location const& location) const
         {
-            return location.sites().size() == 1 and is_source_candidate(location.source());
+            return is_source_candidate(location.source()) and
+                   is_candidate_after_source_check(location);
         }
 
         // No postselection rejection in the dissolution model.
@@ -74,10 +80,15 @@ namespace studies::dealloying::events
             return source.is_occupied() and source.coordination() <= max_source_coordination;
         }
 
+        bool is_candidate_after_source_check(kmc::event::Location const& location) const
+        {
+            return location.sites().size() == 2 and location.sites()[1]->is_vacant();
+        }
+
         bool is_candidate(kmc::event::Location const& location) const
         {
-            return location.sites().size() == 2 and is_source_candidate(location.source()) and
-                   location.sites()[1]->is_vacant();
+            return is_source_candidate(location.source()) and
+                   is_candidate_after_source_check(location);
         }
 
         // A selected candidate can still be rejected by the target constraint.

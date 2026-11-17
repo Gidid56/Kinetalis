@@ -47,7 +47,7 @@ namespace kmc
             const auto escape_time{ 1.0 / total_rate };
             time_ += -std::log1p(-rng_.probability()) * escape_time;
 
-            auto const selection{ select_random_location() };
+            auto const selection{ select_random_location(total_rate) };
             auto record{ evaluate_event(selection) };
 
             analysis_plan.observe_selected(record);
@@ -86,15 +86,21 @@ namespace kmc
         // the current event rules require at least one neighbor shell.
         const auto radius{ std::max<std::size_t>(1, model_.kinetics().invalidation_radius()) };
 
-        // First invalidate the entire region, then recalculate. Recomputing a
-        // source clears its dirty flag, so overlapping walks are inexpensive.
-        auto invalidate = [](lattice::Site& site) { site.set_dirty(true); };
+        // Mark first, then recompute: every source must see the completed
+        // lattice transformation. Deduplicate overlapping neighborhood walks
+        // through the existing dirty flag and retain first-visit order.
+        affected_sites_.clear();
+        auto invalidate = [this](lattice::Site& site) {
+            if (site.is_dirty())
+                return;
+            site.set_dirty(true);
+            affected_sites_.push_back(&site);
+        };
         for (auto* site : record.sites())
             visit_neighbor_tree(*site, radius, invalidate);
 
-        auto recalculate = [this](lattice::Site& site) { update(site); };
-        for (auto* site : record.sites())
-            visit_neighbor_tree(*site, radius, recalculate);
+        for (auto* site : affected_sites_)
+            update(*site);
 
         if (block_updates_.size() == 1)
         {
@@ -113,9 +119,9 @@ namespace kmc
 
     template <class ModelType>
     typename RejectionTreeSimulation<ModelType>::Selection
-    RejectionTreeSimulation<ModelType>::select_random_location()
+    RejectionTreeSimulation<ModelType>::select_random_location(Rate total_rate)
     {
-        auto selected_rate{ physics::ensure_non_negative(rate_tree_->rate_sum() * rng_.probability()) };
+        auto selected_rate{ physics::ensure_non_negative(total_rate * rng_.probability()) };
         auto site_index{ rate_tree_->index(selected_rate) };
 
         while (selected_rate >= site_rates_.at(site_index))
@@ -202,8 +208,9 @@ namespace kmc
     Rate RejectionTreeSimulation<ModelType>::rate_sum(lattice::Site& site)
     {
         const auto first{ static_cast<std::size_t>(site.index()) * ModelType::slots_per_site };
+        auto const source_candidates{ model_.transformations().source_candidates(site) };
 
-        if (not model_.transformations().any_source_candidate(site))
+        if (std::ranges::none_of(source_candidates, std::identity{}))
         {
             // An inactive site has no registered event classes to clear.
             if (site.is_active())
@@ -217,9 +224,10 @@ namespace kmc
         Rate sum{};
         bool has_events{};
 
+        std::size_t transformation_index{};
         model_.transformations().for_each([&](auto const& transformation, std::size_t offset) {
             constexpr auto count{ std::remove_cvref_t<decltype(transformation)>::slot_count };
-            if (not transformation.is_source_candidate(site))
+            if (not source_candidates[transformation_index++])
             {
                 for (SlotId local{}; local < count; ++local)
                     set_class_key(first + offset + local, RateClassKey{});
@@ -229,10 +237,23 @@ namespace kmc
             for (SlotId local{}; local < count; ++local)
             {
                 RateClassKey key{};
-                if (auto location{ transformation.location(site, local, lattice_) };
-                    location and transformation.is_candidate(*location))
-                    key = class_key(std::remove_cvref_t<decltype(transformation)>::event,
-                                    *location);
+                if (auto location{ transformation.location(site, local, lattice_) }; location)
+                {
+                    // The source precondition has already been checked.
+                    // Transformations without an optimized predicate retain
+                    // the original full candidate check.
+                    const bool candidate{ [&] {
+                        if constexpr (requires {
+                            transformation.is_candidate_after_source_check(*location);
+                        })
+                            return transformation.is_candidate_after_source_check(*location);
+                        else
+                            return transformation.is_candidate(*location);
+                    }() };
+                    if (candidate)
+                        key = class_key(std::remove_cvref_t<decltype(transformation)>::event,
+                                        *location);
+                }
 
                 set_class_key(first + offset + local, key);
                 if (key != RateClassKey{})

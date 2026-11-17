@@ -2,6 +2,7 @@
 #include "lattice/site.h"
 #include "types.h"
 
+#include <array>
 #include <concepts>
 #include <cstdint>
 #include <format>
@@ -125,6 +126,17 @@ namespace kmc::event
         template <class T>
         auto& get(this auto& self) noexcept { return std::get<T>(self.transformations_); }
 
+        using SourceCandidates = std::array<bool, sizeof...(Ts)>;
+
+        // Evaluate each source predicate once; the same result drives the
+        // all-inactive early exit and the per-transformation slot blocks.
+        SourceCandidates source_candidates(lattice::Site const& source) const
+        {
+            return std::apply([&](auto const&... transformations) {
+                return SourceCandidates{ transformations.is_source_candidate(source)... };
+            }, transformations_);
+        }
+
         bool any_source_candidate(lattice::Site const& source) const
         {
             return std::apply([&](auto const&... transformations) {
@@ -146,15 +158,21 @@ namespace kmc::event
         template <class Function>
         void visit(std::size_t slot, Function&& function) const
         {
-            bool found{};
-            for_each([&](auto const& transformation, std::size_t offset) {
-                constexpr auto count{ std::remove_cvref_t<decltype(transformation)>::slot_count };
-                if (slot >= offset and slot - offset < count)
-                {
-                    std::invoke(function, transformation, slot - offset);
-                    found = true;
-                }
-            });
+            std::size_t offset{};
+            const bool found{ std::apply([&](auto const&... transformations) {
+                return (([&] {
+                    constexpr auto count{
+                        std::remove_cvref_t<decltype(transformations)>::slot_count
+                    };
+                    const auto first{ std::exchange(offset, offset + count) };
+                    if (slot < first or slot - first >= count)
+                        return false;
+
+                    std::invoke(function, transformations, slot - first);
+                    return true;
+                }()) or ...);
+            }, transformations_) };
+
             if (not found)
                 throw std::out_of_range{ "Event slot outside transformation layout." };
         }

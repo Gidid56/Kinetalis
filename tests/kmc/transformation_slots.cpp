@@ -30,6 +30,7 @@ namespace
         static constexpr std::size_t slot_count{ 2 };
 
         bool enabled{ true };
+        std::size_t* source_checks{};
 
         std::optional<event::Location> location(Site& source, SlotId slot, lattice::Lattice&) const
         {
@@ -37,7 +38,11 @@ namespace
             return event::Location{ source };
         }
 
-        bool is_source_candidate(Site const&) const { return enabled; }
+        bool is_source_candidate(Site const&) const
+        {
+            if (source_checks) ++*source_checks;
+            return enabled;
+        }
         bool is_candidate(event::Location const&) const { return true; }
         bool is_rejected(event::Location const&) const { return false; }
         void execute(event::Location const&, lattice::Lattice&) const {}
@@ -50,6 +55,7 @@ namespace
         static constexpr std::size_t slot_count{ 3 };
 
         bool enabled{ true };
+        std::size_t* source_checks{};
 
         std::optional<event::Location> location(
             Site& source, SlotId slot, lattice::Lattice& lattice) const
@@ -61,7 +67,11 @@ namespace
             } };
         }
 
-        bool is_source_candidate(Site const&) const { return enabled; }
+        bool is_source_candidate(Site const&) const
+        {
+            if (source_checks) ++*source_checks;
+            return enabled;
+        }
         bool is_candidate(event::Location const&) const { return true; }
         bool is_rejected(event::Location const&) const { return false; }
         void execute(event::Location const&, lattice::Lattice&) const {}
@@ -74,6 +84,7 @@ namespace
         static constexpr std::size_t slot_count{ 5 };
 
         bool enabled{ true };
+        std::size_t* source_checks{};
 
         std::optional<event::Location> location(Site& source, SlotId slot, lattice::Lattice&) const
         {
@@ -83,7 +94,11 @@ namespace
             return event::Location{ source };
         }
 
-        bool is_source_candidate(Site const&) const { return enabled; }
+        bool is_source_candidate(Site const&) const
+        {
+            if (source_checks) ++*source_checks;
+            return enabled;
+        }
         bool is_candidate(event::Location const&) const { return true; }
         bool is_rejected(event::Location const&) const { return false; }
         void execute(event::Location const&, lattice::Lattice&) const {}
@@ -223,6 +238,19 @@ namespace
             ut::expect(ut::throws<std::out_of_range>([&] {
                 transformations.visit(Probes::slot_count, [](auto const&, SlotId) {});
             }));
+        };
+
+        "source predicates are evaluated once per site and transformation"_test = [] {
+            auto setup{ make_probe_setup() };
+            std::array<std::size_t, 3> checks{};
+            setup.model.transformations().get<SiteProbe>().source_checks = &checks[0];
+            setup.model.transformations().get<NeighborProbe>().source_checks = &checks[1];
+            setup.model.transformations().get<SparseProbe>().source_checks = &checks[2];
+
+            ProbeSimulation simulation{ setup };
+            auto const n{ simulation.lattice().sites().size() };
+            for (auto const count : checks)
+                ut::expect(ut::eq(count, n));
         };
 
         "source-candidate aggregation and inactive blocks preserve homogeneous keys"_test = [] {

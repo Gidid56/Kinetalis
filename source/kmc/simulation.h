@@ -75,7 +75,7 @@ private:
     void set_class_key(std::size_t, RateClassKey);
 
     Rate rate_sum(lattice::Site&);
-    Selection select_random_location();
+    Selection select_random_location(Rate total_rate);
     event::Record evaluate_event(Selection const&);
 
     void initialize_rates();
@@ -91,6 +91,7 @@ private:
     Rates site_rates_;
     RateClassKeys event_class_keys_;
     std::vector<rate_tree::BlockUpdate> block_updates_;
+    std::vector<lattice::Site*> affected_sites_;
 };
 
 #include "simulation_impl.hpp"
