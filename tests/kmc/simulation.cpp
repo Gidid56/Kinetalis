@@ -374,20 +374,14 @@ namespace
         {
             accepted_ = true;
             source_index_ = record.sites()[0]->index();
-            size_ = record.sites().size();
-            type_ = record.type;
         }
 
         lattice::Index source_index() const { return source_index_; }
-        std::size_t size() const { return size_; }
-        event::Type type() const { return type_; }
         bool accepted() const { return accepted_; }
 
     private:
         bool accepted_{};
         lattice::Index source_index_{};
-        std::size_t size_{};
-        event::Type type_{};
     };
 
     void expect_same_state(TestSimulation const& a, TestSimulation const& b)
@@ -527,10 +521,6 @@ namespace
             if (not observer.accepted())
                 return;
             ut::expect(ut::eq(simulation.step(), Step{ 1 }));
-            std::println("DEBUG: selected site {} radius {}, location size {}, type {}",
-                observer.source_index(), simulation.model().kinetics().invalidation_radius(),
-                observer.size(), enum_name(observer.type()));
-
             std::vector<bool> expected(lattice.sites().size());
             auto& source{ lattice.sites().at(observer.source_index()) };
             expected[source.index()] = true;
