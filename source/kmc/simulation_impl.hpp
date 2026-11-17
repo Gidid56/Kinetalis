@@ -47,7 +47,7 @@ namespace kmc
             const auto escape_time{ 1.0 / total_rate };
             time_ += -std::log1p(-rng_.probability()) * escape_time;
 
-            auto const selection{ select_random_location(total_rate) };
+            auto const selection{ select_event_slot(total_rate) };
             auto record{ evaluate_event(selection) };
 
             analysis_plan.observe_selected(record);
@@ -100,7 +100,7 @@ namespace kmc
             visit_neighbor_tree(*site, radius, invalidate);
 
         for (auto* site : affected_sites_)
-            update(*site);
+            update_site_rate(*site);
 
         if (block_updates_.size() == 1)
         {
@@ -119,7 +119,7 @@ namespace kmc
 
     template <class ModelType>
     typename RejectionTreeSimulation<ModelType>::Selection
-    RejectionTreeSimulation<ModelType>::select_random_location(Rate total_rate)
+    RejectionTreeSimulation<ModelType>::select_event_slot(Rate total_rate)
     {
         auto selected_rate{ physics::ensure_non_negative(total_rate * rng_.probability()) };
         auto site_index{ rate_tree_->index(selected_rate) };
@@ -179,14 +179,14 @@ namespace kmc
     }
 
     template <class ModelType>
-    void RejectionTreeSimulation<ModelType>::update(lattice::Site& site)
+    void RejectionTreeSimulation<ModelType>::update_site_rate(lattice::Site& site)
     {
         if (not site.is_dirty())
             return;
 
         auto& old_rate{ site_rates_.at(site.index()) };
 
-        Rate new_rate{ rate_sum(site) };
+        Rate new_rate{ update_site_classes(site) };
 
         if (new_rate != old_rate)
         {
@@ -205,7 +205,7 @@ namespace kmc
     }
 
     template <class ModelType>
-    Rate RejectionTreeSimulation<ModelType>::rate_sum(lattice::Site& site)
+    Rate RejectionTreeSimulation<ModelType>::update_site_classes(lattice::Site& site)
     {
         const auto first{ static_cast<std::size_t>(site.index()) * ModelType::slots_per_site };
         auto const source_candidates{ model_.transformations().source_candidates(site) };
@@ -242,17 +242,9 @@ namespace kmc
                     // The source precondition has already been checked.
                     // Transformations without an optimized predicate retain
                     // the original full candidate check.
-                    const bool candidate{ [&] {
-                        if constexpr (requires {
-                            transformation.is_candidate_after_source_check(*location);
-                        })
-                            return transformation.is_candidate_after_source_check(*location);
-                        else
-                            return transformation.is_candidate(*location);
-                    }() };
-                    if (candidate)
-                        key = class_key(std::remove_cvref_t<decltype(transformation)>::event,
-                                        *location);
+                    if (event::is_candidate_after_source_check(transformation, *location))
+                        key = register_class(std::remove_cvref_t<decltype(transformation)>::event,
+                                             *location);
                 }
 
                 set_class_key(first + offset + local, key);
@@ -305,7 +297,7 @@ namespace kmc
     }
 
     template <class ModelType>
-    RateClassKey RejectionTreeSimulation<ModelType>::class_key(
+    RateClassKey RejectionTreeSimulation<ModelType>::register_class(
         event::Type type, event::Location const& location)
     {
         const auto key{ model_.kinetics().classify(type, location, lattice_) };
@@ -343,7 +335,7 @@ namespace kmc
         block_updates_.clear();
         for (auto& site : lattice_.sites())
         {
-            site_rates_.at(site.index()) = rate_sum(site);
+            site_rates_.at(site.index()) = update_site_classes(site);
             site.set_dirty(false);
         }
 
