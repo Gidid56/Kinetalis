@@ -146,8 +146,8 @@ namespace kmc
         model_.transformations().visit(selected.slot,
             [&](auto const& transformation, SlotId local_slot) {
                 auto location{ transformation.location(source, local_slot, lattice_) };
-                if (not location or not transformation.is_candidate(*location))
-                    throw std::logic_error{ "Selected slot no longer denotes an active event." };
+                if (not location)
+                    throw std::logic_error{ "Selected slot has no geometric location." };
 
                 const bool rejected{ transformation.is_rejected(*location) };
                 record.emplace(std::move(*location),
