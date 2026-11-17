@@ -3,14 +3,15 @@
 import pathlib
 import sys
 
-STAGES = {
-    "::select_random_location(": "Select",
-    "::evaluate_event(": "Evaluate",
-    "::update_affected_rates(": "Update",
-    "::rate_sum(": "Enumerate",
-    "::class_key(": "Classify",
-    "::block_rate(": "Block",
-}
+# Support the pre-refactor and renamed implementations in the same A/B job.
+STAGES = (
+    (("::select_random_location(", "::select_event_slot("), "Select"),
+    (("::evaluate_event(",), "Evaluate"),
+    (("::update_affected_rates(",), "Update"),
+    (("::rate_sum(", "::update_site_classes("), "Enumerate"),
+    (("::class_key(", "::register_class("), "Classify"),
+    (("::block_rate(",), "Block"),
+)
 
 
 def instrument(path: pathlib.Path) -> None:
@@ -18,10 +19,11 @@ def instrument(path: pathlib.Path) -> None:
     include = '#include "../../tools/performance/perf_probe.h"\n'
     if include not in text:
         text = text.replace("#pragma once\n", "#pragma once\n" + include, 1)
-    for signature, stage in STAGES.items():
-        at = text.find(signature)
+    for signatures, stage in STAGES:
+        at = next((position for signature in signatures
+                   if (position := text.find(signature)) != -1), -1)
         if at == -1:
-            raise RuntimeError(f"{path}: missing function {signature}")
+            raise RuntimeError(f"{path}: missing function {signatures}")
         brace = text.find("{", at)
         if brace == -1:
             raise RuntimeError(f"{path}: missing function body {signature}")
