@@ -91,6 +91,7 @@ private:
     Rates site_rates_;
     RateClassKeys event_class_keys_;
     std::vector<rate_tree::BlockUpdate> block_updates_;
+    std::vector<lattice::Site*> affected_sites_;
 };
 
 #include "simulation_impl.hpp"
