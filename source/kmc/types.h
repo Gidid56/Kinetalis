@@ -32,7 +32,7 @@ namespace kmc
 
     namespace event { class Record; }
 
-    class Kinetics;
+    namespace event { class Kinetics; }
     template <class KineticsT, class TransformationsT> class Model;
     class Simulation;
 

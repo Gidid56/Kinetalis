@@ -61,7 +61,7 @@ public:
     }
 
     simulation::Status run(AnalysisPlan&, std::stop_token = {}) override;
-    std::string transformation_settings() const override { return model_.transformations().settings(); }
+    std::string transformation_settings() const override { return model_.mechanisms().settings(); }
     std::string kinetics_settings() const override { return model_.kinetics().output_text(); }
     Temperature temperature() const override { return model_.kinetics().temperature(); }
 

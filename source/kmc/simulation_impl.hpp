@@ -53,7 +53,7 @@ namespace kmc
             {
                 ++step_;
 
-                model_.transformations().visit(selection.slot,
+                model_.mechanisms().visit(selection.slot,
                     [&](auto const& transformation, SlotId) {
                         transformation.execute(record.location(), lattice_);
                     });
@@ -88,7 +88,7 @@ namespace kmc
                 return;
 
             if (not site.is_active() and
-                not model_.transformations().is_source_active(site))
+                not model_.mechanisms().is_source_active(site))
                 return;
 
             site.set_dirty(true);
@@ -135,7 +135,7 @@ namespace kmc
         std::optional<event::Record> record;
         auto& source{ lattice_.sites().at(selected.source) };
 
-        model_.transformations().visit(selected.slot,
+        model_.mechanisms().visit(selected.slot,
             [&](auto const& transformation, SlotId local_slot) {
                 auto location{ transformation.location(source, local_slot, lattice_) };
                 if (not location)
@@ -198,7 +198,7 @@ namespace kmc
         Rate sum{};
         bool has_events{};
 
-        model_.transformations().for_each([&](auto const& transformation, std::size_t offset) {
+        model_.mechanisms().for_each([&](auto const& transformation, std::size_t offset) {
             constexpr auto count{ std::remove_cvref_t<decltype(transformation)>::slot_count };
             if (not transformation.is_source_candidate(site))
             {
@@ -215,9 +215,9 @@ namespace kmc
                 if (auto location{ transformation.location(site, local, lattice_) }; location)
                 {
                     // The source precondition has already been checked.
-                    // Transformations without an optimized predicate retain
+                    // Mechanisms without an optimized predicate retain
                     // the original full candidate check.
-                    if (kmc::is_candidate_after_source_check(transformation, *location))
+                    if (kmc::event::is_candidate_after_source_check(transformation, *location))
                         key = register_class(std::remove_cvref_t<decltype(transformation)>::event,
                                              *location);
                 }
