@@ -203,7 +203,7 @@ The KMC scheduler uses static dispatch for the concrete kinetic model and proces
 
 ### Extend the framework
 
-Most studies can be implemented under `studies/` without modifying the KMC scheduler. The [dealloying study](studies/dealloying/) provides a complete reference. Each event process has its own header under [`process.h`](studies/dealloying/process.h), while kinetic models live under [`kinetics/`](studies/dealloying/kinetics/):
+Most studies can be implemented under `studies/` without modifying the KMC scheduler. The [dealloying study](studies/dealloying/) provides a complete reference. The elementary process definitions are grouped in [`process.h`](studies/dealloying/process.h), while kinetic models live under [`kinetics/`](studies/dealloying/kinetics/):
 
 1. Define one or more event processes implementing the [`kmc::Process` concept](source/kmc/process.h): `event`, `slot_count`, `location(...)`, `is_source_candidate(...)`, `is_candidate(...)`, `is_rejected(...)`, `execute(...)`, and `settings()`. An optional `is_candidate_after_source_check(...)` avoids repeating a source predicate for every slot.
 2. Implement a kinetic model, typically deriving from [`kmc::Kinetics`](source/kmc/kinetics.h), with `classify(...)`, `number_keys()`, `class_event(...)`, `rate(...)`, `refresh_rates()`, and `output_text()`. Ensure `invalidation_radius()` covers all source-site rates affected by an accepted lattice change.
