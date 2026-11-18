@@ -195,7 +195,7 @@ Kinetalis separates **which events can occur and how fast** from **how events ar
 
 ### Event lifecycle
 
-An [`kmc::Process`](source/kmc/process.h) is a C++ concept, not a runtime base class. Each process declares an event type and a compile-time `slot_count` per source site. A slot can resolve to an [`event::Location`](source/kmc/event.h) containing the source site and, for example, a diffusion target; nonexistent locations and geometrically invalid candidates contribute no rate. The current `Location` representation supports up to two sites.
+An [`kmc::Process`](source/kmc/process.h) is a C++ concept, not a runtime base class. Each process declares an event type and a compile-time `slot_count` per source site. A slot can resolve to an [`event::Location`](source/kmc/event.h) containing the source site and, for example, a diffusion target; nonexistent locations and geometrically invalid candidates contribute no rate. The current `Location` representation accepts one or two `lattice::Site*` arguments directly.
 
 A kinetic model assigns each candidate a `RateClassKey` using the event type and its local environment. Key zero denotes an inactive slot. Rates are cached by class, while a hierarchical [rate-sum tree](source/kmc/rate_tree.h) stores the summed rates of source sites for efficient event selection. The simulation resolves the selected slot into a location, evaluates any postselection rejection, and advances physical time for **both accepted and rejected selections**. Only accepted selections modify the lattice, increment the accepted-step counter, and trigger local rate updates.
 
@@ -205,7 +205,7 @@ The KMC scheduler uses static dispatch for the concrete kinetic model and proces
 
 Most studies can be implemented under `studies/` without modifying the KMC scheduler. The [dealloying study](studies/dealloying/) provides a complete reference. The elementary process definitions are grouped in [`process.h`](studies/dealloying/process.h), while kinetic models live under [`kinetics/`](studies/dealloying/kinetics/):
 
-1. Define one or more event processes implementing the [`kmc::Process` concept](source/kmc/process.h): `event`, `slot_count`, `location(...)`, `is_source_candidate(...)`, `is_candidate(...)`, `is_rejected(...)`, `execute(...)`, and `settings()`. An optional `is_candidate_after_source_check(...)` avoids repeating a source predicate for every slot.
+1. Define elementary processes implementing the [`kmc::Process` concept](source/kmc/process.h): `event`, `cluster_size`, `slot_count`, `is_candidate(Site const&)`, `execute(...)`, and `settings()`. Multi-site processes must provide `location(...)`; single-site processes get a default location. Optional `has_slot(...)`, `is_candidate(Location const&)`, and `is_rejected(...)` refine geometrical availability, candidate eligibility, and postselection rejection respectively.
 2. Implement a kinetic model, typically deriving from [`kmc::Kinetics`](source/kmc/kinetics.h), with `classify(...)`, `number_keys()`, `class_event(...)`, `rate(...)`, `refresh_rates()`, and `output_text()`. Ensure `invalidation_radius()` covers all source-site rates affected by an accepted lattice change.
 3. Combine the types into a `Model` and configure them in [setup factories](studies/dealloying/setups.h). The current study uses these aliases in [`model.h`](studies/dealloying/model.h):
 

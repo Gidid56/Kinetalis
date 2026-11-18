@@ -240,6 +240,26 @@ namespace
             }));
         };
 
+        "location uses site pointers and single-site processes use defaults"_test = [] {
+            auto lattice{ make_probe_setup().make_lattice() };
+            auto& source{ lattice.sites().front() };
+            auto* neighbor{ *lattice.neighbors(source).begin() };
+
+            const event::Location single{ &source };
+            const event::Location pair{ &source, neighbor };
+            ut::expect(ut::eq(single.sites().size(), SiteProbe::cluster_size));
+            ut::expect(ut::eq(pair.sites().size(), NeighborProbe::cluster_size));
+            ut::expect(&single.source() == &source);
+            ut::expect(pair.sites()[1] == neighbor);
+
+            SiteProbe process;
+            auto location{ kmc::make_location(process, source, 0, lattice) };
+            ut::expect(ut::eq(location.sites().size(), SiteProbe::cluster_size));
+            ut::expect(&location.source() == &source);
+            ut::expect(kmc::is_location_candidate(process, location));
+            ut::expect(not kmc::is_rejected(process, location));
+        };
+
         "source activity short-circuits across processes"_test = [] {
             Probes processes;
             std::array<std::size_t, 3> checks{};
