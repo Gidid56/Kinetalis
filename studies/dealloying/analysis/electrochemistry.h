@@ -1,5 +1,5 @@
 #pragma once
-#include "kmc/event.h"
+#include "kmc/event/record.h"
 #include "output/writer.h"
 
 namespace studies::dealloying::analysis { class Electrochemistry; }

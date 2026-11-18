@@ -3,7 +3,7 @@
 #include "trajectory.h"
 
 #include "bridge.h"
-#include "kmc/event.h"
+#include "kmc/event/record.h"
 #include "lattice/site.h"
 
 using namespace viewer;

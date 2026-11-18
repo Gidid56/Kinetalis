@@ -1,5 +1,5 @@
 #pragma once
-#include "kmc/event.h"
+#include "kmc/event/record.h"
 #include "writer.h"
 
 class output::EventFlux : public output::Writer

@@ -1,6 +1,6 @@
 #pragma once
 #include "kmc/observer.h"
-#include "kmc/event.h"
+#include "kmc/event/record.h"
 #include "types.h"
 
 class viewer::Trajectory : public kmc::Observer

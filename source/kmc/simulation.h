@@ -1,7 +1,7 @@
 #pragma once
 #include "simulation/base.h"
 #include "model.h"
-#include "event.h"
+#include "event/record.h"
 #include "rate_tree.h"
 #include "setup.h"
 

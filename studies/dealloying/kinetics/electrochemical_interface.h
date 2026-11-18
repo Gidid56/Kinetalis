@@ -1,6 +1,7 @@
 #pragma once
 #include "kmc/event/kinetics.h"
-#include "kmc/event.h"
+#include "kmc/event/location.h"
+#include "kmc/event/types.h"
 
 namespace studies::dealloying::kinetics
 {

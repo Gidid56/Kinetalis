@@ -5,8 +5,8 @@
 #include "atoms.h"
 
 #include "lattice/lattice.h"
-#include "dealloying/events.h"
-#include "dealloying/models/gtc.h"
+#include "dealloying/events/diffusion.h"
+#include "dealloying/gtc.h"
 #include "viewer/bridge.h"
 
 using namespace viewer::scene;
