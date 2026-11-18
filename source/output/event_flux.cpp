@@ -31,21 +31,13 @@ void EventFlux::observe_selected(kmc::event::Record const&)
     last_time_ = simulation.time();
     residence_time_ += time_delta;
 
-    auto const& class_counts{ simulation.class_counts() };
-    auto const& class_rates{ simulation.class_rates() };
-
-    for (std::size_t key{ 1 }; key < class_counts.size(); ++key)
+    auto const& classes{ simulation.classes() };
+    for (std::size_t key{ 1 }; key < classes.size(); ++key)
     {
-        auto const count{ class_counts[key] };
-
-        if (count == 0)
-            continue;
-
-        auto const rate{ class_rates[key] };
-        auto const event{ simulation.class_event(static_cast<kmc::RateClassKey>(key)) };
-
-        if (event != kmc::event::Type::none)
-            data_[event].integral += count * rate * time_delta;
+        auto const& kinetic_class{ classes[key] };
+        if (kinetic_class.count != 0 and kinetic_class.is_initialized())
+            data_[kinetic_class.type].integral +=
+                kinetic_class.count * kinetic_class.rate * time_delta;
     }
 }
 
