@@ -82,21 +82,16 @@ namespace kmc
     {
         block_updates_.clear();
 
-        // Mark first, then recompute: every source must see the completed
-        // lattice transformation. Deduplicate overlapping neighborhood walks
-        // through the existing dirty flag and retain first-visit order.
-        affected_sites_.clear();
-        auto invalidate = [this](lattice::Site& site) {
-            if (site.is_dirty())
-                return;
-            site.set_dirty(true);
-            affected_sites_.push_back(&site);
-        };
+        // First mark all affected sites, then update them. The dirty flag
+        // ensures each site is recalculated only once, even if visited repeatedly.
+        const auto radius{ model_.kinetics().invalidation_radius() };
+        auto mark_dirty = [](lattice::Site& site) { site.set_dirty(true); };
         for (auto* site : record.sites())
-            visit_neighbor_tree(*site, model_.kinetics().invalidation_radius(), invalidate);
+            visit_neighbor_tree(*site, radius, mark_dirty);
 
-        for (auto* site : affected_sites_)
-            update_site_rate(*site);
+        auto update_dirty = [this](lattice::Site& site) { update_site_rate(site); };
+        for (auto* site : record.sites())
+            visit_neighbor_tree(*site, radius, update_dirty);
 
         if (block_updates_.size() == 1)
         {
