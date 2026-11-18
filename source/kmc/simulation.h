@@ -7,6 +7,19 @@
 
 #include <stop_token>
 
+namespace kmc
+{
+    struct KineticClass
+    {
+        Rate rate{};
+        std::size_t count{};
+        event::Type type{ event::Type::none };
+
+        bool is_initialized() const noexcept { return type != event::Type::none; }
+        bool operator==(KineticClass const&) const = default;
+    };
+}
+
 class kmc::Simulation : public simulation::Base
 {
 public:
@@ -26,19 +39,13 @@ public:
     }
 
     auto time() const { return time_; }
-    auto& class_rates() const { return class_rates_; }
-    auto& class_counts() const { return class_counts_; }
-    bool class_initialized(RateClassKey key) const { return class_initialized_.at(key); }
-    event::Type class_event(RateClassKey key) const { return class_events_.at(key); }
+    auto const& classes() const noexcept { return classes_; }
 
 protected:
     Time time_{};
     std::size_t rejections_{};
 
-    Rates class_rates_{ Rate{} };
-    std::vector<bool> class_initialized_{ false };
-    std::vector<std::size_t> class_counts_{ 0 };
-    std::vector<event::Type> class_events_{ event::Type::none };
+    std::vector<KineticClass> classes_{ KineticClass{} };
 };
 
 template <class ModelType>
