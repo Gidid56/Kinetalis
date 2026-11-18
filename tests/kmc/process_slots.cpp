@@ -36,11 +36,6 @@ namespace
 
         bool has_slot(Site const&, SlotId slot) const { return slot == 0; }
 
-        event::Location location(Site& source, SlotId, lattice::Lattice&) const
-        {
-            return event::Location{ &source };
-        }
-
         bool is_candidate(Site const&) const
         {
             if (source_checks) ++*source_checks;

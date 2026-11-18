@@ -48,12 +48,6 @@ namespace
         bool allow_gold{ false };
         std::vector<std::size_t>* source_checks{};
 
-        event::Location location(
-            Site& source, SlotId, lattice::Lattice&) const
-        {
-            return event::Location{ &source };
-        }
-
         bool is_candidate(Site const& site) const
         {
             if (source_checks and site.index() < source_checks->size())
@@ -62,11 +56,6 @@ namespace
             return enabled and (site.element() == Element::Ag or
                    (allow_gold and site.element() == Element::Au)) and
                    site.coordination() < lattice::max_coordination;
-        }
-
-        bool is_candidate(event::Location const& location) const
-        {
-            return location.sites().size() == 1 and is_candidate(location.source());
         }
 
         bool is_rejected(event::Location const& location) const
@@ -110,8 +99,7 @@ namespace
 
         bool is_candidate(event::Location const& location) const
         {
-            return location.sites().size() == 2 and is_candidate(location.source()) and
-                   location.sites()[1]->is_vacant();
+            return location.sites()[1]->is_vacant();
         }
 
         bool is_rejected(event::Location const& location) const
@@ -483,7 +471,8 @@ namespace
                 for (auto* neighbor : lattice.neighbors(site))
                 {
                     std::array<Site*, 2> candidate{ &site, neighbor };
-                    if (kmc::is_location_candidate(cluster_rule, event::Location{ candidate[0], candidate[1] }))
+                    if (cluster_rule.is_candidate(site) and
+                        kmc::is_location_candidate(cluster_rule, event::Location{ candidate[0], candidate[1] }))
                     {
                         source = &site;
                         destination = neighbor;
