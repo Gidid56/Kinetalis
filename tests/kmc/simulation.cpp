@@ -404,6 +404,17 @@ namespace
     }
 
     ut::suite<"kmc.simulation"> simulation_tests = [] {
+        "kinetic-class initialization is independent of rate and population"_test = [] {
+            KineticClass uninitialized{};
+            ut::expect(not uninitialized.is_initialized());
+
+            KineticClass initialized{ .rate = Rate{}, .count = 0,
+                                      .type = event::Type::diffusion };
+            ut::expect(initialized.is_initialized());
+            ut::expect(initialized.rate == Rate{});
+            ut::expect(ut::eq(initialized.count, std::size_t{}));
+        };
+
         "event records own their site-pointer storage"_test = [] {
             auto setup{ make_setup() };
             TestSimulation simulation{ setup };
