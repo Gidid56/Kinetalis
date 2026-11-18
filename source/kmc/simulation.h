@@ -83,7 +83,6 @@ private:
 
     Rate update_site_classes(lattice::Site&);
     Selection select_event_slot(Rate total_rate);
-    event::Record evaluate_event(Selection const&);
 
     void initialize_rates();
     void update_all_rates();

@@ -3,7 +3,7 @@
 #include "lattice/lattice.h"
 
 #include <format>
-#include <optional>
+#include <cassert>
 
 namespace studies::dealloying::process
 {
@@ -24,10 +24,10 @@ namespace studies::dealloying::process
                 static_cast<unsigned>(max_coordination));
         }
 
-        std::optional<kmc::event::Location> location(
+        kmc::event::Location location(
             lattice::Site& source, std::size_t slot, lattice::Lattice&) const
         {
-            if (slot != 0) return std::nullopt;
+            assert(slot == 0);
             return kmc::event::Location{ source };
         }
 
@@ -65,10 +65,15 @@ namespace studies::dealloying::process
 
         lattice::Coordination max_source_coordination{ 9 }, min_target_coordination{ 2 };
 
-        std::optional<kmc::event::Location> location(
+        bool has_slot(lattice::Site const& source, std::size_t slot) const
+        {
+            return slot < source.max_neighbors();
+        }
+
+        kmc::event::Location location(
             lattice::Site& source, std::size_t slot, lattice::Lattice& lattice) const
         {
-            if (slot >= source.max_neighbors()) return std::nullopt;
+            assert(has_slot(source, slot));
             return kmc::event::Location{ lattice::Cluster<2>{
                 &source,
                 lattice.neighbor(source.neighbor_index() + static_cast<lattice::Index>(slot))

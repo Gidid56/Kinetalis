@@ -48,10 +48,10 @@ namespace
         bool allow_gold{ false };
         std::vector<std::size_t>* source_checks{};
 
-        std::optional<event::Location> location(
+        event::Location location(
             Site& source, SlotId slot, lattice::Lattice&) const
         {
-            if (slot != 0) return std::nullopt;
+            assert(slot == 0);
             return event::Location{ source };
         }
 
@@ -91,10 +91,15 @@ namespace
         static constexpr std::size_t slot_count{ lattice::max_coordination };
         bool enabled{ true };
 
-        std::optional<event::Location> location(
+        bool has_slot(Site const& source, SlotId slot) const
+        {
+            return slot < source.max_neighbors();
+        }
+
+        event::Location location(
             Site& source, SlotId slot, lattice::Lattice& lattice) const
         {
-            if (slot >= source.max_neighbors()) return std::nullopt;
+            assert(has_slot(source, slot));
             return event::Location{ Cluster<2>{
                 &source,
                 lattice.neighbor(source.neighbor_index() + static_cast<lattice::Index>(slot))

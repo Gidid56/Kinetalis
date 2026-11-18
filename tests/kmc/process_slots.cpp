@@ -6,8 +6,8 @@
 
 #include <boost/ut.hpp>
 #include <array>
+#include <cassert>
 #include <cstddef>
-#include <optional>
 #include <stdexcept>
 #include <string>
 #include <type_traits>
@@ -34,9 +34,11 @@ namespace
         bool enabled{ true };
         std::size_t* source_checks{};
 
-        std::optional<event::Location> location(Site& source, SlotId slot, lattice::Lattice&) const
+        bool has_slot(Site const&, SlotId slot) const { return slot == 0; }
+
+        event::Location location(Site& source, SlotId slot, lattice::Lattice&) const
         {
-            if (slot != 0) return std::nullopt;
+            assert(has_slot(source, slot));
             return event::Location{ source };
         }
 
@@ -59,10 +61,15 @@ namespace
         bool enabled{ true };
         std::size_t* source_checks{};
 
-        std::optional<event::Location> location(
+        bool has_slot(Site const& source, SlotId slot) const
+        {
+            return slot < 2 and slot < source.max_neighbors();
+        }
+
+        event::Location location(
             Site& source, SlotId slot, lattice::Lattice& lattice) const
         {
-            if (slot >= 2 or slot >= source.max_neighbors()) return std::nullopt;
+            assert(has_slot(source, slot));
             return event::Location{ lattice::Cluster<2>{
                 &source,
                 lattice.neighbor(source.neighbor_index() + static_cast<lattice::Index>(slot))
@@ -88,11 +95,16 @@ namespace
         bool enabled{ true };
         std::size_t* source_checks{};
 
-        std::optional<event::Location> location(Site& source, SlotId slot, lattice::Lattice&) const
+        // Slots 0, 1 and 2 never exist. Sites of different parity have
+        // different valid local slots; the overall slot layout stays fixed.
+        bool has_slot(Site const& source, SlotId slot) const
         {
-            // Slots 0, 1 and 2 never exist. Sites of different parity have
-            // different valid local slots; the overall slot layout stays fixed.
-            if (slot != (source.index() % 2 == 0 ? 3u : 4u)) return std::nullopt;
+            return slot == (source.index() % 2 == 0 ? 3u : 4u);
+        }
+
+        event::Location location(Site& source, SlotId slot, lattice::Lattice&) const
+        {
+            assert(has_slot(source, slot));
             return event::Location{ source };
         }
 

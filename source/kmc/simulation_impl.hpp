@@ -45,7 +45,8 @@ namespace kmc
             time_ += -std::log1p(-rng_.probability()) * escape_time;
 
             auto const selection{ select_event_slot(total_rate) };
-            auto record{ evaluate_event(selection) };
+            auto record{ model_.processes().make_record(selection.slot,
+                lattice_.sites().at(selection.source), lattice_, selection.class_key) };
 
             analysis_plan.observe_selected(record);
 
@@ -53,10 +54,7 @@ namespace kmc
             {
                 ++step_;
 
-                model_.processes().visit(selection.slot,
-                    [&](auto const& process, SlotId) {
-                        process.execute(record.location(), lattice_);
-                    });
+                model_.processes().execute(selection.slot, record.location(), lattice_);
 
                 update_affected_rates(record);
 
@@ -130,26 +128,6 @@ namespace kmc
     }
 
     template <class ModelT>
-    event::Record RejectionTreeSimulation<ModelT>::evaluate_event(Selection const& selected)
-    {
-        std::optional<event::Record> record;
-        auto& source{ lattice_.sites().at(selected.source) };
-
-        model_.processes().visit(selected.slot,
-            [&](auto const& process, SlotId local_slot) {
-                auto location{ process.location(source, local_slot, lattice_) };
-                if (not location)
-                    throw std::logic_error{ "Selected slot has no geometric location." };
-
-                const bool rejected{ process.is_rejected(*location) };
-                record.emplace(std::move(*location),
-                    std::remove_cvref_t<decltype(process)>::event,
-                    rejected, selected.class_key);
-            });
-        return std::move(*record);
-    }
-
-    template <class ModelT>
     template <class Visitor>
     void RejectionTreeSimulation<ModelT>::visit_neighbor_tree(
         lattice::Site& site, std::size_t radius, Visitor& visit)
@@ -212,14 +190,15 @@ namespace kmc
             for (SlotId local{}; local < count; ++local)
             {
                 RateClassKey key{};
-                if (auto location{ process.location(site, local, lattice_) }; location)
+                if (kmc::has_slot(process, site, local))
                 {
+                    auto location{ process.location(site, local, lattice_) };
                     // The source precondition has already been checked.
                     // Processes without an optimized predicate retain
                     // the original full candidate check.
-                    if (kmc::is_candidate_after_source_check(process, *location))
+                    if (kmc::is_candidate_after_source_check(process, location))
                         key = register_class(std::remove_cvref_t<decltype(process)>::event,
-                                             *location);
+                                             location);
                 }
 
                 set_class_key(first + offset + local, key);

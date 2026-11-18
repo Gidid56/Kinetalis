@@ -2,6 +2,7 @@
 #include "event.h"
 #include "utility/enums.h"
 
+#include <cassert>
 #include <concepts>
 #include <cstddef>
 #include <format>
@@ -15,20 +16,33 @@
 
 namespace kmc
 {
-    // A process maps a local slot to an optional geometrical location.
+    // A process maps an existing local slot to its geometrical location.
     template <class T>
     concept Process = requires(T const& process, lattice::Site& source,
                                     std::size_t slot, lattice::Lattice& lattice,
                                       event::Location const& location) {
         { T::event } -> std::convertible_to<event::Type>;
         { T::slot_count } -> std::convertible_to<std::size_t>;
-        { process.location(source, slot, lattice) } -> std::same_as<std::optional<event::Location>>;
+        { process.location(source, slot, lattice) } -> std::same_as<event::Location>;
         { process.is_source_candidate(source) } -> std::convertible_to<bool>;
         { process.is_candidate(location) } -> std::convertible_to<bool>;
         { process.is_rejected(location) } -> std::convertible_to<bool>;
         { process.execute(location, lattice) } -> std::same_as<void>;
         { process.settings() } -> std::convertible_to<std::string>;
     };
+
+    // Some processes reserve slots that do not exist at every source site.
+    // A missing predicate means all declared slots are geometrically available.
+    template <Process T>
+    bool has_slot(T const& process, lattice::Site const& source, std::size_t slot)
+    {
+        if constexpr (requires {
+            { process.has_slot(source, slot) } -> std::convertible_to<bool>;
+        })
+            return process.has_slot(source, slot);
+        else
+            return true;
+    }
 
     // The source precondition is established before a slot is examined.
     // Processes may offer a cheaper residual predicate; otherwise
@@ -93,6 +107,28 @@ namespace kmc
 
             if (not found)
                 throw std::out_of_range{ "Event slot outside process layout." };
+        }
+
+        event::Record make_record(std::size_t slot, lattice::Site& source,
+                                  lattice::Lattice& lattice, RateClassKey class_key) const
+        {
+            std::optional<event::Record> record;
+            visit(slot, [&](auto const& process, std::size_t local_slot) {
+                assert(kmc::has_slot(process, source, local_slot));
+                auto location{ process.location(source, local_slot, lattice) };
+                const bool rejected{ process.is_rejected(location) };
+                record.emplace(std::move(location),
+                    std::remove_cvref_t<decltype(process)>::event, rejected, class_key);
+            });
+            return std::move(*record);
+        }
+
+        void execute(std::size_t slot, event::Location const& location,
+                     lattice::Lattice& lattice) const
+        {
+            visit(slot, [&](auto const& process, std::size_t) {
+                process.execute(location, lattice);
+            });
         }
 
         std::string settings() const
