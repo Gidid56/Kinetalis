@@ -26,7 +26,7 @@ namespace studies::dealloying::setups
     }
 
     static inline Lattice
-    bulk_with_vacancy(Composition::Quantity x0 = 10, Length side = utility::is_debug ? 5_nm : 30_nm)
+    bulk_with_vacancy(Composition::Quantity x0 = 10, Length side = 30_nm)
     {
         Lattice lattice{ cube<Bravais::cF>(Element::Au, side) };
         lattice.set_fill_function([x0](Lattice& lattice, simulation::Engine& rng) {

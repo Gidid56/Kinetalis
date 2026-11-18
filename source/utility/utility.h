@@ -7,12 +7,3 @@
 #include "sequence.h"
 #include "storage.h"
 #include "timer.h"
-
-namespace utility
-{
-#ifdef _DEBUG
-    constexpr bool is_debug{ true };
-#else
-    constexpr bool is_debug{ false };
-#endif
-}

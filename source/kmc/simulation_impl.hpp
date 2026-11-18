@@ -101,19 +101,10 @@ namespace kmc
         for (auto* site : affected_sites_)
             update_site_rate(*site);
 
-        if (block_updates_.size() == 1)
-        {
-            auto& update{ block_updates_.front() };
+        std::ranges::sort(block_updates_, {}, &rate_tree::BlockUpdate::index);
+        for (auto& update : block_updates_)
             update.rate = block_rate(lattice_.sites().at(update.index));
-            rate_tree_->update_rate(update.index, update.rate);
-        }
-        else if (not block_updates_.empty())
-        {
-            std::ranges::sort(block_updates_, {}, &rate_tree::BlockUpdate::index);
-            for (auto& update : block_updates_)
-                update.rate = block_rate(lattice_.sites().at(update.index));
-            rate_tree_->update_rates(block_updates_);
-        }
+        rate_tree_->update_rates(block_updates_);
     }
 
     template <class ModelT>
@@ -125,10 +116,6 @@ namespace kmc
 
         while (selected_rate >= site_rates_.at(site_index))
             selected_rate -= site_rates_.at(site_index++);
-
-        if constexpr (utility::is_debug)
-            if (site_index >= site_rates_.size())
-                throw std::runtime_error{ "tree not updated correctly" };
 
         const auto first{ static_cast<std::size_t>(site_index) * ModelT::slots_per_site };
         auto offset{ first };

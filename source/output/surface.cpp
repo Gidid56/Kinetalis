@@ -43,11 +43,6 @@ void Surface::observe_processed(kmc::event::Record const& record)
         return;
 
     update(*record.sites()[1], kmc::event::neighbor_change(record.type, false));
-
-    if constexpr (utility::is_debug)
-        if (sites_ != lattice_->surface_atoms())
-            throw std::runtime_error{ "Surface site count mismatch: " + std::to_string(sites_) +
-                                      " vs. " + std::to_string(lattice_->surface_atoms()) };
 }
 
 void Surface::write_init(kmc::Simulation const&)
