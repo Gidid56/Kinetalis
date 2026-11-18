@@ -15,6 +15,16 @@ namespace studies::dealloying::process
         chemistry::Element element{ chemistry::Element::Ag };
         lattice::Coordination max_coordination{ 11 };
 
+        bool is_candidate(lattice::Site const& source) const
+        {
+            return source.element() == element and source.coordination() <= max_coordination;
+        }
+
+        void execute(kmc::event::Location const& location, Lattice& lattice) const
+        {
+            location.source().set_element(lattice, chemistry::Element::none);
+        }
+
         std::string settings() const
         {
             return std::format(
@@ -22,16 +32,6 @@ namespace studies::dealloying::process
                 "max_coordination = {}",
                 element,
                 max_coordination);
-        }
-
-        bool is_candidate(lattice::Site const& source) const
-        {
-            return source.element() == element and source.coordination() <= max_coordination;
-        }
-
-        void execute(kmc::event::Location const& location, lattice::Lattice& lattice) const
-        {
-            location.source().set_element(lattice, chemistry::Element::none);
         }
     };
 
@@ -49,8 +49,7 @@ namespace studies::dealloying::process
             return slot < source.max_neighbors();
         }
 
-        kmc::event::Location
-        location(lattice::Site& source, std::size_t slot, lattice::Lattice& lattice) const
+        auto location(lattice::Site& source, std::size_t slot, Lattice& lattice) const
         {
             return kmc::event::Location{ &source,
                 lattice.neighbor(source.neighbor_index() + static_cast<lattice::Index>(slot)) };
@@ -75,7 +74,7 @@ namespace studies::dealloying::process
             return location.sites()[1]->coordination() <= min_target_coordination;
         }
 
-        void execute(kmc::event::Location const& location, lattice::Lattice& lattice) const
+        void execute(kmc::event::Location const& location, Lattice& lattice) const
         {
             const auto element{ location.source().element() };
             location.sites()[1]->set_element(lattice, element);

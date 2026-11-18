@@ -45,8 +45,11 @@ namespace kmc
             time_ += -std::log1p(-rng_.probability()) * escape_time;
 
             auto const selection{ select_event_slot(total_rate) };
-            auto record{ model_.processes().make_record(selection.slot,
-                lattice_.sites().at(selection.source), lattice_, selection.class_key) };
+            auto record{ model_.processes().make_record(
+                selection.slot,
+                lattice_.sites().at(selection.source),
+                lattice_,
+                selection.class_key) };
 
             analysis_plan.observe_selected(record);
 
@@ -73,20 +76,37 @@ namespace kmc
     }
 
     template <class ModelT>
+    typename RejectionTreeSimulation<ModelT>::Selection
+    RejectionTreeSimulation<ModelT>::select_event_slot(Rate total_rate)
+    {
+        auto selected_rate{ physics::ensure_non_negative(total_rate * rng_.probability()) };
+        auto site_index{ rate_tree_->index(selected_rate) };
+
+        while (selected_rate >= site_rates_.at(site_index))
+            selected_rate -= site_rates_.at(site_index++);
+
+        const auto first{ static_cast<std::size_t>(site_index) * ModelT::slots_per_site };
+        auto offset{ first };
+        while (selected_rate >= kinetic_classes_.at(slot_class_keys_.at(offset)).rate)
+            selected_rate -= kinetic_classes_.at(slot_class_keys_.at(offset++)).rate;
+
+        if (offset >= first + ModelT::slots_per_site)
+            throw std::runtime_error{ "Selected event slot is outside source-site layout." };
+
+        return { site_index, offset - first, slot_class_keys_.at(offset) };
+    }
+
+    template <class ModelT>
     void RejectionTreeSimulation<ModelT>::update_affected_rates(event::Record const& record)
     {
         block_updates_.clear();
 
-        // The active flag reflects whether a site has any valid event slots.
-        // An inactive site cannot become active if no process considers
-        // it a possible source after the lattice change.
         affected_sites_.clear();
         auto invalidate = [this](lattice::Site& site) {
             if (site.is_dirty())
                 return;
 
-            if (not site.is_active() and
-                not model_.processes().is_source_active(site))
+            if (not site.is_active() and not model_.processes().is_candidate(site))
                 return;
 
             site.set_dirty(true);
@@ -106,31 +126,11 @@ namespace kmc
     }
 
     template <class ModelT>
-    typename RejectionTreeSimulation<ModelT>::Selection
-    RejectionTreeSimulation<ModelT>::select_event_slot(Rate total_rate)
-    {
-        auto selected_rate{ physics::ensure_non_negative(total_rate * rng_.probability()) };
-        auto site_index{ rate_tree_->index(selected_rate) };
-
-        while (selected_rate >= site_rates_.at(site_index))
-            selected_rate -= site_rates_.at(site_index++);
-
-        const auto first{ static_cast<std::size_t>(site_index) * ModelT::slots_per_site };
-        auto offset{ first };
-        while (selected_rate >= kinetic_classes_.at(slot_class_keys_.at(offset)).rate)
-            selected_rate -= kinetic_classes_.at(slot_class_keys_.at(offset++)).rate;
-
-        if (offset >= first + ModelT::slots_per_site)
-            throw std::runtime_error{ "Selected event slot is outside source-site layout." };
-
-        return { static_cast<lattice::Index>(site_index), offset - first,
-                 slot_class_keys_.at(offset) };
-    }
-
-    template <class ModelT>
     template <class Visitor>
     void RejectionTreeSimulation<ModelT>::visit_neighbor_tree(
-        lattice::Site& site, std::size_t radius, Visitor& visit)
+        lattice::Site& site,
+        std::size_t radius,
+        Visitor& visit)
     {
         // Enumerate graph walks without allocating a visited-site container.
         // Sites may recur because the lattice graph contains cycles; the
@@ -156,13 +156,12 @@ namespace kmc
         {
             old_rate = new_rate;
 
-            constexpr lattice::Index block_mask{
-                (lattice::Index{ 1 } << rate_tree::baseLevel) - 1
-            };
+            constexpr lattice::Index block_mask{ (lattice::Index{ 1 } << rate_tree::baseLevel) -
+                                                 1 };
             auto const block_start{ site.index() & ~block_mask };
 
-            if (std::ranges::find(block_updates_, block_start, &rate_tree::BlockUpdate::index)
-                == block_updates_.end())
+            if (std::ranges::find(block_updates_, block_start, &rate_tree::BlockUpdate::index) ==
+                block_updates_.end())
                 block_updates_.push_back({ block_start, {} });
         }
         site.set_dirty(false);
@@ -193,13 +192,14 @@ namespace kmc
                 if (kmc::has_slot(process, site, local))
                 {
                     auto location{ kmc::make_location(process, site, local, lattice_) };
-                    assert(location.sites().size() ==
+                    assert(
+                        location.sites().size() ==
                         std::remove_cvref_t<decltype(process)>::cluster_size);
                     // The source precondition has already been checked.
                     // Check any additional location-level eligibility predicate.
                     if (kmc::is_location_candidate(process, location))
-                        key = register_class(std::remove_cvref_t<decltype(process)>::event,
-                                             location);
+                        key =
+                            register_class(std::remove_cvref_t<decltype(process)>::event, location);
                 }
 
                 set_class_key(first + offset + local, key);
@@ -253,7 +253,8 @@ namespace kmc
 
     template <class ModelT>
     RateClassKey RejectionTreeSimulation<ModelT>::register_class(
-        event::Type type, event::Location const& location)
+        event::Type type,
+        event::Location const& location)
     {
         const auto key{ model_.kinetics().classify(type, location, lattice_) };
         if (key == RateClassKey{})
@@ -280,9 +281,9 @@ namespace kmc
     void RejectionTreeSimulation<ModelT>::update_all_rates()
     {
         model_.kinetics().refresh_rates();
-        for (std::size_t key{ 1 }; key < kinetic_classes_.size(); ++key)
+        for (RateClassKey key{ 1 }; key < kinetic_classes_.size(); ++key)
             if (kinetic_classes_[key].is_initialized())
-                kinetic_classes_[key].rate = model_.kinetics().rate(static_cast<RateClassKey>(key));
+                kinetic_classes_[key].rate = model_.kinetics().rate(key);
 
         // A full-rate refresh bypasses per-event block collection. Rebuild each
         // block once after all site rates have been recalculated.
@@ -294,8 +295,7 @@ namespace kmc
         }
 
         constexpr auto block_size{ std::size_t{ 1 } << rate_tree::baseLevel };
-        for (std::size_t index{}; index < site_rates_.size(); index += block_size)
-            rate_tree_->update_rate(
-                static_cast<lattice::Index>(index), block_rate(lattice_.sites().at(index)));
+        for (lattice::Index index{}; index < site_rates_.size(); index += block_size)
+            rate_tree_->update_rate(index, block_rate(lattice_.sites().at(index)));
     }
 }

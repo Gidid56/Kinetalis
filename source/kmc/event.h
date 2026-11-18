@@ -53,23 +53,20 @@ namespace kmc::event
     public:
         static constexpr std::size_t capacity{ 2 };
 
-        template <class... Pointers>
-        requires (sizeof...(Pointers) > 0 and sizeof...(Pointers) <= capacity and
-                  (std::same_as<Pointers, lattice::Site*> and ...))
-        explicit Location(Pointers... sites) noexcept
-            : sites_{ sites... }, size_{ static_cast<std::uint8_t>(sizeof...(Pointers)) }
+        template <class... SiteT>
+        requires(sizeof...(SiteT) > 0 and sizeof...(SiteT) <= capacity and
+                    (std::same_as<SiteT, lattice::Site*> and ...))
+        explicit Location(SiteT... sites) noexcept : sites_{ sites... },
+                                                     size_{ sizeof...(SiteT) }
         { }
 
-        std::span<lattice::Site* const> sites() const noexcept
-        {
-            return { sites_.data(), size_ };
-        }
-
+        std::span<lattice::Site* const> sites() const noexcept { return { sites_.data(), size_ }; }
         lattice::Site& source() const noexcept { return *sites_[0]; }
+        std::size_t size() const noexcept { return size_; }
 
     private:
         std::array<lattice::Site*, capacity> sites_{};
-        std::uint8_t size_{};
+        std::size_t size_{};
     };
 
     class Record
