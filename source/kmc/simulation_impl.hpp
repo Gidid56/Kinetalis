@@ -90,12 +90,9 @@ namespace kmc
             if (site.is_dirty())
                 return;
 
-            if (not site.is_active())
-            {
-                auto const candidates{ model_.transformations().source_candidates(site) };
-                if (std::ranges::none_of(candidates, std::identity{}))
-                    return;
-            }
+            if (not site.is_active() and
+                not model_.transformations().is_source_active(site))
+                return;
 
             site.set_dirty(true);
             affected_sites_.push_back(&site);
@@ -215,7 +212,7 @@ namespace kmc
         const auto first{ static_cast<std::size_t>(site.index()) * ModelType::slots_per_site };
         auto const source_candidates{ model_.transformations().source_candidates(site) };
 
-        if (std::ranges::none_of(source_candidates, std::identity{}))
+        if (not model_.transformations().is_source_active(source_candidates))
         {
             // An inactive site has no registered event classes to clear.
             if (site.is_active())
