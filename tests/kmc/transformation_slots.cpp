@@ -261,8 +261,10 @@ namespace
             auto lattice{ setup.make_lattice() };
             auto& source{ lattice.sites().front() };
             auto has_candidate = [&] {
-                return std::ranges::any_of(transformations.source_candidates(source),
-                                           std::identity{});
+                auto const candidates{ transformations.source_candidates(source) };
+                auto const active{ transformations.is_source_active(candidates) };
+                ut::expect(ut::eq(active, transformations.is_source_active(source)));
+                return active;
             };
             ut::expect(has_candidate());
 
