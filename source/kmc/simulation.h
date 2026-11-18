@@ -70,7 +70,8 @@ private:
         RateClassKey class_key;
     };
 
-    Rate block_rate(lattice::Site&);
+    Rate site_rate(lattice::Index) const;
+    Rate block_rate(lattice::Index) const;
     RateClassKey register_class(event::Type, event::Location const&);
     void set_class_key(std::size_t, RateClassKey);
 
@@ -88,7 +89,6 @@ private:
 
     ModelType model_;
     std::unique_ptr<rate_tree::Interface> rate_tree_;
-    Rates site_rates_;
     RateClassKeys event_class_keys_;
     std::vector<rate_tree::BlockUpdate> block_updates_;
     std::vector<lattice::Site*> affected_sites_;
