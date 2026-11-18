@@ -59,7 +59,7 @@ namespace studies::dealloying::campaigns
         std::vector<Setup> setups;
 
         for (auto temperature : temperatures)
-            for (lattice::Composition::Quantity const x0 : compositions)
+            for (chemistry::Composition::Quantity const x0 : compositions)
                 for (ElectricPotential overpotential : overpotentials)
                     setups.emplace_back(
                         setups::pore_dealloying(campaign_type, x0, overpotential, temperature));

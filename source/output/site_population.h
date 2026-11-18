@@ -17,7 +17,7 @@ namespace output
     {
     public:
         using Writer::Writer;
-        using SiteKey = std::pair<lattice::Element, lattice::Coordination>;
+        using SiteKey = std::pair<chemistry::Element, lattice::Coordination>;
         using Counts = std::map<SiteKey, std::size_t>;
 
         struct Accumulation

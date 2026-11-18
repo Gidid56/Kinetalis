@@ -20,7 +20,7 @@ static constexpr Length min_box_size(CampaignType campaign_type)
     }
 }
 
-static constexpr Length box_size(lattice::Composition::Quantity x0, CampaignType campaign_type)
+static constexpr Length box_size(chemistry::Composition::Quantity x0, CampaignType campaign_type)
 {
     static constexpr auto default_x0 = 10.0;
 
@@ -28,7 +28,7 @@ static constexpr Length box_size(lattice::Composition::Quantity x0, CampaignType
 }
 
 static constexpr ElectricPotential critical_potential(
-    lattice::Composition::Quantity x0,
+    chemistry::Composition::Quantity x0,
     physics::quantity::AbsoluteTemperature temperature = 300_K,
     ElectricPotential resolution = 0.1_mV)
 {

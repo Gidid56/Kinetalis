@@ -11,7 +11,7 @@ namespace studies::dealloying::kinetics
         struct Descriptor
         {
             kmc::event::Type event{};
-            kmc::Element element{};
+            chemistry::Element element{};
             lattice::Coordination coordination{};
             auto operator<=>(Descriptor const&) const = default;
         };
@@ -45,7 +45,7 @@ namespace studies::dealloying::kinetics
         Descriptor const& descriptor(kmc::RateClassKey) const;
 
     protected:
-        kmc::Element class_element(kmc::RateClassKey) const;
+        chemistry::Element class_element(kmc::RateClassKey) const;
         Energy lattice_energy_barrier(kmc::RateClassKey) const;
         Ratio modulation_ratio(kmc::RateClassKey) const;
 

@@ -99,8 +99,8 @@ class output::Composition : public output::Writer
 {
 public:
     static constexpr std::array active_elements{
-        lattice::Element::Ag,
-        lattice::Element::Au,
+        chemistry::Element::Ag,
+        chemistry::Element::Au,
     };
 
     using Writer::Writer;
@@ -114,5 +114,5 @@ private:
     void write_init(kmc::Simulation const&) override;
     void write_snapshot(kmc::Simulation const&) override;
 
-    std::map<lattice::Element, std::size_t> element_counts_;
+    std::map<chemistry::Element, std::size_t> element_counts_;
 };
