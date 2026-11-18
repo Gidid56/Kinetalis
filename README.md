@@ -180,36 +180,51 @@ policy. Review scripts before executing them.
 
 ## Framework overview
 
-Kinetalis separates **what to simulate** from **how to execute and analyze it**:
+Kinetalis separates **which events can occur and how fast** from **how events are sampled, executed, and measured**. The KMC core is generic; the dealloying study provides concrete transformations, a kinetic model, and simulation setups.
 
 | Component | Responsibility |
 | --- | --- |
-| [`lattice`](source/lattice/) | Crystal structures, simulation cells, shapes, periodic boundaries, and atomic configurations |
-| [`kmc::Setup`](source/kmc/setup.h) | Selects the initial lattice, physical model, and event rules |
-| [`kmc::Simulation`](source/kmc/simulation.h) | Advances simulation time, selects events, and updates rates and atomic states |
-| [`kmc::Model`](source/kmc/model.h) and [`source/models/`](source/models/) | Calculates physical event rates from activation barriers and model parameters |
-| [`kmc::AnalysisPlan`](source/kmc/analysis_plan.h) and [`source/output/`](source/output/) | Collects measurements, snapshots, and stopping conditions |
-| [`batch::Campaign`](source/batch/campaign.h) and [`source/batch/`](source/batch/) | Runs parameter sweeps and replicates, then aggregates results |
+| [`lattice`](source/lattice/) | Crystal geometry, sites, neighbor lists, periodic boundaries, and initial configurations |
+| [`kmc::Transformation` and `kmc::Transformations<Ts...>`](source/kmc/transformations.h) | Define possible changes to the lattice and the geometric slots associated with them |
+| [`kmc::Kinetics`](source/kmc/kinetics.h) and [study-specific kinetic models](studies/dealloying/models/) | Classify candidate events, calculate their rates, and define the local rate-dependency radius |
+| [`kmc::Model<KineticsT, TransformationsT>`](source/kmc/model.h) | Compose a concrete kinetic model and a statically typed collection of transformations |
+| [`kmc::Setup<ModelType>`](source/kmc/setup.h) | Hold the lattice generator, model configuration, and optional random seed |
+| [`kmc::RejectionTreeSimulation<ModelType>`](source/kmc/simulation.h) | Sample events, advance physical time, execute accepted transformations, and update cached rates |
+| [`kmc::Simulation`](source/kmc/simulation.h), [`kmc::AnalysisPlan`](source/kmc/analysis_plan.h), and [observers](source/output/) | Provide a non-templated simulation interface, measurements, snapshots, and stopping conditions |
+| [`batch::Campaign<ModelType>`](source/batch/campaign.h) and [`batch::Runner<ModelType>`](source/batch/runner.h) | Execute parameter studies and independent replicates, then aggregate results |
 
-The KMC engine represents events such as diffusion and dissolution through [`kmc::Process`](source/kmc/process.h) and study-specific [event rules](studies/dealloying/events.h). Event rates are maintained in a hierarchical rate-sum tree for efficient random selection. The rate model is independent of the event scheduler, so kinetic assumptions can be changed without rewriting the simulation machinery.
+### Event lifecycle
 
-The general-purpose libraries [`math`](source/math/), [`physics`](source/physics/), and [`chemistry`](source/chemistry/) provide numerical operations, dimension-aware physical quantities, and element/composition data. Parameters such as `300_K`, `0.15_eV`, and `30_nm` retain their units in C++ expressions.
+A `Transformation` is a C++ concept, not a runtime base class. Each transformation declares an event type and a compile-time `slot_count` per source site. A slot can resolve to an [`event::Location`](source/kmc/event.h) containing the source site and, for example, a diffusion target; nonexistent locations and geometrically invalid candidates contribute no rate. The current `Location` representation supports up to two sites.
+
+A kinetic model assigns each candidate a `RateClassKey` using the event type and its local environment. Key zero denotes an inactive slot. Rates are cached by class, while a hierarchical [rate-sum tree](source/kmc/rate_tree.h) stores the summed rates of source sites for efficient event selection. The simulation resolves the selected slot into a location, evaluates any postselection rejection, and advances physical time for **both accepted and rejected selections**. Only accepted selections modify the lattice, increment the accepted-step counter, and trigger local rate updates.
+
+The KMC scheduler uses static dispatch for the concrete kinetic model and transformations. Its non-templated `kmc::Simulation` interface allows observers and the viewer to operate without knowing the model type. Mathematical utilities, [dimension-aware physical quantities](source/physics/), and [chemical data](source/chemistry/) are shared across studies.
 
 ### Extend the framework
 
-Most new studies can be developed under `studies/` without modifying the KMC engine. Use the existing dealloying implementation as a reference:
+Most studies can be implemented under `studies/` without modifying the KMC scheduler. The [dealloying study](studies/dealloying/) provides a complete reference:
 
-1. Define a lattice and rate model in a [setup factory](studies/dealloying/setups.h).
-2. Choose observers and stopping conditions in an [analysis plan](studies/dealloying/analysis_plans.h).
-3. Combine setups, replicates, and postprocessing in a [campaign](studies/dealloying/campaigns.h).
+1. Define one or more transformation types implementing the [`kmc::Transformation` concept](source/kmc/transformations.h): `event`, `slot_count`, `location(...)`, `is_source_candidate(...)`, `is_candidate(...)`, `is_rejected(...)`, `execute(...)`, and `settings()`. An optional `is_candidate_after_source_check(...)` avoids repeating a source predicate for every slot.
+2. Implement a kinetic model, typically deriving from [`kmc::Kinetics`](source/kmc/kinetics.h), with `classify(...)`, `number_keys()`, `class_event(...)`, `rate(...)`, `refresh_rates()`, and `output_text()`. Ensure `invalidation_radius()` covers all source-site rates affected by an accepted lattice change.
+3. Combine the types into a `Model` and configure them in [setup factories](studies/dealloying/setups.h). The current study uses these aliases in [`events.h`](studies/dealloying/events.h):
 
-For a small end-to-end smoke test, replace `batch.run(...)` in `apps/batch/main.cpp` with a single-sample campaign that stops after 100 accepted KMC events:
+~~~cpp
+using Transformations = kmc::Transformations<events::Dissolution, events::Diffusion>;
+using Model = kmc::Model<models::LinearBondBreaking, Transformations>;
+using Setup = kmc::Setup<Model>;
+using Campaign = batch::Campaign<Model>;
+~~~
+
+4. Configure observers and stopping conditions in an [analysis plan](studies/dealloying/analysis_plans.h). Combine setups, replicates, and optional postprocessing in a [campaign](studies/dealloying/campaigns.h), and execute it with `batch::Runner<Model>` or construct `kmc::RejectionTreeSimulation<Model>` directly.
+
+For a small end-to-end smoke test, replace `batch.run(...)` in [`apps/batch/main.cpp`](apps/batch/main.cpp) with a single-sample campaign capped at 100 accepted KMC events (or ending earlier if no selectable events remain):
 
 ~~~cpp
 auto const successful = batch.run([] {
     using namespace physics::unit::literals;
 
-    return batch::Campaign{
+    return dealloying::Campaign{
         .name = "quick-test",
         .seed = "00000001-00000002-00000003-00000004-00000005-00000006-00000007-00000008",
         .replicate_count = 1,
@@ -223,7 +238,7 @@ auto const successful = batch.run([] {
 });
 ~~~
 
-Rebuild the batch application using the commands in [Get started](#get-started), then run it. The result appears under `results/`.
+Rebuild the batch application using the commands in [Get started](#get-started), then run it. The results appear under `results/` unless a different output directory is specified.
 
 ## Advanced build configuration
 
