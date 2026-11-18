@@ -38,16 +38,14 @@ namespace
 
         event::Location location(Site& source, SlotId, lattice::Lattice&) const
         {
-            return event::Location{ source };
+            return event::Location{ &source };
         }
 
-        bool is_source_candidate(Site const&) const
+        bool is_candidate(Site const&) const
         {
             if (source_checks) ++*source_checks;
             return enabled;
         }
-        bool is_candidate(event::Location const&) const { return true; }
-        bool is_rejected(event::Location const&) const { return false; }
         void execute(event::Location const&, lattice::Lattice&) const {}
         std::string settings() const { return "site probe"; }
     };
@@ -69,19 +67,15 @@ namespace
         event::Location location(
             Site& source, SlotId slot, lattice::Lattice& lattice) const
         {
-            return event::Location{ lattice::Cluster<2>{
-                &source,
-                lattice.neighbor(source.neighbor_index() + static_cast<lattice::Index>(slot))
-            } };
+            return event::Location{ &source,
+                lattice.neighbor(source.neighbor_index() + static_cast<lattice::Index>(slot)) };
         }
 
-        bool is_source_candidate(Site const&) const
+        bool is_candidate(Site const&) const
         {
             if (source_checks) ++*source_checks;
             return enabled;
         }
-        bool is_candidate(event::Location const&) const { return true; }
-        bool is_rejected(event::Location const&) const { return false; }
         void execute(event::Location const&, lattice::Lattice&) const {}
         std::string settings() const { return "neighbor probe"; }
     };
@@ -104,16 +98,14 @@ namespace
 
         event::Location location(Site& source, SlotId, lattice::Lattice&) const
         {
-            return event::Location{ source };
+            return event::Location{ &source };
         }
 
-        bool is_source_candidate(Site const&) const
+        bool is_candidate(Site const&) const
         {
             if (source_checks) ++*source_checks;
             return enabled;
         }
-        bool is_candidate(event::Location const&) const { return true; }
-        bool is_rejected(event::Location const&) const { return false; }
         void execute(event::Location const&, lattice::Lattice&) const {}
         std::string settings() const { return "sparse probe"; }
     };

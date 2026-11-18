@@ -49,7 +49,7 @@ namespace
             // coordinated bulk sites; introduce a vacancy first.
             (*it)->set_element(lattice, Element::none);
             auto* neighbor{ *++it };
-            const kmc::event::Location location{ source };
+            const kmc::event::Location location{ &source };
 
             kinetics::CompositionDependent composition;
             kinetics::LinearBondBreaking linear;

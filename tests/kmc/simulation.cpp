@@ -38,7 +38,6 @@ namespace
     using namespace kmc;
     using chemistry::Element;
     using lattice::Site;
-    using lattice::Cluster;
 
     struct SiteRule
     {
@@ -52,10 +51,10 @@ namespace
         event::Location location(
             Site& source, SlotId, lattice::Lattice&) const
         {
-            return event::Location{ source };
+            return event::Location{ &source };
         }
 
-        bool is_source_candidate(Site const& site) const
+        bool is_candidate(Site const& site) const
         {
             if (source_checks and site.index() < source_checks->size())
                 ++(*source_checks)[site.index()];
@@ -67,7 +66,7 @@ namespace
 
         bool is_candidate(event::Location const& location) const
         {
-            return location.sites().size() == 1 and is_source_candidate(location.source());
+            return location.sites().size() == 1 and is_candidate(location.source());
         }
 
         bool is_rejected(event::Location const& location) const
@@ -99,13 +98,11 @@ namespace
         event::Location location(
             Site& source, SlotId slot, lattice::Lattice& lattice) const
         {
-            return event::Location{ Cluster<2>{
-                &source,
-                lattice.neighbor(source.neighbor_index() + static_cast<lattice::Index>(slot))
-            } };
+            return event::Location{ &source,
+                lattice.neighbor(source.neighbor_index() + static_cast<lattice::Index>(slot)) };
         }
 
-        bool is_source_candidate(Site const& site) const
+        bool is_candidate(Site const& site) const
         {
             return enabled and site.is_occupied() and
                    site.coordination() < lattice::max_coordination;
@@ -113,7 +110,7 @@ namespace
 
         bool is_candidate(event::Location const& location) const
         {
-            return location.sites().size() == 2 and is_source_candidate(location.source()) and
+            return location.sites().size() == 2 and is_candidate(location.source()) and
                    location.sites()[1]->is_vacant();
         }
 
@@ -221,18 +218,17 @@ namespace
         {
             Rate site_sum{};
             auto has_events{ false };
-            const event::Location source{ const_cast<Site&>(site) };
-            if (processes.get<SiteRule>().is_source_candidate(site) and processes.get<SiteRule>().is_candidate(source))
+            const event::Location source{ const_cast<Site*>(&site) };
+            if (processes.get<SiteRule>().is_candidate(site) and kmc::is_location_candidate(processes.get<SiteRule>(), source))
             {
                 add(site_sum, Descriptor{ SiteRule::event, source.source().element(), source.source().coordination() });
                 has_events = true;
             }
-            if (processes.get<ClusterRule>().is_source_candidate(site))
+            if (processes.get<ClusterRule>().is_candidate(site))
                 for (auto const* target : lattice.neighbors(site))
                 {
-                    const event::Location location{ Cluster<2>{
-                        const_cast<Site*>(&site), const_cast<Site*>(target) } };
-                    if (processes.get<ClusterRule>().is_candidate(location))
+                    const event::Location location{ const_cast<Site*>(&site), const_cast<Site*>(target) };
+                    if (kmc::is_location_candidate(processes.get<ClusterRule>(), location))
                     {
                         add(site_sum, Descriptor{ ClusterRule::event, location.source().element(), location.source().coordination() });
                         has_events = true;
@@ -297,21 +293,21 @@ namespace
             if (record.sites().size() == 1)
             {
                 ++site_selections_;
-                ut::expect(processes_.get<SiteRule>().is_source_candidate(source))
+                ut::expect(processes_.get<SiteRule>().is_candidate(source))
                     << "selected site has valid source";
-                ut::expect(processes_.get<SiteRule>().is_candidate(record.location()))
+                ut::expect(kmc::is_location_candidate(processes_.get<SiteRule>(), record.location()))
                     << "selected site is a candidate";
-                rejected = processes_.get<SiteRule>().is_rejected(record.location());
+                rejected = kmc::is_rejected(processes_.get<SiteRule>(), record.location());
                 ut::expect(record.type == SiteRule::event);
             }
             else
             {
                 ++cluster_selections_;
-                ut::expect(processes_.get<ClusterRule>().is_source_candidate(source))
+                ut::expect(processes_.get<ClusterRule>().is_candidate(source))
                     << "selected cluster has valid source";
-                ut::expect(processes_.get<ClusterRule>().is_candidate(record.location()))
+                ut::expect(kmc::is_location_candidate(processes_.get<ClusterRule>(), record.location()))
                     << "selected cluster is a candidate";
-                rejected = processes_.get<ClusterRule>().is_rejected(record.location());
+                rejected = kmc::is_rejected(processes_.get<ClusterRule>(), record.location());
                 ut::expect(record.type == ClusterRule::event);
             }
             auto const expected_key{ ModelBase::static_key(Descriptor{
@@ -425,7 +421,7 @@ namespace
             auto& first{ lattice.sites().at(0) };
             auto& second{ lattice.sites().at(1) };
 
-            event::Record site_record{ event::Location{ first }, SiteRule::event, false, 65537 };
+            event::Record site_record{ event::Location{ &first }, SiteRule::event, false, 65537 };
             ut::expect(ut::eq(site_record.sites().size(), std::size_t{ 1 }));
             ut::expect(site_record.sites()[0] == &first);
             ut::expect(site_record.type == SiteRule::event);
@@ -438,8 +434,8 @@ namespace
             ut::expect(site_copy.sites()[0] == &first);
             ut::expect(ut::eq(site_copy.class_key, site_record.class_key));
 
-            Cluster<2> const cluster{ &first, &second };
-            event::Record cluster_record{ event::Location{ cluster }, ClusterRule::event, false, 65538 };
+            std::array<Site*, 2> const cluster{ &first, &second };
+            event::Record cluster_record{ event::Location{ cluster[0], cluster[1] }, ClusterRule::event, false, 65538 };
             ut::expect(ut::eq(cluster_record.sites().size(), std::size_t{ 2 }));
             ut::expect(cluster_record.sites()[0] == &first);
             ut::expect(cluster_record.sites()[1] == &second);
@@ -469,14 +465,14 @@ namespace
             ClusterRule cluster_rule;
 
             auto source_it{ std::ranges::find_if(lattice.sites(), [&](Site const& site) {
-                return site_rule.is_candidate(event::Location{ const_cast<Site&>(site) });
+                return site_rule.is_candidate(site);
             }) };
             ut::expect(source_it != lattice.sites().end()) << "site candidate exists";
             if (source_it == lattice.sites().end())
                 return;
 
             auto const atoms_before{ lattice.number_atoms() };
-            site_rule.execute(event::Location{ *source_it }, lattice);
+            site_rule.execute(event::Location{ &*source_it }, lattice);
             ut::expect(source_it->is_vacant()) << "site rule removes selected atom";
             ut::expect(ut::eq(lattice.number_atoms(), atoms_before - 1));
 
@@ -486,8 +482,8 @@ namespace
             {
                 for (auto* neighbor : lattice.neighbors(site))
                 {
-                    Cluster<2> candidate{ &site, neighbor };
-                    if (cluster_rule.is_candidate(event::Location{ candidate }))
+                    std::array<Site*, 2> candidate{ &site, neighbor };
+                    if (kmc::is_location_candidate(cluster_rule, event::Location{ candidate[0], candidate[1] }))
                     {
                         source = &site;
                         destination = neighbor;
@@ -504,8 +500,8 @@ namespace
 
             auto const element{ source->element() };
             auto const atoms_before_move{ lattice.number_atoms() };
-            Cluster<2> cluster{ source, destination };
-            cluster_rule.execute(event::Location{ cluster }, lattice);
+            std::array<Site*, 2> cluster{ source, destination };
+            cluster_rule.execute(event::Location{ cluster[0], cluster[1] }, lattice);
             ut::expect(source->is_vacant()) << "source becomes vacant";
             ut::expect(destination->element() == element) << "destination receives atom";
             ut::expect(ut::eq(lattice.number_atoms(), atoms_before_move))
