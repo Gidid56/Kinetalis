@@ -2,8 +2,6 @@
 #include "event.h"
 #include "utility/enums.h"
 
-#include <algorithm>
-#include <array>
 #include <concepts>
 #include <cstddef>
 #include <format>
@@ -56,26 +54,12 @@ namespace kmc
         template <class T>
         auto& get(this auto& self) noexcept { return std::get<T>(self.transformations_); }
 
-        using SourceCandidates = std::array<bool, sizeof...(Ts)>;
-
-        // Evaluate each source predicate once; the same result drives the
-        // all-inactive early exit and the per-transformation slot blocks.
-        SourceCandidates source_candidates(lattice::Site const& source) const
-        {
-            return std::apply([&](auto const&... transformations) {
-                return SourceCandidates{ transformations.is_source_candidate(source)... };
-            }, transformations_);
-        }
-
-        // The array overload reuses already-evaluated predicates.
-        static bool is_source_active(SourceCandidates const& candidates)
-        {
-            return std::ranges::any_of(candidates, std::identity{});
-        }
-
+        // Short-circuit as soon as any transformation accepts the source.
         bool is_source_active(lattice::Site const& site) const
         {
-            return is_source_active(source_candidates(site));
+            return std::apply([&](auto const&... transformations) {
+                return (transformations.is_source_candidate(site) or ...);
+            }, transformations_);
         }
 
         template <class Function>
