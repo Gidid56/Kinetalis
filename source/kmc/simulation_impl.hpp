@@ -11,6 +11,7 @@ namespace kmc
     void RejectionTreeSimulation<ModelType>::initialize_rates()
     {
         rate_tree_ = rate_tree::make_entry(lattice_.sites().size());
+        site_rates_.resize(lattice_.sites().size());
         event_class_keys_.resize(lattice_.sites().size() * ModelType::slots_per_site);
 
         // Each model decides whether to preallocate or register classes lazily.
@@ -106,14 +107,14 @@ namespace kmc
         if (block_updates_.size() == 1)
         {
             auto& update{ block_updates_.front() };
-            update.rate = block_rate(update.index);
+            update.rate = block_rate(lattice_.sites().at(update.index));
             rate_tree_->update_rate(update.index, update.rate);
         }
         else if (not block_updates_.empty())
         {
             std::ranges::sort(block_updates_, {}, &rate_tree::BlockUpdate::index);
             for (auto& update : block_updates_)
-                update.rate = block_rate(update.index);
+                update.rate = block_rate(lattice_.sites().at(update.index));
             rate_tree_->update_rates(block_updates_);
         }
     }
@@ -123,25 +124,25 @@ namespace kmc
     RejectionTreeSimulation<ModelType>::select_event_slot(Rate total_rate)
     {
         auto selected_rate{ physics::ensure_non_negative(total_rate * rng_.probability()) };
-        // Select a two-site leaf, then resolve the event directly from slot rates.
-        const auto leaf_start{ static_cast<std::size_t>(rate_tree_->index(selected_rate)) };
-        constexpr auto leaf_size{ std::size_t{ 1 } << rate_tree::baseLevel };
-        const auto leaf_end{ std::min(leaf_start + leaf_size, lattice_.sites().size()) };
+        auto site_index{ rate_tree_->index(selected_rate) };
 
-        for (auto site_index{ leaf_start }; site_index < leaf_end; ++site_index)
-        {
-            const auto first{ site_index * ModelType::slots_per_site };
-            for (SlotId slot{}; slot < ModelType::slots_per_site; ++slot)
-            {
-                const auto class_key{ event_class_keys_.at(first + slot) };
-                const auto rate{ class_rates_.at(class_key) };
-                if (selected_rate < rate)
-                    return { static_cast<lattice::Index>(site_index), slot, class_key };
-                selected_rate -= rate;
-            }
-        }
+        while (selected_rate >= site_rates_.at(site_index))
+            selected_rate -= site_rates_.at(site_index++);
 
-        throw std::runtime_error{ "Selected event slot is outside source-site layout." };
+        if constexpr (utility::is_debug)
+            if (site_index >= site_rates_.size())
+                throw std::runtime_error{ "tree not updated correctly" };
+
+        const auto first{ static_cast<std::size_t>(site_index) * ModelType::slots_per_site };
+        auto offset{ first };
+        while (selected_rate >= class_rates_.at(event_class_keys_.at(offset)))
+            selected_rate -= class_rates_.at(event_class_keys_.at(offset++));
+
+        if (offset >= first + ModelType::slots_per_site)
+            throw std::runtime_error{ "Selected event slot is outside source-site layout." };
+
+        return { static_cast<lattice::Index>(site_index), offset - first,
+                 event_class_keys_.at(offset) };
     }
 
     template <class ModelType>
@@ -185,11 +186,13 @@ namespace kmc
         if (not site.is_dirty())
             return;
 
-        const auto old_rate{ site_rate(site.index()) };
-        const auto new_rate{ update_site_classes(site) };
+        auto& old_rate{ site_rates_.at(site.index()) };
+
+        Rate new_rate{ update_site_classes(site) };
 
         if (new_rate != old_rate)
         {
+            old_rate = new_rate;
 
             constexpr lattice::Index block_mask{
                 (lattice::Index{ 1 } << rate_tree::baseLevel) - 1
@@ -267,24 +270,20 @@ namespace kmc
     }
 
     template <class ModelType>
-    Rate RejectionTreeSimulation<ModelType>::site_rate(lattice::Index index) const
-    {
-        const auto first{ static_cast<std::size_t>(index) * ModelType::slots_per_site };
-        Rate sum{};
-        for (SlotId slot{}; slot < ModelType::slots_per_site; ++slot)
-            sum += class_rates_.at(event_class_keys_.at(first + slot));
-        return sum;
-    }
-
-    template <class ModelType>
-    Rate RejectionTreeSimulation<ModelType>::block_rate(lattice::Index index) const
+    Rate RejectionTreeSimulation<ModelType>::block_rate(lattice::Site& site)
     {
         constexpr auto block_size{ std::size_t{ 1 } << rate_tree::baseLevel };
-        const auto block_start{ static_cast<std::size_t>(index) & ~(block_size - 1) };
+
+        auto const block_start{ site.index() & ~(block_size - 1) };
 
         Rate sum{};
-        for (auto i{ block_start }; i < std::min(block_start + block_size, lattice_.sites().size()); ++i)
-            sum += site_rate(static_cast<lattice::Index>(i));
+
+        for (auto index{ block_start };
+            index < std::min(block_start + block_size, site_rates_.size());
+            ++index)
+        {
+            sum += site_rates_.at(index);
+        }
         return sum;
     }
 
@@ -322,17 +321,18 @@ namespace kmc
             if (class_initialized_[key])
                 class_rates_[key] = model_.kinetics().rate(static_cast<RateClassKey>(key));
 
-        // Refresh site classes first; the tree retains only two-site leaf sums.
+        // A full-rate refresh bypasses per-event block collection. Rebuild each
+        // block once after all site rates have been recalculated.
         block_updates_.clear();
         for (auto& site : lattice_.sites())
         {
-            update_site_classes(site);
+            site_rates_.at(site.index()) = update_site_classes(site);
             site.set_dirty(false);
         }
 
         constexpr auto block_size{ std::size_t{ 1 } << rate_tree::baseLevel };
-        for (std::size_t index{}; index < lattice_.sites().size(); index += block_size)
+        for (std::size_t index{}; index < site_rates_.size(); index += block_size)
             rate_tree_->update_rate(
-                static_cast<lattice::Index>(index), block_rate(static_cast<lattice::Index>(index)));
+                static_cast<lattice::Index>(index), block_rate(lattice_.sites().at(index)));
     }
 }
