@@ -41,7 +41,7 @@ namespace
         setup.model.kinetics().set_temperature(300_K).set_potential(0.88_V);
 #else
         setup.make_model = [] {
-            auto kinetics = std::make_unique<dealloying::models::LinearBondBreaking>();
+            auto kinetics = std::make_unique<dealloying::kinetics::LinearBondBreaking>();
             kinetics->set_temperature(300_K).set_potential(0.88_V);
             return kinetics;
         };

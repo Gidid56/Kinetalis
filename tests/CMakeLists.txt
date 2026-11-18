@@ -20,7 +20,7 @@ endfunction()
 kinetalis_add_test_suite(kmc
     kmc/rate_tree.cpp
     kmc/simulation.cpp
-    kmc/transformation_slots.cpp
+    kmc/mechanism_slots.cpp
 )
 kinetalis_add_test_suite(lattice
     lattice/unitcell.cpp
@@ -29,7 +29,7 @@ kinetalis_add_test_suite(lattice
     lattice/site.cpp
 )
 add_subdirectory(chemistry)
-add_subdirectory(models)
+add_subdirectory(kinetics)
 add_subdirectory(simulation)
 add_subdirectory(math)
 add_subdirectory(physics)

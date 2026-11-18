@@ -2,7 +2,7 @@
 #include "batch/campaign.h"
 #include "dealloying/analysis_plans.h"
 #include "dealloying/setups.h"
-#include "events.h"
+#include "model.h"
 
 namespace studies::dealloying::postprocess
 {
@@ -179,7 +179,7 @@ namespace studies::dealloying::campaigns
             for (auto ratio : ratios)
                 for (auto overpotential : critical_potential_wide_search_range)
                 {
-                    models::LinearBondBreaking::Modulation modulation{ descriptor, ratio };
+                    kinetics::LinearBondBreaking::Modulation modulation{ descriptor, ratio };
                     setups.emplace_back(
                         setups::pore_dealloying(
                             CampaignType::bifurcation,

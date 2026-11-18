@@ -1,9 +1,9 @@
 #pragma once
 #include "kmc/setup.h"
 #include "lattice/lattice.h"
-#include "dealloying/models/linear_bond_breaking.h"
+#include "dealloying/kinetics/linear_bond_breaking.h"
 #include "parameters.h"
-#include "events.h"
+#include "model.h"
 #include "simulation/engine.h"
 
 namespace studies::dealloying::setups
@@ -103,7 +103,7 @@ namespace studies::dealloying::setups
         lattice::Composition::Quantity x0 = 10,
         ElectricPotential overpotential = 0_V,
         kmc::Temperature temperature = 300_K,
-        std::optional<models::LinearBondBreaking::Modulation> modulation = {})
+        std::optional<kinetics::LinearBondBreaking::Modulation> modulation = {})
     {
         Setup setup;
 
