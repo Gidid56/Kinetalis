@@ -82,16 +82,30 @@ namespace kmc
     {
         block_updates_.clear();
 
-        // First mark all affected sites, then update them. The dirty flag
-        // ensures each site is recalculated only once, even if visited repeatedly.
-        const auto radius{ model_.kinetics().invalidation_radius() };
-        auto mark_dirty = [](lattice::Site& site) { site.set_dirty(true); };
-        for (auto* site : record.sites())
-            visit_neighbor_tree(*site, radius, mark_dirty);
+        // The active flag reflects whether a site has any valid event slots.
+        // An inactive site cannot become active if no transformation considers
+        // it a possible source after the lattice change.
+        affected_sites_.clear();
+        auto invalidate = [this](lattice::Site& site) {
+            if (site.is_dirty())
+                return;
 
-        auto update_dirty = [this](lattice::Site& site) { update_site_rate(site); };
+            if (not site.is_active())
+            {
+                auto const candidates{ model_.transformations().source_candidates(site) };
+                if (std::ranges::none_of(candidates, std::identity{}))
+                    return;
+            }
+
+            site.set_dirty(true);
+            affected_sites_.push_back(&site);
+        };
+
         for (auto* site : record.sites())
-            visit_neighbor_tree(*site, radius, update_dirty);
+            visit_neighbor_tree(*site, model_.kinetics().invalidation_radius(), invalidate);
+
+        for (auto* site : affected_sites_)
+            update_site_rate(*site);
 
         if (block_updates_.size() == 1)
         {
