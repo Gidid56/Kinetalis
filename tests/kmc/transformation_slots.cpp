@@ -241,6 +241,35 @@ namespace
             }));
         };
 
+        "source activity short-circuits across transformations"_test = [] {
+            Probes transformations;
+            std::array<std::size_t, 3> checks{};
+            transformations.get<SiteProbe>().source_checks = &checks[0];
+            transformations.get<NeighborProbe>().source_checks = &checks[1];
+            transformations.get<SparseProbe>().source_checks = &checks[2];
+
+            auto lattice{ make_probe_setup().make_lattice() };
+            auto const& source{ lattice.sites().front() };
+
+            ut::expect(transformations.is_source_active(source));
+            ut::expect(checks == std::array<std::size_t, 3>{ 1, 0, 0 });
+
+            checks.fill(0);
+            transformations.get<SiteProbe>().enabled = false;
+            ut::expect(transformations.is_source_active(source));
+            ut::expect(checks == std::array<std::size_t, 3>{ 1, 1, 0 });
+
+            checks.fill(0);
+            transformations.get<NeighborProbe>().enabled = false;
+            ut::expect(transformations.is_source_active(source));
+            ut::expect(checks == std::array<std::size_t, 3>{ 1, 1, 1 });
+
+            checks.fill(0);
+            transformations.get<SparseProbe>().enabled = false;
+            ut::expect(not transformations.is_source_active(source));
+            ut::expect(checks == std::array<std::size_t, 3>{ 1, 1, 1 });
+        };
+
         "source predicates are evaluated once per site and transformation"_test = [] {
             auto setup{ make_probe_setup() };
             std::array<std::size_t, 3> checks{};
@@ -261,10 +290,7 @@ namespace
             auto lattice{ setup.make_lattice() };
             auto& source{ lattice.sites().front() };
             auto has_candidate = [&] {
-                auto const candidates{ transformations.source_candidates(source) };
-                auto const active{ transformations.is_source_active(candidates) };
-                ut::expect(ut::eq(active, transformations.is_source_active(source)));
-                return active;
+                return transformations.is_source_active(source);
             };
             ut::expect(has_candidate());
 
