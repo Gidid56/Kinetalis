@@ -2,6 +2,7 @@
 #include "event.h"
 #include "utility/enums.h"
 
+#include <algorithm>
 #include <array>
 #include <concepts>
 #include <cstddef>
@@ -64,6 +65,17 @@ namespace kmc
             return std::apply([&](auto const&... transformations) {
                 return SourceCandidates{ transformations.is_source_candidate(source)... };
             }, transformations_);
+        }
+
+        // The array overload reuses already-evaluated predicates.
+        static bool is_source_active(SourceCandidates const& candidates)
+        {
+            return std::ranges::any_of(candidates, std::identity{});
+        }
+
+        bool is_source_active(lattice::Site const& site) const
+        {
+            return is_source_active(source_candidates(site));
         }
 
         template <class Function>
