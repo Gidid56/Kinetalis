@@ -14,6 +14,7 @@ namespace
 {
     using namespace kmc;
     namespace kinetics = studies::dealloying::kinetics;
+    using chemistry::Element;
     using enum chemistry::Element;
 
     ut::suite<"kinetics.composition_dependent"> composition_dependent_tests = [] {

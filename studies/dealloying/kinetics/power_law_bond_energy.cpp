@@ -2,11 +2,12 @@
 #include "power_law_bond_energy.h"
 
 using namespace kmc;
+using chemistry::Element;
 using namespace studies::dealloying::kinetics;
 
 namespace studies::dealloying::kinetics::power_law_bond_energy
 {
-    using enum Element;
+    using enum chemistry::Element;
 
     Energy dimer_bond_energy(Element element)
     {
