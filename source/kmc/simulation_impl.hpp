@@ -210,29 +210,18 @@ namespace kmc
     Rate RejectionTreeSimulation<ModelType>::update_site_classes(lattice::Site& site)
     {
         const auto first{ static_cast<std::size_t>(site.index()) * ModelType::slots_per_site };
-        auto const source_candidates{ model_.transformations().source_candidates(site) };
-
-        if (not model_.transformations().is_source_active(source_candidates))
-        {
-            // An inactive site has no registered event classes to clear.
-            if (site.is_active())
-                for (SlotId slot{}; slot < ModelType::slots_per_site; ++slot)
-                    set_class_key(first + slot, RateClassKey{});
-
-            site.set_active(false);
-            return {};
-        }
 
         Rate sum{};
         bool has_events{};
 
-        std::size_t transformation_index{};
         model_.transformations().for_each([&](auto const& transformation, std::size_t offset) {
             constexpr auto count{ std::remove_cvref_t<decltype(transformation)>::slot_count };
-            if (not source_candidates[transformation_index++])
+            if (not transformation.is_source_candidate(site))
             {
-                for (SlotId local{}; local < count; ++local)
-                    set_class_key(first + offset + local, RateClassKey{});
+                // Inactive sites already have empty class slots.
+                if (site.is_active())
+                    for (SlotId local{}; local < count; ++local)
+                        set_class_key(first + offset + local, RateClassKey{});
                 return;
             }
 
