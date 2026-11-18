@@ -192,24 +192,23 @@ namespace
     void expect_reference_state(TestSimulation const& simulation, Transformations const& transformations, Step step)
     {
         auto const& lattice{ simulation.lattice() };
-        auto const& rates{ simulation.class_rates() };
-        auto const& counts{ simulation.class_counts() };
+        auto const& classes{ simulation.classes() };
         constexpr auto block_size{ std::size_t{ 1 } << rate_tree::baseLevel };
         std::vector<Rate> block_sums((lattice.sites().size() + block_size - 1) / block_size);
-        std::vector<std::size_t> expected_counts(counts.size());
+        std::vector<std::size_t> expected_counts(classes.size());
 
         auto add = [&](Rate& site_sum, Descriptor const& descriptor) {
             auto const key{ ModelBase::static_key(descriptor) };
             ut::expect(ut::that % key > 0) << "active class has nonzero key, step " << step;
-            ut::expect(ut::that % key < rates.size()) << "class key within table, step " << step;
-            if (key == 0 or key >= rates.size())
+            ut::expect(ut::that % key < classes.size()) << "class key within table, step " << step;
+            if (key == 0 or key >= classes.size())
                 return;
             auto const* model{ &simulation.model().kinetics() };
             ut::expect(model != nullptr and model->descriptor(key) == descriptor)
                 << "model descriptor matches rebuilt class, step " << step;
-            ut::expect(simulation.class_initialized(key))
+            ut::expect(classes[key].is_initialized())
                 << "kinetic class initialized, step " << step;
-            ut::expect(ut::eq(rates[key].value(), simulation.model().kinetics().rate(key).value()))
+            ut::expect(ut::eq(classes[key].rate.value(), simulation.model().kinetics().rate(key).value()))
                 << "cached model rate, step " << step;
             ++expected_counts[key];
             site_sum += simulation.model().kinetics().rate(key);
@@ -249,9 +248,9 @@ namespace
                 << "coordination after event, step " << step;
         }
 
-        ut::expect(ut::eq(counts.size(), expected_counts.size()));
-        for (std::size_t key{}; key < counts.size(); ++key)
-            ut::expect(ut::eq(counts[key], expected_counts[key]))
+        ut::expect(ut::eq(classes.size(), expected_classes.size()));
+        for (std::size_t key{}; key < classes.size(); ++key)
+            ut::expect(ut::eq(classes[key].count, expected_counts[key]))
                 << "kinetic class count key " << key << ", step " << step;
 
         auto const& tree{ *simulation.rate_tree() };
@@ -394,7 +393,7 @@ namespace
             << "rejection fraction after resume";
         ut::expect(ut::eq(a.rate_tree()->rate_sum().value(), b.rate_tree()->rate_sum().value()))
             << "total rate after resume";
-        ut::expect(a.class_counts() == b.class_counts()) << "kinetic class counts after resume";
+        ut::expect(a.classes() == b.classes()) << "kinetic class counts after resume";
         for (std::size_t i{}; i < a.lattice().sites().size(); ++i)
         {
             ut::expect(a.lattice().sites()[i].element() ==
@@ -570,38 +569,38 @@ namespace
             setup.model.transformations().get<ClusterRule>().enabled = false;
             TestSimulation simulation{ setup };
 
-            auto const& rates{ simulation.class_rates() };
-            auto const& counts{ simulation.class_counts() };
-            ut::expect(ut::eq(rates.size(), simulation.model().kinetics().number_keys()));
-            ut::expect(ut::eq(counts.size(), rates.size()));
-            for (std::size_t index{}; index < rates.size(); ++index)
+            auto const& classes{ simulation.classes() };
+            ut::expect(ut::eq(classes.size(), simulation.model().kinetics().number_keys()));
+            for (auto const& kinetic_class : classes)
             {
-                ut::expect(not simulation.class_initialized(static_cast<RateClassKey>(index)))
+                ut::expect(not kinetic_class.is_initialized())
                     << "unused class stays uninitialized";
-                ut::expect(rates[index] == Rate{}) << "unused class has zero rate";
+                ut::expect(kinetic_class.rate == Rate{}) << "unused class has zero rate";
+                ut::expect(ut::eq(kinetic_class.count, std::size_t{}))
+                    << "unused class has zero count";
             }
         };
 
         "static kinetic-class cache initializes encountered events only once"_test = [] {
             auto setup{ make_setup() };
             TestSimulation simulation{ setup };
-            auto const& rates{ simulation.class_rates() };
+            auto const& classes{ simulation.classes() };
 
             std::size_t initialized{};
             auto const* model{ &simulation.model().kinetics() };
             ut::expect(model != nullptr);
-            for (std::size_t i{}; i < rates.size(); ++i)
-                if (simulation.class_initialized(static_cast<RateClassKey>(i)))
+            for (std::size_t i{}; i < classes.size(); ++i)
+                if (classes[i].is_initialized())
                 {
                     ++initialized;
                     ut::expect(ut::eq(static_cast<std::size_t>(
                         ModelBase::static_key(model->descriptor(static_cast<RateClassKey>(i)))), i))
                         << "cached class owns its key";
-                    ut::expect(rates[i] == simulation.model().kinetics().rate(static_cast<RateClassKey>(i)))
+                    ut::expect(classes[i].rate == simulation.model().kinetics().rate(static_cast<RateClassKey>(i)))
                         << "cached rate matches model";
                 }
                 else
-                    ut::expect(rates[i] == Rate{})
+                    ut::expect(classes[i].rate == Rate{})
                         << "uninitialized rate remains zero";
             ut::expect(ut::that % initialized > 0) << "at least one class created";
 
@@ -710,14 +709,14 @@ namespace
             })
                 read_csv(file, site_columns);
 
-            auto const& rates{ simulation.class_rates() };
-            auto lines{ read_csv("kinetic_activity/activity", rates.size() + 1) };
-            read_csv("kinetic_activity/time_weighted_activity", rates.size() + 1);
+            auto const& classes{ simulation.classes() };
+            auto lines{ read_csv("kinetic_activity/activity", classes.size() + 1) };
+            read_csv("kinetic_activity/time_weighted_activity", classes.size() + 1);
 
             if (not lines.empty())
-                for (std::size_t key{ 1 }; key < rates.size(); ++key)
+                for (std::size_t key{ 1 }; key < classes.size(); ++key)
                 {
-                    auto const label{ simulation.class_initialized(static_cast<RateClassKey>(key))
+                    auto const label{ classes[key].is_initialized()
                         ? output::DescriptorFormat<Descriptor>::label(
                             simulation.model().kinetics().descriptor(
                                 static_cast<RateClassKey>(key)))
