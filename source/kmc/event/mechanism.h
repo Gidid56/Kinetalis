@@ -1,5 +1,6 @@
 #pragma once
-#include "kmc/event.h"
+#include "kmc/event/location.h"
+#include "kmc/event/types.h"
 
 #include <concepts>
 #include <optional>
