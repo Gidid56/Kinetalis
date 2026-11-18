@@ -9,8 +9,8 @@ namespace studies::dealloying::process
     struct Dissolution
     {
         static constexpr auto event = kmc::event::Type::dissolution;
-        static constexpr std::size_t slot_count{ 1 };
         static constexpr std::size_t cluster_size{ 1 };
+        static constexpr std::size_t slot_count{ 1 };
 
         chemistry::Element element{ chemistry::Element::Ag };
         lattice::Coordination max_coordination{ 11 };
@@ -21,47 +21,27 @@ namespace studies::dealloying::process
                 "element = {}\n"
                 "max_coordination = {}",
                 element,
-                static_cast<unsigned>(max_coordination));
+                max_coordination);
         }
 
-        kmc::event::Location location(
-            lattice::Site& source, std::size_t, lattice::Lattice&) const
-        {
-            return kmc::event::Location{ source };
-        }
-
-        bool is_source_candidate(lattice::Site const& source) const
+        bool is_candidate(lattice::Site const& source) const
         {
             return source.element() == element and source.coordination() <= max_coordination;
         }
-
-        bool is_candidate_after_source_check(kmc::event::Location const& location) const
-        {
-            return location.sites().size() == 1;
-        }
-
-        bool is_candidate(kmc::event::Location const& location) const
-        {
-            return is_source_candidate(location.source()) and
-                   is_candidate_after_source_check(location);
-        }
-
-        // No postselection rejection in the dissolution model.
-        bool is_rejected(kmc::event::Location const&) const { return false; }
 
         void execute(kmc::event::Location const& location, lattice::Lattice& lattice) const
         {
             location.source().set_element(lattice, chemistry::Element::none);
         }
-
     };
 
     struct Diffusion
     {
         static constexpr auto event = kmc::event::Type::diffusion;
-        static constexpr std::size_t slot_count{ lattice::max_coordination };
         static constexpr std::size_t cluster_size{ 2 };
+        static constexpr std::size_t slot_count{ lattice::max_coordination };
 
+        static constexpr bool allow_isoltated_atom_diffusion{ true };
         lattice::Coordination max_source_coordination{ 9 }, min_target_coordination{ 2 };
 
         bool has_slot(lattice::Site const& source, std::size_t slot) const
@@ -69,36 +49,30 @@ namespace studies::dealloying::process
             return slot < source.max_neighbors();
         }
 
-        kmc::event::Location location(
-            lattice::Site& source, std::size_t slot, lattice::Lattice& lattice) const
+        kmc::event::Location
+        location(lattice::Site& source, std::size_t slot, lattice::Lattice& lattice) const
         {
-            return kmc::event::Location{ lattice::Cluster<2>{
-                &source,
-                lattice.neighbor(source.neighbor_index() + static_cast<lattice::Index>(slot))
-            } };
+            return kmc::event::Location{ lattice::Cluster<2>{ &source,
+                lattice.neighbor(source.neighbor_index() + static_cast<lattice::Index>(slot)) } };
         }
 
-        bool is_source_candidate(lattice::Site const& source) const
+        bool is_candidate(lattice::Site const& source) const
         {
             return source.is_occupied() and source.coordination() <= max_source_coordination;
         }
 
-        bool is_candidate_after_source_check(kmc::event::Location const& location) const
-        {
-            return location.sites().size() == 2 and location.sites()[1]->is_vacant();
-        }
-
         bool is_candidate(kmc::event::Location const& location) const
         {
-            return is_source_candidate(location.source()) and
-                   is_candidate_after_source_check(location);
+            return location.sites()[1]->is_vacant();
         }
 
-        // A selected candidate can still be rejected by the target constraint.
+        // A selected candidate can still be rejected by additional constraints.
         bool is_rejected(kmc::event::Location const& location) const
         {
-            return location.sites()[1]->coordination() <= min_target_coordination and
-                   location.source().coordination() != 0;
+            if constexpr (allow_isoltated_atom_diffusion)
+                if (location.source().coordination() == 0)
+                    return false;
+            return location.sites()[1]->coordination() <= min_target_coordination;
         }
 
         void execute(kmc::event::Location const& location, lattice::Lattice& lattice) const
@@ -108,14 +82,15 @@ namespace studies::dealloying::process
             location.source().set_element(lattice, chemistry::Element::none);
         }
 
-
         std::string settings() const
         {
             return std::format(
+                "allow_isoltated_atom_diffusion = {}\n"
                 "max_source_coordination = {}\n"
                 "min_target_coordination = {}",
-                static_cast<unsigned>(max_source_coordination),
-                static_cast<unsigned>(min_target_coordination));
+                allow_isoltated_atom_diffusion,
+                max_source_coordination,
+                min_target_coordination);
         }
     };
 }

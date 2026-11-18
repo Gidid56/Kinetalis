@@ -22,10 +22,10 @@ namespace kmc
                                     std::size_t slot, lattice::Lattice& lattice,
                                       event::Location const& location) {
         { T::event } -> std::convertible_to<event::Type>;
-        { T::slot_count } -> std::convertible_to<std::size_t>;
         { T::cluster_size } -> std::convertible_to<std::size_t>;
+        { T::slot_count } -> std::convertible_to<std::size_t>;
         { process.location(source, slot, lattice) } -> std::same_as<event::Location>;
-        { process.is_source_candidate(source) } -> std::convertible_to<bool>;
+        { process.is_candidate(source) } -> std::convertible_to<bool>;
         { process.is_candidate(location) } -> std::convertible_to<bool>;
         { process.is_rejected(location) } -> std::convertible_to<bool>;
         { process.execute(location, lattice) } -> std::same_as<void>;
