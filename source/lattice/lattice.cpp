@@ -8,6 +8,8 @@
 #include <cstdint>
 
 using namespace lattice;
+using chemistry::Element;
+using chemistry::Composition;
 
 Lattice::Lattice(UnitCell const& unit_cell, Indices miller_indices)
     : unit_cell_{ unit_cell },

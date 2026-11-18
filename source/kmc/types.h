@@ -10,8 +10,6 @@
 
 namespace kmc
 {
-    using chemistry::Element;
-
     using Step = std::uint64_t;
     using Steps = std::vector<Step>;
 

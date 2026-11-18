@@ -5,6 +5,7 @@
 #include "lattice/lattice.h"
 
 using namespace lattice;
+using chemistry::Element;
 
 void Site::set_element(Lattice& lattice, Element element)
 {

@@ -17,14 +17,11 @@ namespace simulation { class Engine; }
 
 namespace lattice
 {
-    using chemistry::Composition;
-    using chemistry::Element;
-
     // Add new elements here if desired
     inline constexpr std::array active_elements{
-        Element::Ag,
-        Element::Au,
-        //Element::Cu,
+        chemistry::Element::Ag,
+        chemistry::Element::Au,
+        //chemistry::Element::Cu,
     };
 
     inline constexpr bool element_specific_neighbors{ false }, use_layers{ false };

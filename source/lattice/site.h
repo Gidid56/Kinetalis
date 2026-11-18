@@ -16,7 +16,7 @@
    - Utility functions to query site characteristics: occupancy, surface/bulk status, neighbors, and indices.
 
    Private Attributes:
-   - 'Element element_': Represents the element occupying the lattice site.
+   - 'chemistry::Element element_': Represents the element occupying the lattice site.
    - 'Coordination coordination_, maxNeighbors_': Track neighboring sites and the maximum allowed neighbors.
    - 'bool pristine_': Marks the site as pristine or modified.
    - 'Layer layer_': Indicates the layer of the lattice site within the lattice structure.
@@ -35,7 +35,7 @@ public:
         active = 1 << 2,
     };
 
-    explicit Site(Position const& position, Element element, Index index)
+    explicit Site(Position const& position, chemistry::Element element, Index index)
         : position_{ position },
           site_index_{ index },
           element_{ element }
@@ -46,7 +46,7 @@ public:
           element_{ basis.element_ }
     { }
 
-    void set_element(Lattice&, Element);
+    void set_element(Lattice&, chemistry::Element);
     void set_index(Index index) { site_index_ = index; }
     void set_position(Position const& position) { position_ = position; }
 
@@ -71,8 +71,8 @@ public:
 
     physics::quantity::Displacement layer_position(math::Axis) const;
 
-    bool is_occupied() const { return element_ != Element::none; }
-    bool is_vacant() const { return element_ == Element::none; }
+    bool is_occupied() const { return element_ != chemistry::Element::none; }
+    bool is_vacant() const { return element_ == chemistry::Element::none; }
     bool is_surface() const { return coordination_ != max_neighbors_; }
     bool is_bulk() const { return coordination_ == max_neighbors_; }
 
@@ -85,8 +85,8 @@ public:
     bool is_dirty() const { return is<Flags::dirty>(); }
     bool is_active() const { return is<Flags::active>(); }
 
-    Element element() const { return element_; }
-    Coordination coordination(Element) const;
+    chemistry::Element element() const { return element_; }
+    Coordination coordination(chemistry::Element) const;
     Coordination coordination() const { return coordination_; }
     auto max_neighbors() const { return max_neighbors_; }
     auto vacant_neighbors() const { return max_neighbors_ - coordination_; }
@@ -101,7 +101,7 @@ public:
     //auto& original() const { return original_; }
 
 private:
-    Element element_{};
+    chemistry::Element element_{};
     Coordination coordination_{}, max_neighbors_{};
     [[no_unique_address]] ElementNeighbors element_neighbors_{};
     Flags flags_{};

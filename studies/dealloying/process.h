@@ -12,7 +12,7 @@ namespace studies::dealloying::process
         static constexpr auto event = kmc::event::Type::dissolution;
         static constexpr std::size_t slot_count{ 1 };
 
-        kmc::Element element{ kmc::Element::Ag };
+        chemistry::Element element{ chemistry::Element::Ag };
         lattice::Coordination max_coordination{ 11 };
 
         std::string settings() const
@@ -53,7 +53,7 @@ namespace studies::dealloying::process
         void execute(kmc::event::Location const& location, lattice::Lattice& lattice) const
         {
             assert(location.sites().size() == 1);
-            location.source().set_element(lattice, kmc::Element::none);
+            location.source().set_element(lattice, chemistry::Element::none);
         }
 
     };
@@ -104,7 +104,7 @@ namespace studies::dealloying::process
             assert(location.sites().size() == 2);
             const auto element{ location.source().element() };
             location.sites()[1]->set_element(lattice, element);
-            location.source().set_element(lattice, kmc::Element::none);
+            location.source().set_element(lattice, chemistry::Element::none);
         }
 
 
