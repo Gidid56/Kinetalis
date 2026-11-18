@@ -10,7 +10,7 @@ namespace kmc::rate_tree
         Rate rate;
     };
 
-    inline constexpr std::size_t baseLevel{ 4 };
+    inline constexpr std::size_t baseLevel{ 1 }; // One leaf stores the sum of two site rates.
     inline constexpr std::size_t allocationBlockLevels{ 8 };
     inline constexpr std::size_t maxHeight{ 32 };
 
