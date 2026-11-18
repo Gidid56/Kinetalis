@@ -1,5 +1,5 @@
 #include "kmc/simulation.h"
-#include "kmc/event/mechanisms.h"
+#include "kmc/process.h"
 #include "kmc/analysis_plan.h"
 #include "output/basics.h"
 #include "lattice/lattice.h"
@@ -23,7 +23,7 @@ namespace
     using namespace kmc;
     using lattice::Site;
 
-    // Test-only mechanisms: execution leaves the lattice unchanged so that
+    // Test-only processes: execution leaves the lattice unchanged so that
     // every selected slot can be checked against the original homogeneous layout.
     struct SiteProbe
     {
@@ -106,11 +106,11 @@ namespace
         std::string settings() const { return "sparse probe"; }
     };
 
-    static_assert(kmc::event::Mechanism<SiteProbe>);
-    static_assert(kmc::event::Mechanism<NeighborProbe>);
-    static_assert(kmc::event::Mechanism<SparseProbe>);
+    static_assert(kmc::Process<SiteProbe>);
+    static_assert(kmc::Process<NeighborProbe>);
+    static_assert(kmc::Process<SparseProbe>);
 
-    using Probes = kmc::event::Mechanisms<SiteProbe, NeighborProbe, SparseProbe>;
+    using Probes = kmc::Processes<SiteProbe, NeighborProbe, SparseProbe>;
     static_assert(Probes::slot_count == 10);
 
     struct ProbeKinetics : event::Kinetics
@@ -206,13 +206,13 @@ namespace
         lattice::Lattice const* lattice_{};
     };
 
-    ut::suite<"kmc.mechanism_slots"> transformation_slot_tests = [] {
-        "three mechanisms have contiguous, correctly decoded local slot ranges"_test = [] {
-            Probes mechanisms;
+    ut::suite<"kmc.process_slots"> transformation_slot_tests = [] {
+        "three processes have contiguous, correctly decoded local slot ranges"_test = [] {
+            Probes processes;
             std::vector<std::size_t> offsets;
             std::vector<event::Type> types;
 
-            mechanisms.for_each([&](auto const& transformation, std::size_t offset) {
+            processes.for_each([&](auto const& transformation, std::size_t offset) {
                 offsets.push_back(offset);
                 types.push_back(std::remove_cvref_t<decltype(transformation)>::event);
             });
@@ -228,7 +228,7 @@ namespace
                 const auto expected_local{ slot < 2 ? slot : slot < 5 ? slot - 2 : slot - 5 };
 
                 std::size_t visited{};
-                mechanisms.visit(slot, [&](auto const& transformation, SlotId local_slot) {
+                processes.visit(slot, [&](auto const& transformation, SlotId local_slot) {
                     ++visited;
                     ut::expect(std::remove_cvref_t<decltype(transformation)>::event == expected_type);
                     ut::expect(ut::eq(local_slot, expected_local));
@@ -237,45 +237,45 @@ namespace
             }
 
             ut::expect(ut::throws<std::out_of_range>([&] {
-                mechanisms.visit(Probes::slot_count, [](auto const&, SlotId) {});
+                processes.visit(Probes::slot_count, [](auto const&, SlotId) {});
             }));
         };
 
-        "source activity short-circuits across mechanisms"_test = [] {
-            Probes mechanisms;
+        "source activity short-circuits across processes"_test = [] {
+            Probes processes;
             std::array<std::size_t, 3> checks{};
-            mechanisms.get<SiteProbe>().source_checks = &checks[0];
-            mechanisms.get<NeighborProbe>().source_checks = &checks[1];
-            mechanisms.get<SparseProbe>().source_checks = &checks[2];
+            processes.get<SiteProbe>().source_checks = &checks[0];
+            processes.get<NeighborProbe>().source_checks = &checks[1];
+            processes.get<SparseProbe>().source_checks = &checks[2];
 
             auto lattice{ make_probe_setup().make_lattice() };
             auto const& source{ lattice.sites().front() };
 
-            ut::expect(mechanisms.is_source_active(source));
+            ut::expect(processes.is_source_active(source));
             ut::expect(checks == std::array<std::size_t, 3>{ 1, 0, 0 });
 
             checks.fill(0);
-            mechanisms.get<SiteProbe>().enabled = false;
-            ut::expect(mechanisms.is_source_active(source));
+            processes.get<SiteProbe>().enabled = false;
+            ut::expect(processes.is_source_active(source));
             ut::expect(checks == std::array<std::size_t, 3>{ 1, 1, 0 });
 
             checks.fill(0);
-            mechanisms.get<NeighborProbe>().enabled = false;
-            ut::expect(mechanisms.is_source_active(source));
+            processes.get<NeighborProbe>().enabled = false;
+            ut::expect(processes.is_source_active(source));
             ut::expect(checks == std::array<std::size_t, 3>{ 1, 1, 1 });
 
             checks.fill(0);
-            mechanisms.get<SparseProbe>().enabled = false;
-            ut::expect(not mechanisms.is_source_active(source));
+            processes.get<SparseProbe>().enabled = false;
+            ut::expect(not processes.is_source_active(source));
             ut::expect(checks == std::array<std::size_t, 3>{ 1, 1, 1 });
         };
 
         "source predicates are evaluated once per site and transformation"_test = [] {
             auto setup{ make_probe_setup() };
             std::array<std::size_t, 3> checks{};
-            setup.model.mechanisms().get<SiteProbe>().source_checks = &checks[0];
-            setup.model.mechanisms().get<NeighborProbe>().source_checks = &checks[1];
-            setup.model.mechanisms().get<SparseProbe>().source_checks = &checks[2];
+            setup.model.processes().get<SiteProbe>().source_checks = &checks[0];
+            setup.model.processes().get<NeighborProbe>().source_checks = &checks[1];
+            setup.model.processes().get<SparseProbe>().source_checks = &checks[2];
 
             ProbeSimulation simulation{ setup };
             auto const n{ simulation.lattice().sites().size() };
@@ -285,18 +285,18 @@ namespace
 
         "source-candidate aggregation and inactive blocks preserve homogeneous keys"_test = [] {
             auto setup{ make_probe_setup() };
-            auto& mechanisms{ setup.model.mechanisms() };
+            auto& processes{ setup.model.processes() };
 
             auto lattice{ setup.make_lattice() };
             auto& source{ lattice.sites().front() };
             auto has_candidate = [&] {
-                return mechanisms.is_source_active(source);
+                return processes.is_source_active(source);
             };
             ut::expect(has_candidate());
 
-            mechanisms.get<SiteProbe>().enabled = false;
+            processes.get<SiteProbe>().enabled = false;
             ut::expect(has_candidate());
-            mechanisms.get<NeighborProbe>().enabled = false;
+            processes.get<NeighborProbe>().enabled = false;
             ut::expect(has_candidate());
 
             // Only SparseProbe remains; the first five slots are inactive
@@ -313,7 +313,7 @@ namespace
             }
             ut::expect(ut::eq(sparse_only.kinetic_classes().at(3).count, sparse_only.lattice().sites().size()));
 
-            mechanisms.get<SparseProbe>().enabled = false;
+            processes.get<SparseProbe>().enabled = false;
             ut::expect(not has_candidate());
             ProbeSimulation empty{ setup };
             ut::expect(ut::eq(empty.rate_tree()->rate_sum().value(), 0.0));
@@ -369,7 +369,7 @@ namespace
                     7.0 * static_cast<double>(std::min(block_size, site_count - index))));
         };
 
-        "selection never chooses absent slots and decodes all active mechanisms"_test = [] {
+        "selection never chooses absent slots and decodes all active processes"_test = [] {
             ProbeSimulation simulation{ make_probe_setup() };
             auto const initial_keys{ simulation.slot_class_keys() };
             auto const initial_classes{ simulation.kinetic_classes() };

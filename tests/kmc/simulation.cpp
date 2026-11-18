@@ -1,5 +1,5 @@
 #include "kmc/simulation.h"
-#include "kmc/event/mechanisms.h"
+#include "kmc/process.h"
 #include "dealloying/kinetics/linear_bond_breaking.h"
 #include "dealloying/kinetics/composition_dependent.h"
 #include "output/basics.h"
@@ -130,10 +130,10 @@ namespace
         std::string settings() const { return "test cluster rule"; }
     };
 
-    static_assert(kmc::event::Mechanism<SiteRule>);
-    static_assert(kmc::event::Mechanism<ClusterRule>);
+    static_assert(kmc::Process<SiteRule>);
+    static_assert(kmc::Process<ClusterRule>);
 
-    using Mechanisms = kmc::event::Mechanisms<SiteRule, ClusterRule>;
+    using Processes = kmc::Processes<SiteRule, ClusterRule>;
 
     using Descriptor = studies::dealloying::kinetics::LinearBondBreaking::Descriptor;
     using ModelBase = studies::dealloying::kinetics::LinearBondBreaking;
@@ -157,7 +157,7 @@ namespace
         std::size_t radius_;
     };
 
-    using TestModel = kmc::Model<TestKinetics, Mechanisms>;
+    using TestModel = kmc::Model<TestKinetics, Processes>;
     using TestSimulation = RejectionTreeSimulation<TestModel>;
 
     Setup<TestModel> make_setup(std::size_t radius = 1)
@@ -189,7 +189,7 @@ namespace
         return setup;
     }
 
-    void expect_reference_state(TestSimulation const& simulation, Mechanisms const& mechanisms, Step step)
+    void expect_reference_state(TestSimulation const& simulation, Processes const& processes, Step step)
     {
         auto const& lattice{ simulation.lattice() };
         auto const& classes{ simulation.kinetic_classes() };
@@ -219,17 +219,17 @@ namespace
             Rate site_sum{};
             auto has_events{ false };
             const event::Location source{ const_cast<Site&>(site) };
-            if (mechanisms.get<SiteRule>().is_source_candidate(site) and mechanisms.get<SiteRule>().is_candidate(source))
+            if (processes.get<SiteRule>().is_source_candidate(site) and processes.get<SiteRule>().is_candidate(source))
             {
                 add(site_sum, Descriptor{ SiteRule::event, source.source().element(), source.source().coordination() });
                 has_events = true;
             }
-            if (mechanisms.get<ClusterRule>().is_source_candidate(site))
+            if (processes.get<ClusterRule>().is_source_candidate(site))
                 for (auto const* target : lattice.neighbors(site))
                 {
                     const event::Location location{ Cluster<2>{
                         const_cast<Site*>(&site), const_cast<Site*>(target) } };
-                    if (mechanisms.get<ClusterRule>().is_candidate(location))
+                    if (processes.get<ClusterRule>().is_candidate(location))
                     {
                         add(site_sum, Descriptor{ ClusterRule::event, location.source().element(), location.source().coordination() });
                         has_events = true;
@@ -273,9 +273,9 @@ namespace
     class CheckingObserver final : public Observer
     {
     public:
-        explicit CheckingObserver(Step target, Mechanisms mechanisms = {}, Step initial_step = 0)
+        explicit CheckingObserver(Step target, Processes processes = {}, Step initial_step = 0)
             : Observer{ Resolution{ 1, 1.0 } }, target_{ target },
-              last_step_{ initial_step }, mechanisms_{ mechanisms }
+              last_step_{ initial_step }, processes_{ processes }
         { }
 
         std::string_view name() const override { return "kmc-integration-test"; }
@@ -283,7 +283,7 @@ namespace
 
         void observe_started(Simulation const& simulation) override
         {
-            expect_reference_state(dynamic_cast<TestSimulation const&>(simulation), mechanisms_, simulation.step());
+            expect_reference_state(dynamic_cast<TestSimulation const&>(simulation), processes_, simulation.step());
         }
 
         void observe_selected(event::Record const& record) override
@@ -294,21 +294,21 @@ namespace
             if (record.sites().size() == 1)
             {
                 ++site_selections_;
-                ut::expect(mechanisms_.get<SiteRule>().is_source_candidate(source))
+                ut::expect(processes_.get<SiteRule>().is_source_candidate(source))
                     << "selected site has valid source";
-                ut::expect(mechanisms_.get<SiteRule>().is_candidate(record.location()))
+                ut::expect(processes_.get<SiteRule>().is_candidate(record.location()))
                     << "selected site is a candidate";
-                rejected = mechanisms_.get<SiteRule>().is_rejected(record.location());
+                rejected = processes_.get<SiteRule>().is_rejected(record.location());
                 ut::expect(record.type == SiteRule::event);
             }
             else
             {
                 ++cluster_selections_;
-                ut::expect(mechanisms_.get<ClusterRule>().is_source_candidate(source))
+                ut::expect(processes_.get<ClusterRule>().is_source_candidate(source))
                     << "selected cluster has valid source";
-                ut::expect(mechanisms_.get<ClusterRule>().is_candidate(record.location()))
+                ut::expect(processes_.get<ClusterRule>().is_candidate(record.location()))
                     << "selected cluster is a candidate";
-                rejected = mechanisms_.get<ClusterRule>().is_rejected(record.location());
+                rejected = processes_.get<ClusterRule>().is_rejected(record.location());
                 ut::expect(record.type == ClusterRule::event);
             }
             auto const expected_key{ ModelBase::static_key(Descriptor{
@@ -339,7 +339,7 @@ namespace
                 << "one accepted event per validated snapshot";
             last_step_ = simulation.step();
             expect_reference_state(dynamic_cast<TestSimulation const&>(simulation),
-                mechanisms_, last_step_);
+                processes_, last_step_);
         }
 
         Step last_step() const { return last_step_; }
@@ -354,7 +354,7 @@ namespace
     private:
         Step target_{};
         Step last_step_{};
-        Mechanisms mechanisms_;
+        Processes processes_;
         std::size_t selections_{};
         std::size_t rejections_{};
         std::size_t processed_{};
@@ -458,7 +458,7 @@ namespace
             ut::expect(ut::eq(cluster_move.class_key, cluster_record.class_key));
         };
 
-        "site and cluster mechanisms execute lattice changes"_test = [] {
+        "site and cluster processes execute lattice changes"_test = [] {
             auto setup{ make_setup() };
             TestSimulation simulation{ setup };
             auto& lattice{ simulation.mutable_lattice() };
@@ -512,13 +512,13 @@ namespace
         "radius-two invalidation recalculates exactly two neighbor shells"_test = [] {
             std::vector<std::size_t> source_checks;
             auto setup{ make_setup(2) };
-            setup.model.mechanisms().get<ClusterRule>().enabled = false;
-            setup.model.mechanisms().get<SiteRule>().source_checks = &source_checks;
+            setup.model.processes().get<ClusterRule>().enabled = false;
+            setup.model.processes().get<SiteRule>().source_checks = &source_checks;
 
             TestSimulation simulation{ setup };
             auto const& lattice{ simulation.lattice() };
             source_checks.resize(lattice.sites().size());
-            ut::expect(not simulation.model().mechanisms().get<ClusterRule>().enabled)
+            ut::expect(not simulation.model().processes().get<ClusterRule>().enabled)
                 << "disabled diffusion remains disabled in copied model";
             ut::expect(ut::eq(simulation.model().kinetics().invalidation_radius(), std::size_t{ 2 }))
                 << "radius from statically typed kinetics";
@@ -560,14 +560,14 @@ namespace
                 }
             }
             ut::expect(beyond_first_shell) << "second shell contains additional sites";
-            expect_reference_state(simulation, setup.model.mechanisms(), simulation.step());
+            expect_reference_state(simulation, setup.model.processes(), simulation.step());
         };
 
         "radius-two incremental updates match full reconstruction"_test = [] {
             auto setup{ make_setup(2) };
             TestSimulation simulation{ setup };
             AnalysisPlan plan;
-            auto& checker{ plan.add<CheckingObserver>(40, setup.model.mechanisms()) };
+            auto& checker{ plan.add<CheckingObserver>(40, setup.model.processes()) };
             const auto status{ simulation.run(plan) };
             ut::expect(status == simulation::Status::analysed);
             ut::expect(ut::eq(simulation.step(), Step{ 40 }));
@@ -576,8 +576,8 @@ namespace
 
         "static kinetic-class cache is lazy and only contains encountered classes"_test = [] {
             auto setup{ make_setup() };
-            setup.model.mechanisms().get<SiteRule>().enabled = false;
-            setup.model.mechanisms().get<ClusterRule>().enabled = false;
+            setup.model.processes().get<SiteRule>().enabled = false;
+            setup.model.processes().get<ClusterRule>().enabled = false;
             TestSimulation simulation{ setup };
 
             auto const& classes{ simulation.kinetic_classes() };
@@ -615,7 +615,7 @@ namespace
                         << "uninitialized rate remains zero";
             ut::expect(ut::that % initialized > 0) << "at least one class created";
 
-            expect_reference_state(simulation, setup.model.mechanisms(), 0);
+            expect_reference_state(simulation, setup.model.processes(), 0);
         };
 
         "static kinetic-class keys must distinguish different kinetic classes"_test = [] {
@@ -628,8 +628,8 @@ namespace
 
         "distinct kinetic classes sharing a static key are rejected"_test = [] {
             auto setup{ make_setup() };
-            setup.model.mechanisms().get<SiteRule>().allow_gold = true;
-            setup.model.mechanisms().get<ClusterRule>().enabled = false;
+            setup.model.processes().get<SiteRule>().allow_gold = true;
+            setup.model.processes().get<ClusterRule>().enabled = false;
 
             // Give both Au and Ag source sites coordination 11, forcing
             // their dissolution events to collide on the same static key.
@@ -673,7 +673,7 @@ namespace
                 .set_resolution({ .min_snapshot_step = 1, .snapshot_scale_factor = 1.0 }) };
             plan.add<output::EventFlux>(root)
                 .set_resolution({ .min_snapshot_step = 1, .snapshot_scale_factor = 1.0 });
-            plan.add<CheckingObserver>(32, setup.model.mechanisms());
+            plan.add<CheckingObserver>(32, setup.model.processes());
 
             ut::expect(simulation.run(plan) == simulation::Status::analysed);
             ut::expect(statistics.counts().contains(event::Outcome::accepted))
@@ -745,7 +745,7 @@ namespace
         "site populations are independent of composition-dependent kinetic classes"_test = [] {
             auto base_setup{ make_setup() };
             using CompositionModel = kmc::Model<
-                studies::dealloying::kinetics::CompositionDependent, Mechanisms>;
+                studies::dealloying::kinetics::CompositionDependent, Processes>;
             Setup<CompositionModel> setup;
             setup.name = base_setup.name;
             setup.seed = base_setup.seed;
@@ -771,10 +771,10 @@ namespace
 
         "no active events exhausts without selecting an event"_test = [] {
             auto setup{ make_setup() };
-            setup.model.mechanisms().get<SiteRule>().enabled = false;
-            setup.model.mechanisms().get<ClusterRule>().enabled = false;
+            setup.model.processes().get<SiteRule>().enabled = false;
+            setup.model.processes().get<ClusterRule>().enabled = false;
             TestSimulation simulation{ setup };
-            expect_reference_state(simulation, setup.model.mechanisms(), 0);
+            expect_reference_state(simulation, setup.model.processes(), 0);
             ut::expect(ut::eq(simulation.rate_tree()->rate_sum().value(), 0.0));
             AnalysisPlan plan;
             ut::expect(simulation.run(plan) == simulation::Status::exhausted);
@@ -785,7 +785,7 @@ namespace
         "initial static kinetic-class tables and block rates match a full reconstruction"_test = [] {
             auto setup{ make_setup() };
             TestSimulation simulation{ setup };
-            expect_reference_state(simulation, setup.model.mechanisms(), 0);
+            expect_reference_state(simulation, setup.model.processes(), 0);
             ut::expect(ut::that % simulation.rate_tree()->rate_sum().value() > 0.0)
                 << "simulation has selectable events";
         };
@@ -794,7 +794,7 @@ namespace
             auto setup{ make_setup() };
             TestSimulation simulation{ setup };
             AnalysisPlan plan;
-            auto& checker{ plan.add<CheckingObserver>(120, setup.model.mechanisms()) };
+            auto& checker{ plan.add<CheckingObserver>(120, setup.model.processes()) };
             auto const status{ simulation.run(plan) };
             ut::expect(status == simulation::Status::analysed) << "stopped at target step";
             ut::expect(ut::eq(simulation.step(), Step{ 120 }));
@@ -815,19 +815,19 @@ namespace
             auto setup{ make_setup() };
             TestSimulation uninterrupted{ setup }, resumed{ setup };
             AnalysisPlan one_pass;
-            auto& full_check{ one_pass.add<CheckingObserver>(160, setup.model.mechanisms()) };
+            auto& full_check{ one_pass.add<CheckingObserver>(160, setup.model.processes()) };
             auto const full_status{ uninterrupted.run(one_pass) };
             ut::expect(full_status == simulation::Status::analysed);
             ut::expect(ut::eq(full_check.last_step(), Step{ 160 }));
 
             AnalysisPlan first_phase;
-            auto& first_check{ first_phase.add<CheckingObserver>(50, setup.model.mechanisms()) };
+            auto& first_check{ first_phase.add<CheckingObserver>(50, setup.model.processes()) };
             auto const first_status{ resumed.run(first_phase) };
             ut::expect(first_status == simulation::Status::analysed);
             ut::expect(ut::eq(first_check.last_step(), Step{ 50 }));
 
             AnalysisPlan second_phase;
-            auto& second_check{ second_phase.add<CheckingObserver>(160, setup.model.mechanisms(), Step{ 50 }) };
+            auto& second_check{ second_phase.add<CheckingObserver>(160, setup.model.processes(), Step{ 50 }) };
             auto const second_status{ resumed.run(second_phase) };
             ut::expect(second_status == simulation::Status::analysed);
             ut::expect(ut::eq(second_check.last_step(), Step{ 160 }));

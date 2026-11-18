@@ -1,5 +1,5 @@
 #pragma once
-#include "kmc/event/record.h"
+#include "kmc/event.h"
 #include "sample.h"
 #include "output/phases.h"
 
