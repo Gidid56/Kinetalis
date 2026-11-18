@@ -178,7 +178,7 @@ namespace kmc
 
         model_.processes().for_each([&](auto const& process, std::size_t offset) {
             constexpr auto count{ std::remove_cvref_t<decltype(process)>::slot_count };
-            if (not process.is_source_candidate(site))
+            if (not process.is_candidate(site))
             {
                 // Inactive sites already have empty class slots.
                 if (site.is_active())
@@ -192,13 +192,12 @@ namespace kmc
                 RateClassKey key{};
                 if (kmc::has_slot(process, site, local))
                 {
-                    auto location{ process.location(site, local, lattice_) };
+                    auto location{ kmc::make_location(process, site, local, lattice_) };
                     assert(location.sites().size() ==
                         std::remove_cvref_t<decltype(process)>::cluster_size);
                     // The source precondition has already been checked.
-                    // Processes without an optimized predicate retain
-                    // the original full candidate check.
-                    if (kmc::is_candidate_after_source_check(process, location))
+                    // Check any additional location-level eligibility predicate.
+                    if (kmc::is_location_candidate(process, location))
                         key = register_class(std::remove_cvref_t<decltype(process)>::event,
                                              location);
                 }

@@ -16,24 +16,24 @@
 
 namespace kmc
 {
-    // A process maps an existing local slot to its geometrical location.
+    // Minimal physical-process contract. Geometrical predicates and
+    // postselection rejection are optional, with zero-cost compile-time defaults.
     template <class T>
-    concept Process = requires(T const& process, lattice::Site& source,
-                                    std::size_t slot, lattice::Lattice& lattice,
-                                      event::Location const& location) {
+    concept Process = requires(T const& process, lattice::Site const& source,
+                               event::Location const& location, lattice::Lattice& lattice) {
         { T::event } -> std::convertible_to<event::Type>;
         { T::cluster_size } -> std::convertible_to<std::size_t>;
         { T::slot_count } -> std::convertible_to<std::size_t>;
-        { process.location(source, slot, lattice) } -> std::same_as<event::Location>;
         { process.is_candidate(source) } -> std::convertible_to<bool>;
-        { process.is_candidate(location) } -> std::convertible_to<bool>;
-        { process.is_rejected(location) } -> std::convertible_to<bool>;
         { process.execute(location, lattice) } -> std::same_as<void>;
         { process.settings() } -> std::convertible_to<std::string>;
-    };
+    } and (T::slot_count > 0) and
+      (T::cluster_size > 0 and T::cluster_size <= event::Location::capacity) and
+      (T::cluster_size == 1 or requires(T const& process, lattice::Site& source,
+                                       std::size_t slot, lattice::Lattice& lattice) {
+          { process.location(source, slot, lattice) } -> std::same_as<event::Location>;
+      });
 
-    // Some processes reserve slots that do not exist at every source site.
-    // A missing predicate means all declared slots are geometrically available.
     template <Process T>
     bool has_slot(T const& process, lattice::Site const& source, std::size_t slot)
     {
@@ -45,18 +45,39 @@ namespace kmc
             return true;
     }
 
-    // The source precondition is established before a slot is examined.
-    // Processes may offer a cheaper residual predicate; otherwise
-    // the full candidate check remains the fallback.
     template <Process T>
-    bool is_candidate_after_source_check(T const& process, event::Location const& location)
+    event::Location make_location(T const& process, lattice::Site& source,
+                                  std::size_t slot, lattice::Lattice& lattice)
     {
         if constexpr (requires {
-            { process.is_candidate_after_source_check(location) } -> std::convertible_to<bool>;
+            { process.location(source, slot, lattice) } -> std::same_as<event::Location>;
         })
-            return process.is_candidate_after_source_check(location);
+            return process.location(source, slot, lattice);
         else
+            return event::Location{ &source };
+    }
+
+    // The source predicate has already been checked once per process and site.
+    template <Process T>
+    bool is_location_candidate(T const& process, event::Location const& location)
+    {
+        if constexpr (requires {
+            { process.is_candidate(location) } -> std::convertible_to<bool>;
+        })
             return process.is_candidate(location);
+        else
+            return true;
+    }
+
+    template <Process T>
+    bool is_rejected(T const& process, event::Location const& location)
+    {
+        if constexpr (requires {
+            { process.is_rejected(location) } -> std::convertible_to<bool>;
+        })
+            return process.is_rejected(location);
+        else
+            return false;
     }
 
     template <class... Ts>
@@ -74,7 +95,7 @@ namespace kmc
         bool is_source_active(lattice::Site const& site) const
         {
             return std::apply([&](auto const&... processes) {
-                return (processes.is_source_candidate(site) or ...);
+                return (processes.is_candidate(site) or ...);
             }, processes_);
         }
 
@@ -117,10 +138,10 @@ namespace kmc
             std::optional<event::Record> record;
             visit(slot, [&](auto const& process, std::size_t local_slot) {
                 assert(kmc::has_slot(process, source, local_slot));
-                auto location{ process.location(source, local_slot, lattice) };
+                auto location{ kmc::make_location(process, source, local_slot, lattice) };
                 assert(location.sites().size() ==
                     std::remove_cvref_t<decltype(process)>::cluster_size);
-                const bool rejected{ process.is_rejected(location) };
+                const bool rejected{ kmc::is_rejected(process, location) };
                 record.emplace(std::move(location),
                     std::remove_cvref_t<decltype(process)>::event, rejected, class_key);
             });

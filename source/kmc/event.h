@@ -2,8 +2,8 @@
 #include "lattice/site.h"
 #include "types.h"
 
-#include <algorithm>
 #include <array>
+#include <concepts>
 #include <cstddef>
 #include <cstdint>
 #include <span>
@@ -53,25 +53,22 @@ namespace kmc::event
     public:
         static constexpr std::size_t capacity{ 2 };
 
-        explicit Location(lattice::Site& site) noexcept : cluster_{ &site }, size_{ 1 } { }
-
-        template <std::size_t N>
-        requires(N > 0 and N <= capacity)
-        explicit Location(lattice::Cluster<N> const& cluster) noexcept
-            : size_{ static_cast<std::uint8_t>(N) }
-        {
-            std::ranges::copy(cluster, cluster_.begin());
-        }
+        template <class... Pointers>
+        requires (sizeof...(Pointers) > 0 and sizeof...(Pointers) <= capacity and
+                  (std::same_as<Pointers, lattice::Site*> and ...))
+        explicit Location(Pointers... sites) noexcept
+            : sites_{ sites... }, size_{ static_cast<std::uint8_t>(sizeof...(Pointers)) }
+        { }
 
         std::span<lattice::Site* const> sites() const noexcept
         {
-            return { cluster_.data(), size_ };
+            return { sites_.data(), size_ };
         }
 
-        lattice::Site& source() const noexcept { return *cluster_[0]; }
+        lattice::Site& source() const noexcept { return *sites_[0]; }
 
     private:
-        lattice::Cluster<capacity> cluster_{};
+        std::array<lattice::Site*, capacity> sites_{};
         std::uint8_t size_{};
     };
 

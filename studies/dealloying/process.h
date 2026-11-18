@@ -41,7 +41,7 @@ namespace studies::dealloying::process
         static constexpr std::size_t cluster_size{ 2 };
         static constexpr std::size_t slot_count{ lattice::max_coordination };
 
-        static constexpr bool allow_isoltated_atom_diffusion{ true };
+        static constexpr bool allow_isolated_atom_diffusion{ true };
         lattice::Coordination max_source_coordination{ 9 }, min_target_coordination{ 2 };
 
         bool has_slot(lattice::Site const& source, std::size_t slot) const
@@ -52,8 +52,8 @@ namespace studies::dealloying::process
         kmc::event::Location
         location(lattice::Site& source, std::size_t slot, lattice::Lattice& lattice) const
         {
-            return kmc::event::Location{ lattice::Cluster<2>{ &source,
-                lattice.neighbor(source.neighbor_index() + static_cast<lattice::Index>(slot)) } };
+            return kmc::event::Location{ &source,
+                lattice.neighbor(source.neighbor_index() + static_cast<lattice::Index>(slot)) };
         }
 
         bool is_candidate(lattice::Site const& source) const
@@ -69,7 +69,7 @@ namespace studies::dealloying::process
         // A selected candidate can still be rejected by additional constraints.
         bool is_rejected(kmc::event::Location const& location) const
         {
-            if constexpr (allow_isoltated_atom_diffusion)
+            if constexpr (allow_isolated_atom_diffusion)
                 if (location.source().coordination() == 0)
                     return false;
             return location.sites()[1]->coordination() <= min_target_coordination;
@@ -85,10 +85,10 @@ namespace studies::dealloying::process
         std::string settings() const
         {
             return std::format(
-                "allow_isoltated_atom_diffusion = {}\n"
+                "allow_isolated_atom_diffusion = {}\n"
                 "max_source_coordination = {}\n"
                 "min_target_coordination = {}",
-                allow_isoltated_atom_diffusion,
+                allow_isolated_atom_diffusion,
                 max_source_coordination,
                 min_target_coordination);
         }
