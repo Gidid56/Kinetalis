@@ -69,14 +69,14 @@ namespace output
         {
             auto& active{ counts_[kmc::event::Outcome::active] };
             active.clear();
-            auto const& counts{ simulation.class_counts() };
-            for (std::size_t i{ 1 }; i < counts.size(); ++i)
+            auto const& classes{ simulation.classes() };
+            for (std::size_t i{ 1 }; i < classes.size(); ++i)
             {
-                if (counts[i] == 0)
+                if (classes[i].count == 0)
                     continue;
                 auto key{ static_cast<kmc::RateClassKey>(i) };
                 Descriptor descriptor{ model_->kinetics().descriptor(key) };
-                active[descriptor] += counts[i];
+                active[descriptor] += classes[i].count;
             }
         }
 
