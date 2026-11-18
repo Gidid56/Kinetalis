@@ -23,6 +23,7 @@ namespace kmc
                                       event::Location const& location) {
         { T::event } -> std::convertible_to<event::Type>;
         { T::slot_count } -> std::convertible_to<std::size_t>;
+        { T::cluster_size } -> std::convertible_to<std::size_t>;
         { process.location(source, slot, lattice) } -> std::same_as<event::Location>;
         { process.is_source_candidate(source) } -> std::convertible_to<bool>;
         { process.is_candidate(location) } -> std::convertible_to<bool>;
@@ -64,6 +65,7 @@ namespace kmc
     {
     public:
         static constexpr std::size_t slot_count{ (Ts::slot_count + ... + std::size_t{}) };
+        static_assert(((Ts::cluster_size > 0 and Ts::cluster_size <= event::Location::capacity) && ...));
 
         template <class T>
         auto& get(this auto& self) noexcept { return std::get<T>(self.processes_); }
@@ -116,6 +118,8 @@ namespace kmc
             visit(slot, [&](auto const& process, std::size_t local_slot) {
                 assert(kmc::has_slot(process, source, local_slot));
                 auto location{ process.location(source, local_slot, lattice) };
+                assert(location.sites().size() ==
+                    std::remove_cvref_t<decltype(process)>::cluster_size);
                 const bool rejected{ process.is_rejected(location) };
                 record.emplace(std::move(location),
                     std::remove_cvref_t<decltype(process)>::event, rejected, class_key);
@@ -127,6 +131,8 @@ namespace kmc
                      lattice::Lattice& lattice) const
         {
             visit(slot, [&](auto const& process, std::size_t) {
+                assert(location.sites().size() ==
+                    std::remove_cvref_t<decltype(process)>::cluster_size);
                 process.execute(location, lattice);
             });
         }

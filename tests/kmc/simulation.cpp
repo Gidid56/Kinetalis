@@ -44,14 +44,14 @@ namespace
     {
         static constexpr event::Type event{ event::Type::dissolution };
         static constexpr std::size_t slot_count{ 1 };
+        static constexpr std::size_t cluster_size{ 1 };
         bool enabled{ true };
         bool allow_gold{ false };
         std::vector<std::size_t>* source_checks{};
 
         event::Location location(
-            Site& source, SlotId slot, lattice::Lattice&) const
+            Site& source, SlotId, lattice::Lattice&) const
         {
-            assert(slot == 0);
             return event::Location{ source };
         }
 
@@ -77,7 +77,6 @@ namespace
 
         void execute(event::Location const& location, lattice::Lattice& lattice) const
         {
-            assert(location.sites().size() == 1);
             location.source().set_element(lattice, Element::none);
         }
 
@@ -89,6 +88,7 @@ namespace
     {
         static constexpr event::Type event{ event::Type::diffusion };
         static constexpr std::size_t slot_count{ lattice::max_coordination };
+        static constexpr std::size_t cluster_size{ 2 };
         bool enabled{ true };
 
         bool has_slot(Site const& source, SlotId slot) const
@@ -99,7 +99,6 @@ namespace
         event::Location location(
             Site& source, SlotId slot, lattice::Lattice& lattice) const
         {
-            assert(has_slot(source, slot));
             return event::Location{ Cluster<2>{
                 &source,
                 lattice.neighbor(source.neighbor_index() + static_cast<lattice::Index>(slot))
@@ -120,13 +119,11 @@ namespace
 
         bool is_rejected(event::Location const& location) const
         {
-            assert(location.sites().size() == 2);
             return location.sites()[1]->coordination() < 9;
         }
 
         void execute(event::Location const& location, lattice::Lattice& lattice) const
         {
-            assert(location.sites().size() == 2);
             const auto element{ location.source().element() };
             location.sites()[1]->set_element(lattice, element);
             location.source().set_element(lattice, Element::none);

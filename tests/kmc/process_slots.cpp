@@ -6,7 +6,6 @@
 
 #include <boost/ut.hpp>
 #include <array>
-#include <cassert>
 #include <cstddef>
 #include <stdexcept>
 #include <string>
@@ -30,15 +29,15 @@ namespace
     {
         static constexpr event::Type event{ event::Type::dissolution };
         static constexpr std::size_t slot_count{ 2 };
+        static constexpr std::size_t cluster_size{ 1 };
 
         bool enabled{ true };
         std::size_t* source_checks{};
 
         bool has_slot(Site const&, SlotId slot) const { return slot == 0; }
 
-        event::Location location(Site& source, SlotId slot, lattice::Lattice&) const
+        event::Location location(Site& source, SlotId, lattice::Lattice&) const
         {
-            assert(has_slot(source, slot));
             return event::Location{ source };
         }
 
@@ -57,6 +56,7 @@ namespace
     {
         static constexpr event::Type event{ event::Type::diffusion };
         static constexpr std::size_t slot_count{ 3 };
+        static constexpr std::size_t cluster_size{ 2 };
 
         bool enabled{ true };
         std::size_t* source_checks{};
@@ -69,7 +69,6 @@ namespace
         event::Location location(
             Site& source, SlotId slot, lattice::Lattice& lattice) const
         {
-            assert(has_slot(source, slot));
             return event::Location{ lattice::Cluster<2>{
                 &source,
                 lattice.neighbor(source.neighbor_index() + static_cast<lattice::Index>(slot))
@@ -91,6 +90,7 @@ namespace
     {
         static constexpr event::Type event{ event::Type::deposition };
         static constexpr std::size_t slot_count{ 5 };
+        static constexpr std::size_t cluster_size{ 1 };
 
         bool enabled{ true };
         std::size_t* source_checks{};
@@ -102,9 +102,8 @@ namespace
             return slot == (source.index() % 2 == 0 ? 3u : 4u);
         }
 
-        event::Location location(Site& source, SlotId slot, lattice::Lattice&) const
+        event::Location location(Site& source, SlotId, lattice::Lattice&) const
         {
-            assert(has_slot(source, slot));
             return event::Location{ source };
         }
 
@@ -191,10 +190,10 @@ namespace
             ++selected[key];
 
             if (record.type == SiteProbe::event)
-                ut::expect(ut::eq(record.sites().size(), std::size_t{ 1 }));
+                ut::expect(ut::eq(record.sites().size(), SiteProbe::cluster_size));
             else if (record.type == NeighborProbe::event)
             {
-                ut::expect(ut::eq(record.sites().size(), std::size_t{ 2 }));
+                ut::expect(ut::eq(record.sites().size(), NeighborProbe::cluster_size));
                 if (record.sites().size() != 2) return;
                 auto neighbors{ lattice_->neighbors(record.location().source()) };
                 auto it{ neighbors.begin() };

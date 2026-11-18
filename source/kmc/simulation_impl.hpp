@@ -193,6 +193,8 @@ namespace kmc
                 if (kmc::has_slot(process, site, local))
                 {
                     auto location{ process.location(site, local, lattice_) };
+                    assert(location.sites().size() ==
+                        std::remove_cvref_t<decltype(process)>::cluster_size);
                     // The source precondition has already been checked.
                     // Processes without an optimized predicate retain
                     // the original full candidate check.

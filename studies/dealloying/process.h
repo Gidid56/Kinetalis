@@ -3,7 +3,6 @@
 #include "lattice/lattice.h"
 
 #include <format>
-#include <cassert>
 
 namespace studies::dealloying::process
 {
@@ -11,6 +10,7 @@ namespace studies::dealloying::process
     {
         static constexpr auto event = kmc::event::Type::dissolution;
         static constexpr std::size_t slot_count{ 1 };
+        static constexpr std::size_t cluster_size{ 1 };
 
         chemistry::Element element{ chemistry::Element::Ag };
         lattice::Coordination max_coordination{ 11 };
@@ -25,9 +25,8 @@ namespace studies::dealloying::process
         }
 
         kmc::event::Location location(
-            lattice::Site& source, std::size_t slot, lattice::Lattice&) const
+            lattice::Site& source, std::size_t, lattice::Lattice&) const
         {
-            assert(slot == 0);
             return kmc::event::Location{ source };
         }
 
@@ -52,7 +51,6 @@ namespace studies::dealloying::process
 
         void execute(kmc::event::Location const& location, lattice::Lattice& lattice) const
         {
-            assert(location.sites().size() == 1);
             location.source().set_element(lattice, chemistry::Element::none);
         }
 
@@ -62,6 +60,7 @@ namespace studies::dealloying::process
     {
         static constexpr auto event = kmc::event::Type::diffusion;
         static constexpr std::size_t slot_count{ lattice::max_coordination };
+        static constexpr std::size_t cluster_size{ 2 };
 
         lattice::Coordination max_source_coordination{ 9 }, min_target_coordination{ 2 };
 
@@ -73,7 +72,6 @@ namespace studies::dealloying::process
         kmc::event::Location location(
             lattice::Site& source, std::size_t slot, lattice::Lattice& lattice) const
         {
-            assert(has_slot(source, slot));
             return kmc::event::Location{ lattice::Cluster<2>{
                 &source,
                 lattice.neighbor(source.neighbor_index() + static_cast<lattice::Index>(slot))
@@ -99,14 +97,12 @@ namespace studies::dealloying::process
         // A selected candidate can still be rejected by the target constraint.
         bool is_rejected(kmc::event::Location const& location) const
         {
-            assert(location.sites().size() == 2);
             return location.sites()[1]->coordination() <= min_target_coordination and
                    location.source().coordination() != 0;
         }
 
         void execute(kmc::event::Location const& location, lattice::Lattice& lattice) const
         {
-            assert(location.sites().size() == 2);
             const auto element{ location.source().element() };
             location.sites()[1]->set_element(lattice, element);
             location.source().set_element(lattice, chemistry::Element::none);
