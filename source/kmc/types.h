@@ -32,8 +32,8 @@ namespace kmc
 
     namespace event { class Record; }
 
-    namespace event { class Kinetics; }
-    template <class KineticsT, class TransformationsT> class Model;
+    class Kinetics;
+    template <class KineticsT, class ProcessesT> class Model;
     class Simulation;
 
     using SlotId = std::size_t;

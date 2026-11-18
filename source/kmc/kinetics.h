@@ -1,8 +1,8 @@
 #pragma once
-#include "kmc/types.h"
+#include "types.h"
 #include <cstddef>
 
-namespace kmc::event
+namespace kmc
 {
     // Shared kinetic settings; derived kinetic models use static dispatch.
     class Kinetics

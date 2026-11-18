@@ -1,7 +1,7 @@
 #pragma once
 #include "simulation/base.h"
 #include "model.h"
-#include "event/record.h"
+#include "event.h"
 #include "rate_tree.h"
 #include "setup.h"
 
@@ -27,7 +27,7 @@ public:
         : simulation::Base{ make_lattice, seed }
     { }
 
-    virtual std::string transformation_settings() const = 0;
+    virtual std::string process_settings() const = 0;
     virtual std::string kinetics_settings() const = 0;
     virtual Temperature temperature() const = 0;
     virtual simulation::Status run(AnalysisPlan&, std::stop_token = {}) = 0;
@@ -61,7 +61,7 @@ public:
     }
 
     simulation::Status run(AnalysisPlan&, std::stop_token = {}) override;
-    std::string transformation_settings() const override { return model_.mechanisms().settings(); }
+    std::string process_settings() const override { return model_.processes().settings(); }
     std::string kinetics_settings() const override { return model_.kinetics().output_text(); }
     Temperature temperature() const override { return model_.kinetics().temperature(); }
 

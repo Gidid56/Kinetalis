@@ -53,9 +53,9 @@ namespace kmc
             {
                 ++step_;
 
-                model_.mechanisms().visit(selection.slot,
-                    [&](auto const& transformation, SlotId) {
-                        transformation.execute(record.location(), lattice_);
+                model_.processes().visit(selection.slot,
+                    [&](auto const& process, SlotId) {
+                        process.execute(record.location(), lattice_);
                     });
 
                 update_affected_rates(record);
@@ -80,7 +80,7 @@ namespace kmc
         block_updates_.clear();
 
         // The active flag reflects whether a site has any valid event slots.
-        // An inactive site cannot become active if no transformation considers
+        // An inactive site cannot become active if no process considers
         // it a possible source after the lattice change.
         affected_sites_.clear();
         auto invalidate = [this](lattice::Site& site) {
@@ -88,7 +88,7 @@ namespace kmc
                 return;
 
             if (not site.is_active() and
-                not model_.mechanisms().is_source_active(site))
+                not model_.processes().is_source_active(site))
                 return;
 
             site.set_dirty(true);
@@ -135,15 +135,15 @@ namespace kmc
         std::optional<event::Record> record;
         auto& source{ lattice_.sites().at(selected.source) };
 
-        model_.mechanisms().visit(selected.slot,
-            [&](auto const& transformation, SlotId local_slot) {
-                auto location{ transformation.location(source, local_slot, lattice_) };
+        model_.processes().visit(selected.slot,
+            [&](auto const& process, SlotId local_slot) {
+                auto location{ process.location(source, local_slot, lattice_) };
                 if (not location)
                     throw std::logic_error{ "Selected slot has no geometric location." };
 
-                const bool rejected{ transformation.is_rejected(*location) };
+                const bool rejected{ process.is_rejected(*location) };
                 record.emplace(std::move(*location),
-                    std::remove_cvref_t<decltype(transformation)>::event,
+                    std::remove_cvref_t<decltype(process)>::event,
                     rejected, selected.class_key);
             });
         return std::move(*record);
@@ -198,9 +198,9 @@ namespace kmc
         Rate sum{};
         bool has_events{};
 
-        model_.mechanisms().for_each([&](auto const& transformation, std::size_t offset) {
-            constexpr auto count{ std::remove_cvref_t<decltype(transformation)>::slot_count };
-            if (not transformation.is_source_candidate(site))
+        model_.processes().for_each([&](auto const& process, std::size_t offset) {
+            constexpr auto count{ std::remove_cvref_t<decltype(process)>::slot_count };
+            if (not process.is_source_candidate(site))
             {
                 // Inactive sites already have empty class slots.
                 if (site.is_active())
@@ -212,13 +212,13 @@ namespace kmc
             for (SlotId local{}; local < count; ++local)
             {
                 RateClassKey key{};
-                if (auto location{ transformation.location(site, local, lattice_) }; location)
+                if (auto location{ process.location(site, local, lattice_) }; location)
                 {
                     // The source precondition has already been checked.
-                    // Mechanisms without an optimized predicate retain
+                    // Processes without an optimized predicate retain
                     // the original full candidate check.
-                    if (kmc::event::is_candidate_after_source_check(transformation, *location))
-                        key = register_class(std::remove_cvref_t<decltype(transformation)>::event,
+                    if (kmc::is_candidate_after_source_check(process, *location))
+                        key = register_class(std::remove_cvref_t<decltype(process)>::event,
                                              *location);
                 }
 
