@@ -15,10 +15,7 @@ namespace kmc
         event_class_keys_.resize(lattice_.sites().size() * ModelType::slots_per_site);
 
         // Each model decides whether to preallocate or register classes lazily.
-        class_rates_.resize(model_.kinetics().number_keys());
-        class_initialized_.resize(model_.kinetics().number_keys());
-        class_counts_.resize(model_.kinetics().number_keys());
-        class_events_.resize(model_.kinetics().number_keys(), event::Type::none);
+        classes_.resize(model_.kinetics().number_keys());
     }
 
     template <class ModelType>
@@ -135,8 +132,8 @@ namespace kmc
 
         const auto first{ static_cast<std::size_t>(site_index) * ModelType::slots_per_site };
         auto offset{ first };
-        while (selected_rate >= class_rates_.at(event_class_keys_.at(offset)))
-            selected_rate -= class_rates_.at(event_class_keys_.at(offset++));
+        while (selected_rate >= classes_.at(event_class_keys_.at(offset)).rate)
+            selected_rate -= classes_.at(event_class_keys_.at(offset++)).rate;
 
         if (offset >= first + ModelType::slots_per_site)
             throw std::runtime_error{ "Selected event slot is outside source-site layout." };
@@ -242,7 +239,7 @@ namespace kmc
                 if (key != RateClassKey{})
                 {
                     has_events = true;
-                    sum += class_rates_.at(key);
+                    sum += classes_.at(key).rate;
                 }
             }
         });
@@ -261,12 +258,12 @@ namespace kmc
 
         // Key zero denotes an inactive event slot.
         if (old_key != RateClassKey{})
-            --class_counts_.at(old_key);
+            --classes_.at(old_key).count;
 
         old_key = new_key;
 
         if (new_key != RateClassKey{})
-            ++class_counts_.at(new_key);
+            ++classes_.at(new_key).count;
     }
 
     template <class ModelType>
@@ -295,19 +292,18 @@ namespace kmc
         if (key == RateClassKey{})
             throw std::logic_error{ "Active event maps to reserved key zero." };
 
-        if (key >= class_rates_.size())
-        {
-            class_rates_.resize(static_cast<std::size_t>(key) + 1);
-            class_initialized_.resize(static_cast<std::size_t>(key) + 1);
-            class_counts_.resize(static_cast<std::size_t>(key) + 1);
-            class_events_.resize(static_cast<std::size_t>(key) + 1, event::Type::none);
-        }
+        if (key >= classes_.size())
+            classes_.resize(static_cast<std::size_t>(key) + 1);
 
-        if (not class_initialized_[key])
+        auto& kinetic_class{ classes_[key] };
+        if (not kinetic_class.is_initialized())
         {
-            class_rates_[key] = model_.kinetics().rate(key);
-            class_events_[key] = model_.kinetics().class_event(key);
-            class_initialized_[key] = true;
+            auto const class_type{ model_.kinetics().class_event(key) };
+            if (class_type == event::Type::none)
+                throw std::logic_error{ "An active kinetic class cannot have event type none." };
+
+            kinetic_class.rate = model_.kinetics().rate(key);
+            kinetic_class.type = class_type;
         }
 
         return key;
@@ -317,9 +313,9 @@ namespace kmc
     void RejectionTreeSimulation<ModelType>::update_all_rates()
     {
         model_.kinetics().refresh_rates();
-        for (std::size_t key{ 1 }; key < class_rates_.size(); ++key)
-            if (class_initialized_[key])
-                class_rates_[key] = model_.kinetics().rate(static_cast<RateClassKey>(key));
+        for (std::size_t key{ 1 }; key < classes_.size(); ++key)
+            if (classes_[key].is_initialized())
+                classes_[key].rate = model_.kinetics().rate(static_cast<RateClassKey>(key));
 
         // A full-rate refresh bypasses per-event block collection. Rebuild each
         // block once after all site rates have been recalculated.
