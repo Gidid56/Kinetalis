@@ -311,15 +311,15 @@ namespace
                 ut::expect(ut::eq(keys.at(first + 8), site.index() % 2 == 0 ? RateClassKey{ 3 } : RateClassKey{}));
                 ut::expect(ut::eq(keys.at(first + 9), site.index() % 2 == 1 ? RateClassKey{ 3 } : RateClassKey{}));
             }
-            ut::expect(ut::eq(sparse_only.class_counts().at(3), sparse_only.lattice().sites().size()));
+            ut::expect(ut::eq(sparse_only.classes().at(3).count, sparse_only.lattice().sites().size()));
 
             transformations.get<SparseProbe>().enabled = false;
             ut::expect(not has_candidate());
             ProbeSimulation empty{ setup };
             ut::expect(ut::eq(empty.rate_tree()->rate_sum().value(), 0.0));
-            ut::expect(ut::eq(empty.class_counts().at(1), std::size_t{}));
-            ut::expect(ut::eq(empty.class_counts().at(2), std::size_t{}));
-            ut::expect(ut::eq(empty.class_counts().at(3), std::size_t{}));
+            ut::expect(ut::eq(empty.classes().at(1).count, std::size_t{}));
+            ut::expect(ut::eq(empty.classes().at(2).count, std::size_t{}));
+            ut::expect(ut::eq(empty.classes().at(3).count, std::size_t{}));
             for (auto const key : empty.event_class_keys())
                 ut::expect(ut::eq(key, RateClassKey{}));
             for (auto const& site : empty.lattice().sites())
@@ -351,11 +351,11 @@ namespace
                         expected[slot])) << "site " << site.index() << ", slot " << slot;
             }
 
-            auto const& counts{ simulation.class_counts() };
-            ut::expect(ut::eq(counts.at(0), std::size_t{}));
-            ut::expect(ut::eq(counts.at(1), 2 * site_count));
-            ut::expect(ut::eq(counts.at(2), site_count));
-            ut::expect(ut::eq(counts.at(3), site_count));
+            auto const& classes{ simulation.classes() };
+            ut::expect(ut::eq(classes.at(0).count, std::size_t{}));
+            ut::expect(ut::eq(classes.at(1).count, 2 * site_count));
+            ut::expect(ut::eq(classes.at(2).count, site_count));
+            ut::expect(ut::eq(classes.at(3).count, site_count));
 
             // Type::diffusion = 1 Hz, dissolution = 2 Hz, deposition = 3 Hz.
             // Two diffusion slots plus one of each other type: 7 Hz per site.
@@ -372,7 +372,7 @@ namespace
         "selection never chooses absent slots and decodes all active transformations"_test = [] {
             ProbeSimulation simulation{ make_probe_setup() };
             auto const initial_keys{ simulation.event_class_keys() };
-            auto const initial_counts{ simulation.class_counts() };
+            auto const initial_classes{ simulation.classes() };
             AnalysisPlan plan;
             auto& selected{ plan.add<SelectedSlots>() };
             plan.add<control::StepLimit>(320);
@@ -380,7 +380,7 @@ namespace
             ut::expect(simulation.run(plan) == simulation::Status::analysed);
             ut::expect(ut::eq(simulation.step(), Step{ 320 }));
             ut::expect(simulation.event_class_keys() == initial_keys);
-            ut::expect(simulation.class_counts() == initial_counts);
+            ut::expect(simulation.classes() == initial_classes);
             ut::expect(ut::eq(simulation.rejection_fraction(), 0.0));
 
             for (std::size_t key{ 1 }; key < selected.selected.size(); ++key)
