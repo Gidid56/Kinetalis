@@ -5,7 +5,7 @@
 #include "atoms.h"
 
 #include "lattice/lattice.h"
-#include "dealloying/events/diffusion.h"
+#include "dealloying/process.h"
 #include "dealloying/gtc.h"
 #include "viewer/bridge.h"
 
@@ -173,7 +173,7 @@ void Atoms::rebuildHolograms()
 
     // Temporary study-specific hologram filter until event models expose
     // their own candidate visualization interfaces.
-    studies::dealloying::events::Diffusion diffusion{};
+    studies::dealloying::process::Diffusion diffusion{};
 
     auto for_each_diffusion_cluster = [&](auto&& function) {
         for (auto source_index : highlightedSites_)

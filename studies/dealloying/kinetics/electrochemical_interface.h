@@ -1,14 +1,13 @@
 #pragma once
-#include "kmc/event/kinetics.h"
-#include "kmc/event/location.h"
-#include "kmc/event/types.h"
+#include "kmc/kinetics.h"
+#include "kmc/event.h"
 
 namespace studies::dealloying::kinetics
 {
     using namespace kmc;
     using namespace physics::unit::literals;
 
-    class ElectrochemicalInterface : public kmc::event::Kinetics
+    class ElectrochemicalInterface : public kmc::Kinetics
     {
         using MolarConcentration = physics::quantity::MolarConcentration;
 
