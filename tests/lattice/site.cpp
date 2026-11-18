@@ -12,6 +12,7 @@ using namespace physics::unit::literals;
 namespace
 {
     using namespace lattice;
+    using chemistry::Element;
 
     Lattice make_fcc()
     {

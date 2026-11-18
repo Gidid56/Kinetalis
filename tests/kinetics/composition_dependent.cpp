@@ -13,8 +13,8 @@ using namespace physics::unit::literals;
 namespace
 {
     using namespace kmc;
-    namespace models = studies::dealloying::models;
-    using enum Element;
+    namespace kinetics = studies::dealloying::kinetics;
+    using enum chemistry::Element;
 
     ut::suite<"kinetics.composition_dependent"> composition_dependent_tests = [] {
         "bond pair keys are symmetric and distinguish different pairs"_test = [] {

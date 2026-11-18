@@ -13,7 +13,7 @@ using namespace physics::unit::literals;
 namespace
 {
     using namespace kmc;
-    namespace models = studies::dealloying::models;
+    namespace kinetics = studies::dealloying::kinetics;
 
     ut::suite<"kinetics.linear_bond_breaking"> linear_bond_breaking_tests = [] {
         "default bond energy and setter retain the configured value"_test = [] {

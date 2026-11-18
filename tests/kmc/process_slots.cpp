@@ -21,6 +21,7 @@ using namespace physics::unit::literals;
 namespace
 {
     using namespace kmc;
+    using chemistry::Element;
     using lattice::Site;
 
     // Test-only processes: execution leaves the lattice unchanged so that

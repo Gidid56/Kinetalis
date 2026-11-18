@@ -4,6 +4,7 @@
 #include "physics/equations/kinetics.h"
 
 using namespace kmc;
+using chemistry::Element;
 using namespace studies::dealloying::kinetics;
 
 void ElectrochemicalInterface::ensure_range(MolarConcentration concentration)

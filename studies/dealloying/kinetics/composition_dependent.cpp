@@ -3,11 +3,12 @@
 #include "lattice/lattice.h"
 
 using namespace kmc;
+using chemistry::Element;
 using namespace studies::dealloying::kinetics;
 
 namespace studies::dealloying::kinetics::composition_dependent
 {
-    using enum Element;
+    using enum chemistry::Element;
 
     Energy bond_energy(Element element)
     {

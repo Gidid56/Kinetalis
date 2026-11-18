@@ -17,6 +17,7 @@ using namespace physics::unit::literals;
 namespace
 {
     using namespace lattice;
+    using chemistry::Element;
 
     template <Bravais bravais>
     Lattice make_lattice(math::Axis periodic = math::Axis::none,

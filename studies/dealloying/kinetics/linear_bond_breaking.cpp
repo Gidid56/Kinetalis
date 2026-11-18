@@ -2,6 +2,7 @@
 #include "linear_bond_breaking.h"
 
 using namespace kmc;
+using chemistry::Element;
 using namespace studies::dealloying::kinetics;
 
 void LinearBondBreaking::ensure_range(Energy bond_energy)

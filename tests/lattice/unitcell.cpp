@@ -16,7 +16,7 @@ namespace
 {
     using namespace lattice;
     using chemistry::Atom;
-    using enum Element;
+    using enum chemistry::Element;
 
     ut::suite<"lattice.unitcell"> unitcell_tests = [] {
         "cubic centerings contain the expected basis sites"_test = [] {

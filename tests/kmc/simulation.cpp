@@ -36,6 +36,7 @@ using namespace physics::unit::literals;
 namespace
 {
     using namespace kmc;
+    using chemistry::Element;
     using lattice::Site;
     using lattice::Cluster;
 
