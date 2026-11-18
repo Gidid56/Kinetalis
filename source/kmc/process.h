@@ -18,7 +18,7 @@ namespace kmc
     // A process maps a local slot to an optional geometrical location.
     template <class T>
     concept Process = requires(T const& process, lattice::Site& source,
-                                      std::size_t slot, lattice::Lattice& lattice,
+                                    std::size_t slot, lattice::Lattice& lattice,
                                       event::Location const& location) {
         { T::event } -> std::convertible_to<event::Type>;
         { T::slot_count } -> std::convertible_to<std::size_t>;

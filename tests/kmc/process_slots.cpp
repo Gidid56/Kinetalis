@@ -113,7 +113,7 @@ namespace
     using Probes = kmc::Processes<SiteProbe, NeighborProbe, SparseProbe>;
     static_assert(Probes::slot_count == 10);
 
-    struct ProbeKinetics : event::Kinetics
+    struct ProbeKinetics : Kinetics
     {
         RateClassKey classify(event::Type type, event::Location const&, lattice::Lattice const&)
         {
@@ -206,15 +206,15 @@ namespace
         lattice::Lattice const* lattice_{};
     };
 
-    ut::suite<"kmc.process_slots"> transformation_slot_tests = [] {
+    ut::suite<"kmc.process_slots"> process_slot_tests = [] {
         "three processes have contiguous, correctly decoded local slot ranges"_test = [] {
             Probes processes;
             std::vector<std::size_t> offsets;
             std::vector<event::Type> types;
 
-            processes.for_each([&](auto const& transformation, std::size_t offset) {
+            processes.for_each([&](auto const& process, std::size_t offset) {
                 offsets.push_back(offset);
-                types.push_back(std::remove_cvref_t<decltype(transformation)>::event);
+                types.push_back(std::remove_cvref_t<decltype(process)>::event);
             });
 
             ut::expect(offsets == std::vector<std::size_t>{ 0, 2, 5 });
@@ -228,9 +228,9 @@ namespace
                 const auto expected_local{ slot < 2 ? slot : slot < 5 ? slot - 2 : slot - 5 };
 
                 std::size_t visited{};
-                processes.visit(slot, [&](auto const& transformation, SlotId local_slot) {
+                processes.visit(slot, [&](auto const& process, SlotId local_slot) {
                     ++visited;
-                    ut::expect(std::remove_cvref_t<decltype(transformation)>::event == expected_type);
+                    ut::expect(std::remove_cvref_t<decltype(process)>::event == expected_type);
                     ut::expect(ut::eq(local_slot, expected_local));
                 });
                 ut::expect(ut::eq(visited, std::size_t{ 1 }));
@@ -270,7 +270,7 @@ namespace
             ut::expect(checks == std::array<std::size_t, 3>{ 1, 1, 1 });
         };
 
-        "source predicates are evaluated once per site and transformation"_test = [] {
+        "source predicates are evaluated once per site and process"_test = [] {
             auto setup{ make_probe_setup() };
             std::array<std::size_t, 3> checks{};
             setup.model.processes().get<SiteProbe>().source_checks = &checks[0];

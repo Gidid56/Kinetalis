@@ -156,7 +156,7 @@ namespace kmc
     {
         // Enumerate graph walks without allocating a visited-site container.
         // Sites may recur because the lattice graph contains cycles; the
-        // two-pass dirty flag mechanism prevents duplicate rate calculations.
+        // dirty flags prevent duplicate rate calculations during graph traversal.
         if (radius > 0)
             for (auto* neighbor : lattice_.neighbors(site))
                 visit_neighbor_tree(*neighbor, radius - 1, visit);

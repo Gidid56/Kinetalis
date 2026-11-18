@@ -180,13 +180,13 @@ policy. Review scripts before executing them.
 
 ## Framework overview
 
-Kinetalis separates **which events can occur and how fast** from **how events are sampled, executed, and measured**. The KMC core is generic; the dealloying study provides concrete transformations, a kinetic model, and simulation setups.
+Kinetalis separates **which events can occur and how fast** from **how events are sampled, executed, and measured**. The KMC core is generic; the dealloying study provides concrete processs, a kinetic model, and simulation setups.
 
 | Component | Responsibility |
 | --- | --- |
 | [`lattice`](source/lattice/) | Crystal geometry, sites, neighbor lists, periodic boundaries, and initial configurations |
-| [`kmc::Process`](source/kmc/event/process.h) and [`kmc::Processes<Ts...>`](source/kmc/event/processes.h) | Define possible changes to the lattice and the geometric slots associated with them |
-| [`kmc::Kinetics`](source/kmc/event/kinetics.h) and [study-specific kinetics](studies/dealloying/kinetics/) | Classify candidate events, calculate their rates, and define the local rate-dependency radius |
+| [`kmc::Process`](source/kmc/process.h) and [`kmc::Processes<Ts...>`](source/kmc/process.h) | Define possible changes to the lattice and the geometric slots associated with them |
+| [`kmc::Kinetics`](source/kmc/kinetics.h) and [study-specific kinetics](studies/dealloying/kinetics/) | Classify candidate events, calculate their rates, and define the local rate-dependency radius |
 | [`kmc::Model<KineticsT, ProcessesT>`](source/kmc/model.h) | Compose a concrete kinetic model and a statically typed collection of event processes |
 | [`kmc::Setup<ModelT>`](source/kmc/setup.h) | Hold the lattice generator, model configuration, and optional random seed |
 | [`kmc::RejectionTreeSimulation<ModelT>`](source/kmc/simulation.h) | Sample events, advance physical time, execute accepted events, and update cached rates |
@@ -195,18 +195,18 @@ Kinetalis separates **which events can occur and how fast** from **how events ar
 
 ### Event lifecycle
 
-An [`event::Process`](source/kmc/event/process.h) is a C++ concept, not a runtime base class. Each process declares an event type and a compile-time `slot_count` per source site. A slot can resolve to an [`event::Location`](source/kmc/event.h) containing the source site and, for example, a diffusion target; nonexistent locations and geometrically invalid candidates contribute no rate. The current `Location` representation supports up to two sites.
+An [`kmc::Process`](source/kmc/process.h) is a C++ concept, not a runtime base class. Each process declares an event type and a compile-time `slot_count` per source site. A slot can resolve to an [`event::Location`](source/kmc/event.h) containing the source site and, for example, a diffusion target; nonexistent locations and geometrically invalid candidates contribute no rate. The current `Location` representation supports up to two sites.
 
 A kinetic model assigns each candidate a `RateClassKey` using the event type and its local environment. Key zero denotes an inactive slot. Rates are cached by class, while a hierarchical [rate-sum tree](source/kmc/rate_tree.h) stores the summed rates of source sites for efficient event selection. The simulation resolves the selected slot into a location, evaluates any postselection rejection, and advances physical time for **both accepted and rejected selections**. Only accepted selections modify the lattice, increment the accepted-step counter, and trigger local rate updates.
 
-The KMC scheduler uses static dispatch for the concrete kinetic model and transformations. Its non-templated `kmc::Simulation` interface allows observers and the viewer to operate without knowing the model type. Mathematical utilities, [dimension-aware physical quantities](source/physics/), and [chemical data](source/chemistry/) are shared across studies.
+The KMC scheduler uses static dispatch for the concrete kinetic model and processs. Its non-templated `kmc::Simulation` interface allows observers and the viewer to operate without knowing the model type. Mathematical utilities, [dimension-aware physical quantities](source/physics/), and [chemical data](source/chemistry/) are shared across studies.
 
 ### Extend the framework
 
 Most studies can be implemented under `studies/` without modifying the KMC scheduler. The [dealloying study](studies/dealloying/) provides a complete reference. Each event process has its own header under [`process.h`](studies/dealloying/process.h), while kinetic models live under [`kinetics/`](studies/dealloying/kinetics/):
 
-1. Define one or more event processes implementing the [`kmc::Process` concept](source/kmc/event/process.h): `event`, `slot_count`, `location(...)`, `is_source_candidate(...)`, `is_candidate(...)`, `is_rejected(...)`, `execute(...)`, and `settings()`. An optional `is_candidate_after_source_check(...)` avoids repeating a source predicate for every slot.
-2. Implement a kinetic model, typically deriving from [`kmc::Kinetics`](source/kmc/event/kinetics.h), with `classify(...)`, `number_keys()`, `class_event(...)`, `rate(...)`, `refresh_rates()`, and `output_text()`. Ensure `invalidation_radius()` covers all source-site rates affected by an accepted lattice change.
+1. Define one or more event processes implementing the [`kmc::Process` concept](source/kmc/process.h): `event`, `slot_count`, `location(...)`, `is_source_candidate(...)`, `is_candidate(...)`, `is_rejected(...)`, `execute(...)`, and `settings()`. An optional `is_candidate_after_source_check(...)` avoids repeating a source predicate for every slot.
+2. Implement a kinetic model, typically deriving from [`kmc::Kinetics`](source/kmc/kinetics.h), with `classify(...)`, `number_keys()`, `class_event(...)`, `rate(...)`, `refresh_rates()`, and `output_text()`. Ensure `invalidation_radius()` covers all source-site rates affected by an accepted lattice change.
 3. Combine the types into a `Model` and configure them in [setup factories](studies/dealloying/setups.h). The current study uses these aliases in [`model.h`](studies/dealloying/model.h):
 
 ~~~cpp
