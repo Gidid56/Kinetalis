@@ -39,20 +39,20 @@ public:
     }
 
     auto time() const { return time_; }
-    auto const& classes() const noexcept { return classes_; }
+    auto const& kinetic_classes() const noexcept { return kinetic_classes_; }
 
 protected:
     Time time_{};
     std::size_t rejections_{};
 
-    std::vector<KineticClass> classes_{ KineticClass{} };
+    std::vector<KineticClass> kinetic_classes_{ KineticClass{} };
 };
 
-template <class ModelType>
+template <class ModelT>
 class kmc::RejectionTreeSimulation final : public Simulation
 {
 public:
-    explicit RejectionTreeSimulation(Setup<ModelType> const& setup)
+    explicit RejectionTreeSimulation(Setup<ModelT> const& setup)
         : Simulation{ setup.make_lattice, setup.seed },
           model_{ setup.model }
     {
@@ -67,7 +67,7 @@ public:
 
     auto& model(this auto& self) noexcept { return self.model_; }
     auto& rate_tree() const { return rate_tree_; }
-    auto const& event_class_keys() const noexcept { return event_class_keys_; }
+    auto const& slot_class_keys() const noexcept { return slot_class_keys_; }
 
 private:
     struct Selection
@@ -93,10 +93,10 @@ private:
     template <class Visitor>
     void visit_neighbor_tree(lattice::Site&, std::size_t radius, Visitor&);
 
-    ModelType model_;
+    ModelT model_;
     std::unique_ptr<rate_tree::Interface> rate_tree_;
     Rates site_rates_;
-    RateClassKeys event_class_keys_;
+    RateClassKeys slot_class_keys_;
     std::vector<rate_tree::BlockUpdate> block_updates_;
     std::vector<lattice::Site*> affected_sites_;
 };

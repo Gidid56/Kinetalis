@@ -192,7 +192,7 @@ namespace
     void expect_reference_state(TestSimulation const& simulation, Transformations const& transformations, Step step)
     {
         auto const& lattice{ simulation.lattice() };
-        auto const& classes{ simulation.classes() };
+        auto const& classes{ simulation.kinetic_classes() };
         constexpr auto block_size{ std::size_t{ 1 } << rate_tree::baseLevel };
         std::vector<Rate> block_sums((lattice.sites().size() + block_size - 1) / block_size);
         std::vector<std::size_t> expected_counts(classes.size());
@@ -393,7 +393,7 @@ namespace
             << "rejection fraction after resume";
         ut::expect(ut::eq(a.rate_tree()->rate_sum().value(), b.rate_tree()->rate_sum().value()))
             << "total rate after resume";
-        ut::expect(a.classes() == b.classes()) << "kinetic class counts after resume";
+        ut::expect(a.kinetic_classes() == b.kinetic_classes()) << "kinetic class counts after resume";
         for (std::size_t i{}; i < a.lattice().sites().size(); ++i)
         {
             ut::expect(a.lattice().sites()[i].element() ==
@@ -580,7 +580,7 @@ namespace
             setup.model.transformations().get<ClusterRule>().enabled = false;
             TestSimulation simulation{ setup };
 
-            auto const& classes{ simulation.classes() };
+            auto const& classes{ simulation.kinetic_classes() };
             ut::expect(ut::eq(classes.size(), simulation.model().kinetics().number_keys()));
             for (auto const& kinetic_class : classes)
             {
@@ -595,7 +595,7 @@ namespace
         "static kinetic-class cache initializes encountered events only once"_test = [] {
             auto setup{ make_setup() };
             TestSimulation simulation{ setup };
-            auto const& classes{ simulation.classes() };
+            auto const& classes{ simulation.kinetic_classes() };
 
             std::size_t initialized{};
             auto const* model{ &simulation.model().kinetics() };
@@ -720,7 +720,7 @@ namespace
             })
                 read_csv(file, site_columns);
 
-            auto const& classes{ simulation.classes() };
+            auto const& classes{ simulation.kinetic_classes() };
             auto lines{ read_csv("kinetic_activity/activity", classes.size() + 1) };
             read_csv("kinetic_activity/time_weighted_activity", classes.size() + 1);
 

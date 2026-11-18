@@ -7,20 +7,20 @@
 
 namespace kmc
 {
-    template <class ModelType>
-    void RejectionTreeSimulation<ModelType>::initialize_rates()
+    template <class ModelT>
+    void RejectionTreeSimulation<ModelT>::initialize_rates()
     {
         rate_tree_ = rate_tree::make_entry(lattice_.sites().size());
         site_rates_.resize(lattice_.sites().size());
-        event_class_keys_.resize(lattice_.sites().size() * ModelType::slots_per_site);
+        slot_class_keys_.resize(lattice_.sites().size() * ModelT::slots_per_site);
 
         // Each model decides whether to preallocate or register classes lazily.
-        classes_.resize(model_.kinetics().number_keys());
+        kinetic_classes_.resize(model_.kinetics().number_keys());
     }
 
-    template <class ModelType>
+    template <class ModelT>
     simulation::Status
-    RejectionTreeSimulation<ModelType>::run(AnalysisPlan& analysis_plan, std::stop_token token)
+    RejectionTreeSimulation<ModelT>::run(AnalysisPlan& analysis_plan, std::stop_token token)
     {
         utility::Guard guard{ timer_ };
 
@@ -74,8 +74,8 @@ namespace kmc
         return status_ = simulation::Status::analysed;
     }
 
-    template <class ModelType>
-    void RejectionTreeSimulation<ModelType>::update_affected_rates(event::Record const& record)
+    template <class ModelT>
+    void RejectionTreeSimulation<ModelT>::update_affected_rates(event::Record const& record)
     {
         block_updates_.clear();
 
@@ -116,9 +116,9 @@ namespace kmc
         }
     }
 
-    template <class ModelType>
-    typename RejectionTreeSimulation<ModelType>::Selection
-    RejectionTreeSimulation<ModelType>::select_event_slot(Rate total_rate)
+    template <class ModelT>
+    typename RejectionTreeSimulation<ModelT>::Selection
+    RejectionTreeSimulation<ModelT>::select_event_slot(Rate total_rate)
     {
         auto selected_rate{ physics::ensure_non_negative(total_rate * rng_.probability()) };
         auto site_index{ rate_tree_->index(selected_rate) };
@@ -130,20 +130,20 @@ namespace kmc
             if (site_index >= site_rates_.size())
                 throw std::runtime_error{ "tree not updated correctly" };
 
-        const auto first{ static_cast<std::size_t>(site_index) * ModelType::slots_per_site };
+        const auto first{ static_cast<std::size_t>(site_index) * ModelT::slots_per_site };
         auto offset{ first };
-        while (selected_rate >= classes_.at(event_class_keys_.at(offset)).rate)
-            selected_rate -= classes_.at(event_class_keys_.at(offset++)).rate;
+        while (selected_rate >= kinetic_classes_.at(slot_class_keys_.at(offset)).rate)
+            selected_rate -= kinetic_classes_.at(slot_class_keys_.at(offset++)).rate;
 
-        if (offset >= first + ModelType::slots_per_site)
+        if (offset >= first + ModelT::slots_per_site)
             throw std::runtime_error{ "Selected event slot is outside source-site layout." };
 
         return { static_cast<lattice::Index>(site_index), offset - first,
-                 event_class_keys_.at(offset) };
+                 slot_class_keys_.at(offset) };
     }
 
-    template <class ModelType>
-    event::Record RejectionTreeSimulation<ModelType>::evaluate_event(Selection const& selected)
+    template <class ModelT>
+    event::Record RejectionTreeSimulation<ModelT>::evaluate_event(Selection const& selected)
     {
         std::optional<event::Record> record;
         auto& source{ lattice_.sites().at(selected.source) };
@@ -162,9 +162,9 @@ namespace kmc
         return std::move(*record);
     }
 
-    template <class ModelType>
+    template <class ModelT>
     template <class Visitor>
-    void RejectionTreeSimulation<ModelType>::visit_neighbor_tree(
+    void RejectionTreeSimulation<ModelT>::visit_neighbor_tree(
         lattice::Site& site, std::size_t radius, Visitor& visit)
     {
         // Enumerate graph walks without allocating a visited-site container.
@@ -177,8 +177,8 @@ namespace kmc
         visit(site);
     }
 
-    template <class ModelType>
-    void RejectionTreeSimulation<ModelType>::update_site_rate(lattice::Site& site)
+    template <class ModelT>
+    void RejectionTreeSimulation<ModelT>::update_site_rate(lattice::Site& site)
     {
         if (not site.is_dirty())
             return;
@@ -203,10 +203,10 @@ namespace kmc
         site.set_dirty(false);
     }
 
-    template <class ModelType>
-    Rate RejectionTreeSimulation<ModelType>::update_site_classes(lattice::Site& site)
+    template <class ModelT>
+    Rate RejectionTreeSimulation<ModelT>::update_site_classes(lattice::Site& site)
     {
-        const auto first{ static_cast<std::size_t>(site.index()) * ModelType::slots_per_site };
+        const auto first{ static_cast<std::size_t>(site.index()) * ModelT::slots_per_site };
 
         Rate sum{};
         bool has_events{};
@@ -239,7 +239,7 @@ namespace kmc
                 if (key != RateClassKey{})
                 {
                     has_events = true;
-                    sum += classes_.at(key).rate;
+                    sum += kinetic_classes_.at(key).rate;
                 }
             }
         });
@@ -248,26 +248,26 @@ namespace kmc
         return sum;
     }
 
-    template <class ModelType>
-    void RejectionTreeSimulation<ModelType>::set_class_key(std::size_t index, RateClassKey new_key)
+    template <class ModelT>
+    void RejectionTreeSimulation<ModelT>::set_class_key(std::size_t index, RateClassKey new_key)
     {
-        auto& old_key{ event_class_keys_.at(index) };
+        auto& old_key{ slot_class_keys_.at(index) };
 
         if (old_key == new_key)
             return;
 
         // Key zero denotes an inactive event slot.
         if (old_key != RateClassKey{})
-            --classes_.at(old_key).count;
+            --kinetic_classes_.at(old_key).count;
 
         old_key = new_key;
 
         if (new_key != RateClassKey{})
-            ++classes_.at(new_key).count;
+            ++kinetic_classes_.at(new_key).count;
     }
 
-    template <class ModelType>
-    Rate RejectionTreeSimulation<ModelType>::block_rate(lattice::Site& site)
+    template <class ModelT>
+    Rate RejectionTreeSimulation<ModelT>::block_rate(lattice::Site& site)
     {
         constexpr auto block_size{ std::size_t{ 1 } << rate_tree::baseLevel };
 
@@ -284,18 +284,18 @@ namespace kmc
         return sum;
     }
 
-    template <class ModelType>
-    RateClassKey RejectionTreeSimulation<ModelType>::register_class(
+    template <class ModelT>
+    RateClassKey RejectionTreeSimulation<ModelT>::register_class(
         event::Type type, event::Location const& location)
     {
         const auto key{ model_.kinetics().classify(type, location, lattice_) };
         if (key == RateClassKey{})
             throw std::logic_error{ "Active event maps to reserved key zero." };
 
-        if (key >= classes_.size())
-            classes_.resize(static_cast<std::size_t>(key) + 1);
+        if (key >= kinetic_classes_.size())
+            kinetic_classes_.resize(static_cast<std::size_t>(key) + 1);
 
-        auto& kinetic_class{ classes_[key] };
+        auto& kinetic_class{ kinetic_classes_[key] };
         if (not kinetic_class.is_initialized())
         {
             auto const class_type{ model_.kinetics().class_event(key) };
@@ -309,13 +309,13 @@ namespace kmc
         return key;
     }
 
-    template <class ModelType>
-    void RejectionTreeSimulation<ModelType>::update_all_rates()
+    template <class ModelT>
+    void RejectionTreeSimulation<ModelT>::update_all_rates()
     {
         model_.kinetics().refresh_rates();
-        for (std::size_t key{ 1 }; key < classes_.size(); ++key)
-            if (classes_[key].is_initialized())
-                classes_[key].rate = model_.kinetics().rate(static_cast<RateClassKey>(key));
+        for (std::size_t key{ 1 }; key < kinetic_classes_.size(); ++key)
+            if (kinetic_classes_[key].is_initialized())
+                kinetic_classes_[key].rate = model_.kinetics().rate(static_cast<RateClassKey>(key));
 
         // A full-rate refresh bypasses per-event block collection. Rebuild each
         // block once after all site rates have been recalculated.

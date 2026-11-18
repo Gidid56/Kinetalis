@@ -6,10 +6,10 @@
 
 namespace batch
 {
-    template <class ModelType>
+    template <class ModelT>
     struct Campaign;
 
-    template <class ModelType>
+    template <class ModelT>
     class Runner;
     class Terminal;
 
@@ -35,6 +35,6 @@ namespace batch
     using ProgressClock = std::chrono::steady_clock;
 
     using Postprocessor = std::function<void(std::filesystem::path const&)>;
-    template <class ModelType>
-    using CampaignFactory = std::function<Campaign<ModelType>()>;
+    template <class ModelT>
+    using CampaignFactory = std::function<Campaign<ModelT>()>;
 }

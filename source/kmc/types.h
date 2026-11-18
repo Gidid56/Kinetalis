@@ -38,10 +38,10 @@ namespace kmc
 
     using SlotId = std::size_t;
 
-    template <class ModelType>
+    template <class ModelT>
     struct Setup;
 
-    template <class ModelType>
+    template <class ModelT>
     class RejectionTreeSimulation;
 
     class Observer;

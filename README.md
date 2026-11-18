@@ -188,10 +188,10 @@ Kinetalis separates **which events can occur and how fast** from **how events ar
 | [`kmc::Transformation` and `kmc::Transformations<Ts...>`](source/kmc/transformations.h) | Define possible changes to the lattice and the geometric slots associated with them |
 | [`kmc::Kinetics`](source/kmc/kinetics.h) and [study-specific kinetic models](studies/dealloying/models/) | Classify candidate events, calculate their rates, and define the local rate-dependency radius |
 | [`kmc::Model<KineticsT, TransformationsT>`](source/kmc/model.h) | Compose a concrete kinetic model and a statically typed collection of transformations |
-| [`kmc::Setup<ModelType>`](source/kmc/setup.h) | Hold the lattice generator, model configuration, and optional random seed |
-| [`kmc::RejectionTreeSimulation<ModelType>`](source/kmc/simulation.h) | Sample events, advance physical time, execute accepted transformations, and update cached rates |
+| [`kmc::Setup<ModelT>`](source/kmc/setup.h) | Hold the lattice generator, model configuration, and optional random seed |
+| [`kmc::RejectionTreeSimulation<ModelT>`](source/kmc/simulation.h) | Sample events, advance physical time, execute accepted transformations, and update cached rates |
 | [`kmc::Simulation`](source/kmc/simulation.h), [`kmc::AnalysisPlan`](source/kmc/analysis_plan.h), and [observers](source/output/) | Provide a non-templated simulation interface, measurements, snapshots, and stopping conditions |
-| [`batch::Campaign<ModelType>`](source/batch/campaign.h) and [`batch::Runner<ModelType>`](source/batch/runner.h) | Execute parameter studies and independent replicates, then aggregate results |
+| [`batch::Campaign<ModelT>`](source/batch/campaign.h) and [`batch::Runner<ModelT>`](source/batch/runner.h) | Execute parameter studies and independent replicates, then aggregate results |
 
 ### Event lifecycle
 

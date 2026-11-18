@@ -31,7 +31,7 @@ void EventFlux::observe_selected(kmc::event::Record const&)
     last_time_ = simulation.time();
     residence_time_ += time_delta;
 
-    auto const& classes{ simulation.classes() };
+    auto const& classes{ simulation.kinetic_classes() };
     for (std::size_t key{ 1 }; key < classes.size(); ++key)
     {
         auto const& kinetic_class{ classes[key] };
