@@ -2,9 +2,9 @@
 #include "power_law_bond_energy.h"
 
 using namespace kmc;
-using namespace studies::dealloying::models;
+using namespace studies::dealloying::kinetics;
 
-namespace studies::dealloying::models::power_law_bond_energy
+namespace studies::dealloying::kinetics::power_law_bond_energy
 {
     using enum Element;
 

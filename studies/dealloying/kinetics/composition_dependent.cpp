@@ -3,9 +3,9 @@
 #include "lattice/lattice.h"
 
 using namespace kmc;
-using namespace studies::dealloying::models;
+using namespace studies::dealloying::kinetics;
 
-namespace studies::dealloying::models::composition_dependent
+namespace studies::dealloying::kinetics::composition_dependent
 {
     using enum Element;
 

@@ -1,6 +1,6 @@
 #pragma once
 #include "linear_bond_breaking.h"
-namespace studies::dealloying::models
+namespace studies::dealloying::kinetics
 {
     class PowerLawBondEnergy : public LinearBondBreaking
     {

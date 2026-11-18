@@ -2,7 +2,7 @@
 #include "electrochemical_interface.h"
 #include <map>
 
-namespace studies::dealloying::models
+namespace studies::dealloying::kinetics
 {
     class CompositionDependent : public ElectrochemicalInterface
     {

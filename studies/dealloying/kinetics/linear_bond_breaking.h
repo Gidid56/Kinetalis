@@ -3,7 +3,7 @@
 #include <array>
 #include <optional>
 
-namespace studies::dealloying::models
+namespace studies::dealloying::kinetics
 {
     class LinearBondBreaking : public ElectrochemicalInterface
     {
