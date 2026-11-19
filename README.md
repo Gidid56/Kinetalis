@@ -201,6 +201,8 @@ A kinetic model assigns each candidate a `RateClassKey` using the event type and
 
 The KMC scheduler uses static dispatch for the concrete kinetic model and processs. Its non-templated `kmc::Simulation` interface allows observers and the viewer to operate without knowing the model type. Mathematical utilities, [dimension-aware physical quantities](source/physics/), and [chemical data](source/chemistry/) are shared across studies.
 
+Physical quantity domain annotations (such as nonnegative or unit interval) are **not checked implicitly** during construction, conversion, assignment, or arithmetic. These operations are nonthrowing by default. At input and invariant boundaries, explicitly call `value.validate()` or `physics::ensure_non_negative(value)` / `physics::ensure_unit_interval(value)`; explicit validation throws `std::domain_error` for out-of-range values. Dimensional and reference constraints remain enforced at compile time.
+
 ### Extend the framework
 
 Most studies can be implemented under `studies/` without modifying the KMC scheduler. The [dealloying study](studies/dealloying/) provides a complete reference. The elementary process definitions are grouped in [`process.h`](studies/dealloying/process.h), while kinetic models live under [`kinetics/`](studies/dealloying/kinetics/):
