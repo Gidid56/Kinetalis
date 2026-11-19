@@ -82,6 +82,13 @@ private:
     void set_class_key(std::size_t, RateClassKey);
 
     Rate update_site_classes(lattice::Site&);
+
+    template <Process P>
+    Rate update_process_slots(P const&, lattice::Site&, std::size_t first, bool eligible);
+
+    template <Process P>
+    RateClassKey classify_process_slot(P const&, lattice::Site&, SlotId);
+
     Selection select_event_slot(Rate total_rate);
 
     void initialize_rates();
