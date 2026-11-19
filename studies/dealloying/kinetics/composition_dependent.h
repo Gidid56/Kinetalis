@@ -17,18 +17,19 @@ namespace studies::dealloying::kinetics
         };
 
         CompositionDependent();
-        kmc::RateClassKey classify(kmc::event::Type, kmc::event::Location const&, lattice::Lattice const&);
+        Descriptor classify(kmc::event::Type, kmc::event::Location const&, lattice::Lattice const&) const;
+        kmc::RateClassKey key(Descriptor const&);
         std::size_t number_keys() const noexcept { return descriptors_.size(); }
         kmc::event::Type class_event(kmc::RateClassKey) const;
         Descriptor const& descriptor(kmc::RateClassKey key) const { return descriptors_.at(key); }
         std::string output_text() const;
-        kmc::Rate rate(kmc::RateClassKey) const;
+        kmc::Rate rate(Descriptor const&) const;
 
     protected:
         chemistry::Element class_element(kmc::RateClassKey) const;
 
     private:
-        Energy lattice_energy_barrier(kmc::RateClassKey) const;
+        Energy lattice_energy_barrier(Descriptor const&) const;
         std::map<Descriptor, kmc::RateClassKey> keys_;
         std::vector<Descriptor> descriptors_{ Descriptor{} };
     };

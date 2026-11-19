@@ -28,15 +28,15 @@ namespace output
 
             std::string csv{ std::format("key:class,{},rate/Hz\n",
                 DescriptorFormat<Descriptor>::header()) };
-            for (std::size_t i{ 1 }; i < simulation.kinetic_classes().size(); ++i)
+            for (std::size_t i{ 1 }; i < kinetics.kinetic_classes().size(); ++i)
             {
                 auto const key{ static_cast<kmc::RateClassKey>(i) };
-                if (not simulation.kinetic_classes()[i].is_initialized())
+                if (not kinetics.kinetic_classes()[i].is_initialized())
                     continue;
 
                 std::format_to(std::back_inserter(csv), "{},{},{:v:Hz}\n",
                     i, DescriptorFormat<Descriptor>::row(kinetics.descriptor(key)),
-                    simulation.kinetic_classes()[i].rate);
+                    kinetics.kinetic_classes()[i].rate);
             }
             utility::file::write<utility::file::Type::csv>(writer_path(), csv);
         }

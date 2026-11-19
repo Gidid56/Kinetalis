@@ -55,12 +55,13 @@ namespace output
             auto const delta{ simulation.time() - last_time_ };
             last_time_ = simulation.time();
 
-            auto const& classes{ simulation.kinetic_classes() };
+            auto const& classes{ simulation.kinetics().kinetic_classes() };
+            auto const& counts{ simulation.class_counts() };
             kmc::Rate total{};
 
             for (std::size_t i{ 1 }; i < classes.size(); ++i)
-                if (classes[i].count != 0)
-                    total += classes[i].count * classes[i].rate;
+                if (counts[i] != 0)
+                    total += counts[i] * classes[i].rate;
 
             if (total <= kmc::Rate{})
                 return;
@@ -68,11 +69,11 @@ namespace output
             for (std::size_t i{ 1 }; i < classes.size(); ++i)
             {
                 auto const& kinetic_class{ classes[i] };
-                if (kinetic_class.count == 0 or not kinetic_class.is_initialized())
+                if (counts[i] == 0 or not kinetic_class.is_initialized())
                     continue;
 
                 auto const key{ static_cast<kmc::RateClassKey>(i) };
-                auto const fraction{ kinetic_class.count * kinetic_class.rate / total };
+                auto const fraction{ counts[i] * kinetic_class.rate / total };
                 auto& value{ accumulation_.classes[model_->kinetics().descriptor(key)] };
                 value.activity_fraction += fraction;
                 value.activity_time += fraction * delta;
@@ -90,7 +91,7 @@ namespace output
         static std::string header(kmc::Simulation const& simulation, ModelT const& model)
         {
             std::string text{ Writer::default_header };
-            auto const& classes{ simulation.kinetic_classes() };
+            auto const& classes{ simulation.kinetics().kinetic_classes() };
             for (std::size_t key{ 1 }; key < classes.size(); ++key)
             {
                 if (classes[key].is_initialized())
@@ -134,7 +135,7 @@ namespace output
         void write_init(kmc::Simulation const& simulation) override
         {
             class_header_ = header(simulation, *model_);
-            class_columns_ = simulation.kinetic_classes().size() - 1;
+            class_columns_ = simulation.kinetics().kinetic_classes().size() - 1;
             utility::file::write<utility::file::Type::csv>(
                 writer_path() / "activity", class_header_ + '\n');
             utility::file::write<utility::file::Type::csv>(
@@ -150,7 +151,7 @@ namespace output
             auto const new_header{ header(simulation, *model_) };
             if (new_header != class_header_)
             {
-                auto const new_columns{ simulation.kinetic_classes().size() - 1 };
+                auto const new_columns{ simulation.kinetics().kinetic_classes().size() - 1 };
                 if (new_columns < class_columns_)
                     throw std::logic_error{ "Kinetic class count shrank during output." };
                 auto const extra{ new_columns - class_columns_ };
@@ -165,9 +166,9 @@ namespace output
             std::string activity{ prefix };
             std::string weighted{ prefix };
 
-            for (std::size_t i{ 1 }; i < simulation.kinetic_classes().size(); ++i)
+            for (std::size_t i{ 1 }; i < simulation.kinetics().kinetic_classes().size(); ++i)
             {
-                if (not simulation.kinetic_classes()[i].is_initialized())
+                if (not simulation.kinetics().kinetic_classes()[i].is_initialized())
                 {
                     activity += ',';
                     weighted += ',';
