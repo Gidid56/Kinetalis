@@ -65,16 +65,6 @@ LinearBondBreaking::classify(event::Type type, event::Location const& location, 
 
 std::size_t LinearBondBreaking::number_keys() const noexcept { return key_count; }
 
-event::Type LinearBondBreaking::class_event(RateClassKey key) const
-{
-    return descriptor(key).event;
-}
-
-Element LinearBondBreaking::class_element(RateClassKey key) const
-{
-    return descriptor(key).element;
-}
-
 Energy LinearBondBreaking::lattice_energy_barrier(Descriptor const& desc) const
 {
     return constants_.bond_energy * desc.coordination;

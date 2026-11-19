@@ -76,16 +76,6 @@ RateClassKey CompositionDependent::key(Descriptor const& desc)
     return key;
 }
 
-event::Type CompositionDependent::class_event(RateClassKey key) const
-{
-    return descriptor(key).event;
-}
-
-Element CompositionDependent::class_element(RateClassKey key) const
-{
-    return descriptor(key).element;
-}
-
 Energy CompositionDependent::lattice_energy_barrier(Descriptor const& desc) const
 {
     Energy energy{};
