@@ -54,13 +54,7 @@ template <class ModelT>
 class kmc::RejectionTreeSimulation final : public Simulation
 {
 public:
-    explicit RejectionTreeSimulation(Setup<ModelT> const& setup)
-        : Simulation{ setup.make_lattice, setup.seed },
-          model_{ setup.model }
-    {
-        initialize_rates();
-        update_all_rates();
-    }
+    explicit RejectionTreeSimulation(Setup<ModelT> const&);
 
     simulation::Status run(AnalysisPlan&, std::stop_token = {}) override;
     std::string process_settings() const override { return model_.processes().settings(); }
@@ -82,7 +76,6 @@ private:
     Rate block_rate(lattice::Site&);
     RateClassKey register_class(event::Type, event::Location const&);
     void set_class_key(std::size_t, RateClassKey);
-    void configure_class_counts(bool enabled);
 
     Rate update_site_classes(lattice::Site&);
 
@@ -94,7 +87,6 @@ private:
 
     Selection select_event_slot(Rate total_rate);
 
-    void initialize_rates();
     void update_all_rates();
     void update_affected_rates(event::Record const&);
     void update_site_rate(lattice::Site&);

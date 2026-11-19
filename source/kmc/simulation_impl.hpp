@@ -1,6 +1,4 @@
 #pragma once
-// Template definitions for RejectionTreeSimulation; included by simulation.h.
-
 #include "analysis_plan.h"
 #include "lattice/lattice.h"
 #include "utility/utility.h"
@@ -8,13 +6,13 @@
 namespace kmc
 {
     template <class ModelT>
-    void RejectionTreeSimulation<ModelT>::initialize_rates()
+    RejectionTreeSimulation<ModelT>::RejectionTreeSimulation(Setup<ModelT> const& setup)
+        : Simulation{ setup.make_lattice, setup.seed },
+          model_{ setup.model }
     {
         rate_tree_ = rate_tree::make_entry(lattice_.sites().size());
         site_rates_.resize(lattice_.sites().size());
         slot_class_keys_.resize(lattice_.sites().size() * ModelT::slots_per_site);
-
-        // Each model decides whether to preallocate or register classes lazily.
         kinetic_classes_.resize(model_.kinetics().number_keys());
     }
 
@@ -24,7 +22,8 @@ namespace kmc
     {
         utility::Guard guard{ timer_ };
 
-        configure_class_counts(analysis_plan.requires_class_counts());
+        class_counts_enabled_ = analysis_plan.requires_class_counts();
+        update_all_rates();
 
         if (status_ == simulation::Status::created)
             analysis_plan.observe_started(*this);
@@ -49,7 +48,7 @@ namespace kmc
             auto const selection{ select_event_slot(total_rate) };
             auto record{ model_.processes().make_record(
                 selection.slot,
-                lattice_.sites().at(selection.source),
+                lattice_.sites()[selection.source],
                 lattice_,
                 selection.class_key) };
 
@@ -84,18 +83,18 @@ namespace kmc
         auto selected_rate{ physics::ensure_non_negative(total_rate * rng_.probability()) };
         auto site_index{ rate_tree_->index(selected_rate) };
 
-        while (selected_rate >= site_rates_.at(site_index))
-            selected_rate -= site_rates_.at(site_index++);
+        while (selected_rate >= site_rates_[site_index])
+            selected_rate -= site_rates_[site_index++];
 
         const auto first{ static_cast<std::size_t>(site_index) * ModelT::slots_per_site };
         auto offset{ first };
-        while (selected_rate >= kinetic_classes_.at(slot_class_keys_.at(offset)).rate)
-            selected_rate -= kinetic_classes_.at(slot_class_keys_.at(offset++)).rate;
+        while (selected_rate >= kinetic_classes_[slot_class_keys_[offset]].rate)
+            selected_rate -= kinetic_classes_[slot_class_keys_[offset++]].rate;
 
         if (offset >= first + ModelT::slots_per_site)
             throw std::runtime_error{ "Selected event slot is outside source-site layout." };
 
-        return { site_index, offset - first, slot_class_keys_.at(offset) };
+        return { site_index, offset - first, slot_class_keys_[offset] };
     }
 
     template <class ModelT>
@@ -113,7 +112,7 @@ namespace kmc
         std::ranges::sort(block_updates_, {}, &rate_tree::BlockUpdate::index);
         for (auto& update : block_updates_)
         {
-            auto& block_site{ lattice_.sites().at(update.index) };
+            auto& block_site{ lattice_.sites()[update.index] };
             update.rate = block_rate(block_site);
             block_site.set_block_update_queued(false);
         }
@@ -124,8 +123,6 @@ namespace kmc
     template <std::size_t RemainingHops>
     void RejectionTreeSimulation<ModelT>::collect_affected_sites(lattice::Site& site)
     {
-        // Traverse neighboring sites without allocating a visited-site container.
-        // Repeated paths are allowed; the site-update queue prevents duplicate collection.
         if constexpr (RemainingHops > 0)
             for (auto* neighbor : lattice_.neighbors(site))
                 collect_affected_sites<RemainingHops - 1>(*neighbor);
@@ -146,7 +143,7 @@ namespace kmc
         if (not site.is_site_update_queued())
             return;
 
-        auto& old_rate{ site_rates_.at(site.index()) };
+        auto& old_rate{ site_rates_[site.index()] };
 
         Rate new_rate{ update_site_classes(site) };
 
@@ -158,7 +155,7 @@ namespace kmc
                                                  1 };
             auto const block_start{ site.index() & ~block_mask };
 
-            auto& block_site{ lattice_.sites().at(block_start) };
+            auto& block_site{ lattice_.sites()[block_start] };
             if (not block_site.is_block_update_queued())
             {
                 block_site.set_block_update_queued(true);
@@ -189,11 +186,13 @@ namespace kmc
     template <class ModelT>
     template <Process P>
     Rate RejectionTreeSimulation<ModelT>::update_process_slots(
-        P const& process, lattice::Site& site, std::size_t first, bool eligible)
+        P const& process,
+        lattice::Site& site,
+        std::size_t first,
+        bool eligible)
     {
         if (not eligible)
         {
-            // A site with no previously eligible source processes has no cached event slots.
             if (site.is_source_eligible())
                 for (SlotId slot{}; slot < P::slot_count; ++slot)
                     set_class_key(first + slot, RateClassKey{});
@@ -207,7 +206,7 @@ namespace kmc
             set_class_key(first + slot, key);
 
             if (key != RateClassKey{})
-                total_rate += kinetic_classes_.at(key).rate;
+                total_rate += kinetic_classes_[key].rate;
         }
         return total_rate;
     }
@@ -215,7 +214,9 @@ namespace kmc
     template <class ModelT>
     template <Process P>
     RateClassKey RejectionTreeSimulation<ModelT>::classify_process_slot(
-        P const& process, lattice::Site& site, SlotId slot)
+        P const& process,
+        lattice::Site& site,
+        SlotId slot)
     {
         if (not kmc::has_slot(process, site, slot))
             return {};
@@ -232,40 +233,21 @@ namespace kmc
     template <class ModelT>
     void RejectionTreeSimulation<ModelT>::set_class_key(std::size_t index, RateClassKey new_key)
     {
-        auto& old_key{ slot_class_keys_.at(index) };
+        auto& old_key{ slot_class_keys_[index] };
 
-        if (old_key == new_key)
-            return;
-
-        // The slot keys are always needed for event selection; their populations
-        // are maintained only when requested by an observer.
         if (class_counts_enabled_)
         {
+            if (old_key == new_key)
+                return;
+
             if (old_key != RateClassKey{})
-                --kinetic_classes_.at(old_key).count;
+                --kinetic_classes_[old_key].count;
 
             if (new_key != RateClassKey{})
-                ++kinetic_classes_.at(new_key).count;
+                ++kinetic_classes_[new_key].count;
         }
 
         old_key = new_key;
-    }
-
-    template <class ModelT>
-    void RejectionTreeSimulation<ModelT>::configure_class_counts(bool enabled)
-    {
-        if (class_counts_enabled_ == enabled)
-            return;
-
-        for (auto& kinetic_class : kinetic_classes_)
-            kinetic_class.count = 0;
-
-        if (enabled)
-            for (auto const key : slot_class_keys_)
-                if (key != RateClassKey{})
-                    ++kinetic_classes_.at(key).count;
-
-        class_counts_enabled_ = enabled;
     }
 
     template <class ModelT>
@@ -273,17 +255,11 @@ namespace kmc
     {
         constexpr auto block_size{ std::size_t{ 1 } << rate_tree::baseLevel };
 
-        auto const block_start{ site.index() & ~(block_size - 1) };
+        const auto start{ site.index() & ~(block_size - 1) };
+        const auto count{ std::min(block_size, site_rates_.size() - start) };
+        const auto rates{ std::span{ site_rates_ }.subspan(start, count) };
 
-        Rate sum{};
-
-        for (auto index{ block_start };
-            index < std::min(block_start + block_size, site_rates_.size());
-            ++index)
-        {
-            sum += site_rates_.at(index);
-        }
-        return sum;
+        return std::ranges::fold_left(rates, Rate{}, std::plus{});
     }
 
     template <class ModelT>
@@ -320,18 +296,15 @@ namespace kmc
             if (kinetic_classes_[key].is_initialized())
                 kinetic_classes_[key].rate = model_.kinetics().rate(key);
 
-        // A full-rate refresh bypasses per-event block collection. Rebuild each
-        // block once after all site rates have been recalculated.
-        block_updates_.clear();
         for (auto& site : lattice_.sites())
         {
-            site_rates_.at(site.index()) = update_site_classes(site);
+            site_rates_[site.index()] = update_site_classes(site);
             site.set_site_update_queued(false);
             site.set_block_update_queued(false);
         }
 
         constexpr auto block_size{ std::size_t{ 1 } << rate_tree::baseLevel };
         for (lattice::Index index{}; index < site_rates_.size(); index += block_size)
-            rate_tree_->update_rate(index, block_rate(lattice_.sites().at(index)));
+            rate_tree_->update_rate(index, block_rate(lattice_.sites()[index]));
     }
 }
