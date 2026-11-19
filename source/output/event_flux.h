@@ -16,6 +16,8 @@ public:
 
     using Writer::Writer;
 
+    bool observes_selected() const override { return true; }
+
     void observe_selected(kmc::event::Record const&) override;
 
     void capture_init(kmc::Simulation const&) override;
