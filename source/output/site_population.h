@@ -62,6 +62,9 @@ namespace output
                     ++counts_[*key];
         }
 
+        bool observes_selected() const override { return true; }
+        bool observes_processed() const override { return true; }
+
         void observe_selected(kmc::event::Record const& record) override
         {
             auto const delta{ simulation_->time() - last_time_ };
