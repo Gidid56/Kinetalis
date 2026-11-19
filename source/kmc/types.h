@@ -17,10 +17,9 @@ namespace kmc
 
     using Temperature = physics::quantity::AbsoluteTemperature;
 
-    using physics::quantity::Frequency;
     using physics::quantity::Time;
 
-    using Rate = Frequency;
+    using Rate = physics::quantity::Frequency;
     using Rates = std::vector<Rate>;
 
     namespace rate_tree { struct Interface; }

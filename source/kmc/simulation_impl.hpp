@@ -80,7 +80,7 @@ namespace kmc
     typename RejectionTreeSimulation<ModelT>::Selection
     RejectionTreeSimulation<ModelT>::select_event_slot(Rate total_rate)
     {
-        auto selected_rate{ physics::ensure_non_negative(total_rate * rng_.probability()) };
+        Rate selected_rate{ total_rate * rng_.probability() };
         auto site_index{ rate_tree_->index(selected_rate) };
 
         while (selected_rate >= site_rates_[site_index])
