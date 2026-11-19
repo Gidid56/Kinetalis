@@ -106,7 +106,7 @@ namespace kmc
             if (site.is_dirty())
                 return;
 
-            if (not site.is_active() and not model_.processes().is_candidate(site))
+            if (not site.is_candidate() and not model_.processes().is_candidate(site))
                 return;
 
             site.set_dirty(true);
@@ -172,47 +172,60 @@ namespace kmc
     {
         const auto first{ static_cast<std::size_t>(site.index()) * ModelT::slots_per_site };
 
-        Rate sum{};
-        bool has_events{};
+        Rate total_rate{};
+        bool is_candidate{};
 
         model_.processes().for_each([&](auto const& process, std::size_t offset) {
-            constexpr auto count{ std::remove_cvref_t<decltype(process)>::slot_count };
-            if (not process.is_candidate(site))
-            {
-                // Inactive sites already have empty class slots.
-                if (site.is_active())
-                    for (SlotId local{}; local < count; ++local)
-                        set_class_key(first + offset + local, RateClassKey{});
-                return;
-            }
-
-            for (SlotId local{}; local < count; ++local)
-            {
-                RateClassKey key{};
-                if (kmc::has_slot(process, site, local))
-                {
-                    auto location{ kmc::make_location(process, site, local, lattice_) };
-                    assert(
-                        location.sites().size() ==
-                        std::remove_cvref_t<decltype(process)>::cluster_size);
-                    // The source precondition has already been checked.
-                    // Check any additional location-level eligibility predicate.
-                    if (kmc::is_location_candidate(process, location))
-                        key =
-                            register_class(std::remove_cvref_t<decltype(process)>::event, location);
-                }
-
-                set_class_key(first + offset + local, key);
-                if (key != RateClassKey{})
-                {
-                    has_events = true;
-                    sum += kinetic_classes_.at(key).rate;
-                }
-            }
+            const bool eligible{ process.is_candidate(site) };
+            is_candidate |= eligible;
+            total_rate += update_process_slots(process, site, first + offset, eligible);
         });
 
-        site.set_active(has_events);
-        return sum;
+        site.set_candidate(is_candidate);
+        return total_rate;
+    }
+
+    template <class ModelT>
+    template <Process P>
+    Rate RejectionTreeSimulation<ModelT>::update_process_slots(
+        P const& process, lattice::Site& site, std::size_t first, bool eligible)
+    {
+        if (not eligible)
+        {
+            // A site with no previously eligible source processes has no cached event slots.
+            if (site.is_candidate())
+                for (SlotId slot{}; slot < P::slot_count; ++slot)
+                    set_class_key(first + slot, RateClassKey{});
+            return {};
+        }
+
+        Rate total_rate{};
+        for (SlotId slot{}; slot < P::slot_count; ++slot)
+        {
+            const auto key{ classify_process_slot(process, site, slot) };
+            set_class_key(first + slot, key);
+
+            if (key != RateClassKey{})
+                total_rate += kinetic_classes_.at(key).rate;
+        }
+        return total_rate;
+    }
+
+    template <class ModelT>
+    template <Process P>
+    RateClassKey RejectionTreeSimulation<ModelT>::classify_process_slot(
+        P const& process, lattice::Site& site, SlotId slot)
+    {
+        if (not kmc::has_slot(process, site, slot))
+            return {};
+
+        auto location{ kmc::make_location(process, site, slot, lattice_) };
+        assert(location.sites().size() == P::cluster_size);
+
+        if (not kmc::is_location_candidate(process, location))
+            return {};
+
+        return register_class(P::event, location);
     }
 
     template <class ModelT>
