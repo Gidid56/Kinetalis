@@ -11,6 +11,8 @@ The dealloying study in [`studies/dealloying/`](studies/dealloying/) is a workin
 
 Long-term development plans are tracked in [TODO.md](TODO.md).
 
+Supporting reference data and viewer assets are organized under [`resources/`](resources/README.md).
+
 ## Requirements
 
 - A **C++23 compiler and standard library** (MSVC in Visual Studio 2026 or GCC 14+), including support for `<format>`, `<print>`, and ranges.

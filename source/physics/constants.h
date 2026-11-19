@@ -7,7 +7,7 @@
 
 // SI defining constants and CODATA 2022 recommended values.
 // Standard uncertainties are not represented by the Quantity type.
-// See data/codata-2022.pdf for details.
+// See resources/references/codata-2022.pdf for details.
 
 namespace physics::dimension
 {
