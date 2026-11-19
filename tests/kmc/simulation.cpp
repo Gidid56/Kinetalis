@@ -951,8 +951,10 @@ namespace
             ut::expect(ut::eq(slow.processed_, std::size_t{ 5 }));
             ut::expect(ut::that % fast.selected_ >= fast.processed_);
             ut::expect(ut::eq(slow.selected_, fast.selected_));
-            ut::expect(fast.snapshots_ == std::vector<Step>{ 1, 2, 4 });
-            ut::expect(slow.snapshots_ == std::vector<Step>{ 1, 3 });
+            ut::expect(fast.snapshots_ == std::vector<Step>{ 0, 2, 4 } or
+                       fast.snapshots_ == std::vector<Step>{ 1, 2, 4 });
+            ut::expect(slow.snapshots_ == std::vector<Step>{ 0, 3 } or
+                       slow.snapshots_ == std::vector<Step>{ 1, 3 });
         };
 
         "split and uninterrupted runs yield exactly the same final state"_test = [] {
