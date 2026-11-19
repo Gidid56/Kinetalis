@@ -108,7 +108,7 @@ int main()
 
         for (auto const box_side : box_sides)
         {
-            std::println("\nBox side: {:.0f} nm", box_side / 1_nm);
+            std::println("\nBox side: {:.0f} nm", static_cast<double>(box_side / 1_nm));
 
             for (std::size_t i{}; i < warmup_runs; ++i)
                 (void)run_simulation(box_side);
