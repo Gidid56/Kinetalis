@@ -40,6 +40,7 @@ public:
 
     using Writer::Writer;
 
+    bool observes_processed() const override { return true; }
     void observe_processed(kmc::event::Record const&) override;
 
     auto& last_data() const { return last_data_; }
