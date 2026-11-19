@@ -572,5 +572,19 @@ std::formatter<Lattice>::format(Lattice const& lattice, std::format_context& con
     for (auto const& [neighbors, number] : distribution)
         out = std::format_to(out, "{} neighbors/site ({}x).\n", neighbors, number);
 
+    out = std::format_to(
+        out,
+        "\nLattice Settings\n"
+        //"active_elements = {}\n"
+        "element_specific_neighbors = {}\n"
+        "use_layers = {}\n"
+        "epsilon::length = {:fm}\n"
+        "epsilon::coordinate = {}\n",
+        //format_range(lattice::active_elements),
+        lattice::element_specific_neighbors,
+        lattice::use_layers,
+        lattice::epsilon::length,
+        lattice::epsilon::coordinate);
+
     return out;
 }
