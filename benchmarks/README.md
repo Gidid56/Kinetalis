@@ -19,7 +19,7 @@ run `kinetalis_benchmarks` as the startup target.
 
 The initial benchmark runs a small deterministic Ag–Au dealloying KMC
 simulation with a fixed seed, periodic FCC boxes with side lengths of 10, 20, and 40 nm, and a
-100,000-accepted-step limit for each box. It uses only a stopping observer and does not write measurement files.
+1,000,000-accepted-step limit for each box. It uses only a stopping observer and does not write measurement files.
 It performs one untimed warm-up and five independently constructed, timed
 simulations.
 
@@ -35,8 +35,9 @@ its active event list before the target fails rather than silently measuring a
 different workload.
 
 Results are printed for each box size (lattice-site count,
-min/median/max lattice construction, total initialization, and execution times,
-plus median accepted-step throughput). The 40 nm case may require substantial
+mean ± sample standard deviation for lattice construction, total initialization,
+and execution times, plus mean ± sample standard deviation of accepted-step
+throughput). Each statistic uses the five measured runs; warm-up is excluded. The 40 nm case may require substantial
 memory and runtime, so run the executable on a machine with sufficient resources. For meaningful commit comparisons, benchmark on the
 same machine and compiler settings with minimal competing load. These results
 are diagnostic measurements, not CI pass/fail thresholds.
