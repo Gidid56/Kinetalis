@@ -117,6 +117,19 @@
       }
     },
     {
+      "name": "windows-benchmark-release",
+      "displayName": "Windows | Benchmark | Release",
+      "inherits": "base",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "KINETALIS_BUILD_BENCHMARKS": "ON",
+        "KINETALIS_BUILD_BATCH": "OFF",
+        "KINETALIS_BUILD_TESTS": "OFF",
+        "KINETALIS_BUILD_VIEWER": "OFF",
+        "KINETALIS_ENABLE_CLANG_TIDY": "OFF"
+      }
+    },
+    {
       "name": "ubuntu-batch-release",
       "displayName": "Ubuntu | Batch | Release",
       "inherits": [
@@ -188,6 +201,14 @@
       "configurePreset": "windows-tests-no-pch",
       "targets": [
         "kinetalis_tests"
+      ]
+    },
+    {
+      "name": "build-windows-benchmark-release",
+      "displayName": "Windows | Benchmark | Release",
+      "configurePreset": "windows-benchmark-release",
+      "targets": [
+        "kinetalis_benchmarks"
       ]
     },
     {
