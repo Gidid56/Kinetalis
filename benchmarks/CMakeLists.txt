@@ -1,0 +1,3 @@
+add_executable(kinetalis_benchmarks main.cpp)
+target_link_libraries(kinetalis_benchmarks PRIVATE Kinetalis::dealloying)
+kinetalis_target_defaults(kinetalis_benchmarks)
