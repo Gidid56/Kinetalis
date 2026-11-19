@@ -9,6 +9,7 @@ public:
     {
         for (auto& observer : observers_)
             observer->set_resolution(resolution);
+        refresh_next_snapshot_step();
     }
 
     void observe_started(Simulation const& simulation)
@@ -23,8 +24,8 @@ public:
         if (step < next_snapshot_step_)
             return;
 
-        for (auto& observer : observers_)
-            if (observer->snapshots_enabled() and step >= observer->next_snapshot_step())
+        for (auto* observer : snapshot_observers_)
+            if (step >= observer->next_snapshot_step())
                 observer->observe_step(simulation, step);
 
         refresh_next_snapshot_step();
@@ -73,13 +74,18 @@ public:
         auto observer = std::make_unique<ObserverType>(std::forward<Arguments>(arguments)...);
 
         auto& result = *observer;
+        Observer& base = result;
+        auto const flags{ base.subscriptions() };
         observers_.push_back(std::move(observer));
-        if (result.observes_selected())
-            selected_observers_.push_back(&result);
-        if (result.observes_processed())
-            processed_observers_.push_back(&result);
-        if (result.checks_stop())
-            stopping_observers_.push_back(&result);
+        using Subscription = Observer::Subscription;
+        if (Observer::has_subscription(flags, Subscription::selected))
+            selected_observers_.push_back(&base);
+        if (Observer::has_subscription(flags, Subscription::processed))
+            processed_observers_.push_back(&base);
+        if (Observer::has_subscription(flags, Subscription::snapshot))
+            snapshot_observers_.push_back(&base);
+        if (Observer::has_subscription(flags, Subscription::stopping))
+            stopping_observers_.push_back(&base);
         // A newly added observer may require a snapshot earlier than the current deadline.
         next_snapshot_step_ = 0;
         return result;
@@ -141,12 +147,12 @@ private:
     void refresh_next_snapshot_step()
     {
         next_snapshot_step_ = std::numeric_limits<Step>::max();
-        for (auto const& observer : observers_)
-            if (observer->snapshots_enabled())
-                next_snapshot_step_ = std::min(next_snapshot_step_, observer->next_snapshot_step());
+        for (auto const* observer : snapshot_observers_)
+            next_snapshot_step_ = std::min(next_snapshot_step_, observer->next_snapshot_step());
     }
 
     std::vector<std::unique_ptr<Observer>> observers_;
+    std::vector<Observer*> snapshot_observers_;
     std::vector<Observer*> selected_observers_;
     std::vector<Observer*> processed_observers_;
     std::vector<Observer*> stopping_observers_;
