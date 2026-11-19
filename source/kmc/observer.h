@@ -15,7 +15,7 @@ public:
         processed = 1 << 1,
         snapshot = 1 << 2,
         stopping = 1 << 3,
-        all = selected | processed | snapshot | stopping,
+        all = 0x0f,
     };
 
     static constexpr bool has_subscription(Subscription flags, Subscription flag) noexcept
