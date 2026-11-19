@@ -7,6 +7,7 @@ public:
     explicit StepLimit(kmc::Step limit) : limit_{ limit } { }
 
     bool stop_requested() const override;
+    bool snapshots_enabled() const override { return false; }
 
 private:
     std::string_view name() const override { return "step_limit"; }
