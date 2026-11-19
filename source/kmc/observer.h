@@ -69,6 +69,14 @@ public:
 
     virtual bool stop_requested() const { return false; }
 
+    // Conservative defaults keep custom observers compatible without registration metadata.
+    virtual bool observes_selected() const { return true; }
+    virtual bool observes_processed() const { return true; }
+    virtual bool checks_stop() const { return true; }
+    virtual bool snapshots_enabled() const { return true; }
+
+    Step next_snapshot_step() const noexcept { return next_snapshot_step_; }
+
     virtual std::string_view name() const = 0;
     virtual std::string settings() const { return {}; }
 
