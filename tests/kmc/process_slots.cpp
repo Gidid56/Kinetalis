@@ -32,9 +32,10 @@ namespace
         static constexpr std::size_t cluster_size{ 1 };
 
         bool enabled{ true };
+        bool slot_enabled{ true };
         std::size_t* source_checks{};
 
-        bool has_slot(Site const&, SlotId slot) const { return slot == 0; }
+        bool has_slot(Site const&, SlotId slot) const { return slot_enabled and slot == 0; }
 
         bool is_candidate(Site const&) const
         {
@@ -114,6 +115,8 @@ namespace
 
     struct ProbeKinetics : Kinetics
     {
+        Rate rate_per_key{ 1_Hz };
+
         RateClassKey classify(event::Type type, event::Location const&, lattice::Lattice const&)
         {
             return static_cast<RateClassKey>(std::to_underlying(type));
@@ -126,7 +129,7 @@ namespace
             return static_cast<event::Type>(key);
         }
 
-        Rate rate(RateClassKey key) const { return static_cast<double>(key) * 1_Hz; }
+        Rate rate(RateClassKey key) const { return static_cast<double>(key) * rate_per_key; }
         void refresh_rates() {}
         std::string output_text() const { return "slot-layout probe"; }
     };
@@ -260,7 +263,7 @@ namespace
             ut::expect(not kmc::is_rejected(process, location));
         };
 
-        "source activity short-circuits across processes"_test = [] {
+        "source eligibility short-circuits across processes"_test = [] {
             Probes processes;
             std::array<std::size_t, 3> checks{};
             processes.get<SiteProbe>().source_checks = &checks[0];
@@ -270,22 +273,22 @@ namespace
             auto lattice{ make_probe_setup().make_lattice() };
             auto const& source{ lattice.sites().front() };
 
-            ut::expect(processes.is_source_active(source));
+            ut::expect(processes.is_candidate(source));
             ut::expect(checks == std::array<std::size_t, 3>{ 1, 0, 0 });
 
             checks.fill(0);
             processes.get<SiteProbe>().enabled = false;
-            ut::expect(processes.is_source_active(source));
+            ut::expect(processes.is_candidate(source));
             ut::expect(checks == std::array<std::size_t, 3>{ 1, 1, 0 });
 
             checks.fill(0);
             processes.get<NeighborProbe>().enabled = false;
-            ut::expect(processes.is_source_active(source));
+            ut::expect(processes.is_candidate(source));
             ut::expect(checks == std::array<std::size_t, 3>{ 1, 1, 1 });
 
             checks.fill(0);
             processes.get<SparseProbe>().enabled = false;
-            ut::expect(not processes.is_source_active(source));
+            ut::expect(not processes.is_candidate(source));
             ut::expect(checks == std::array<std::size_t, 3>{ 1, 1, 1 });
         };
 
@@ -308,15 +311,15 @@ namespace
 
             auto lattice{ setup.make_lattice() };
             auto& source{ lattice.sites().front() };
-            auto has_candidate = [&] {
-                return processes.is_source_active(source);
+            auto has_source_candidate = [&] {
+                return processes.is_candidate(source);
             };
-            ut::expect(has_candidate());
+            ut::expect(has_source_candidate());
 
             processes.get<SiteProbe>().enabled = false;
-            ut::expect(has_candidate());
+            ut::expect(has_source_candidate());
             processes.get<NeighborProbe>().enabled = false;
-            ut::expect(has_candidate());
+            ut::expect(has_source_candidate());
 
             // Only SparseProbe remains; the first five slots are inactive
             // even though their positions remain allocated at every site.
@@ -333,7 +336,7 @@ namespace
             ut::expect(ut::eq(sparse_only.kinetic_classes().at(3).count, sparse_only.lattice().sites().size()));
 
             processes.get<SparseProbe>().enabled = false;
-            ut::expect(not has_candidate());
+            ut::expect(not has_source_candidate());
             ProbeSimulation empty{ setup };
             ut::expect(ut::eq(empty.rate_tree()->rate_sum().value(), 0.0));
             ut::expect(ut::eq(empty.kinetic_classes().at(1).count, std::size_t{}));
@@ -342,10 +345,41 @@ namespace
             for (auto const key : empty.slot_class_keys())
                 ut::expect(ut::eq(key, RateClassKey{}));
             for (auto const& site : empty.lattice().sites())
-                ut::expect(not site.is_active());
+                ut::expect(not site.is_candidate());
 
             AnalysisPlan plan;
             ut::expect(empty.run(plan) == simulation::Status::exhausted);
+        };
+
+        "source-eligible sites remain candidates without valid slots"_test = [] {
+            auto setup{ make_probe_setup() };
+            setup.model.processes().get<SiteProbe>().slot_enabled = false;
+            setup.model.processes().get<NeighborProbe>().enabled = false;
+            setup.model.processes().get<SparseProbe>().enabled = false;
+
+            ProbeSimulation simulation{ setup };
+            for (auto const& site : simulation.lattice().sites())
+                ut::expect(site.is_candidate());
+            for (auto const key : simulation.slot_class_keys())
+                ut::expect(ut::eq(key, RateClassKey{}));
+            ut::expect(simulation.rate_tree()->rate_sum() == Rate{});
+        };
+
+        "zero-rate slots still have valid source candidates"_test = [] {
+            auto setup{ make_probe_setup() };
+            setup.model.kinetics().rate_per_key = Rate{};
+            ProbeSimulation simulation{ setup };
+
+            auto const site_count{ simulation.lattice().sites().size() };
+            for (auto const& site : simulation.lattice().sites())
+                ut::expect(site.is_candidate());
+
+            ut::expect(ut::eq(simulation.kinetic_classes().at(2).count, site_count));
+            ut::expect(simulation.kinetic_classes().at(2).rate == Rate{});
+            ut::expect(simulation.rate_tree()->rate_sum() == Rate{});
+
+            AnalysisPlan plan;
+            ut::expect(simulation.run(plan) == simulation::Status::exhausted);
         };
 
         "homogeneous class-key slots preserve permanently absent geometries"_test = [] {
