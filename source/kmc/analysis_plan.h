@@ -1,7 +1,11 @@
 #pragma once
 #include "observer.h"
 
+#include <array>
+#include <bit>
+#include <cassert>
 #include <limits>
+#include <utility>
 
 class kmc::AnalysisPlan
 {
@@ -20,20 +24,20 @@ public:
 
     void observe_step(Simulation const& simulation, Step step)
     {
-        for (auto* observer : snapshot_observers_)
+        for (auto* observer : subscribers(Subscription::snapshot))
             if (step >= observer->next_snapshot_step())
                 observer->observe_step(simulation, step);
     }
 
     void observe_selected(event::Record const& record)
     {
-        for (auto* observer : selected_observers_)
+        for (auto* observer : subscribers(Subscription::selected))
             observer->observe_selected(record);
     }
 
     void observe_processed(event::Record const& record)
     {
-        for (auto* observer : processed_observers_)
+        for (auto* observer : subscribers(Subscription::processed))
             observer->observe_processed(record);
     }
 
@@ -52,7 +56,7 @@ public:
 
     [[nodiscard]] bool stop_requested() const
     {
-        return std::ranges::any_of(stopping_observers_, [](auto const* observer) {
+        return std::ranges::any_of(subscribers(Subscription::stopping), [](auto const* observer) {
             return observer->stop_requested();
         });
     }
@@ -71,15 +75,9 @@ public:
         Observer& base = result;
         auto const flags{ base.subscriptions() };
         observers_.push_back(std::move(observer));
-        using Subscription = Observer::Subscription;
-        if (Observer::has_subscription(flags, Subscription::selected))
-            selected_observers_.push_back(&base);
-        if (Observer::has_subscription(flags, Subscription::processed))
-            processed_observers_.push_back(&base);
-        if (Observer::has_subscription(flags, Subscription::snapshot))
-            snapshot_observers_.push_back(&base);
-        if (Observer::has_subscription(flags, Subscription::stopping))
-            stopping_observers_.push_back(&base);
+        for (auto subscription : subscription_flags_)
+            if (Observer::has_subscription(flags, subscription))
+                subscribers(subscription).push_back(&base);
         return result;
     }
 
@@ -136,7 +134,32 @@ public:
     }
 
 private:
+    using Subscription = Observer::Subscription;
+
+    static constexpr std::array subscription_flags_{
+        Subscription::selected,
+        Subscription::processed,
+        Subscription::snapshot,
+        Subscription::stopping,
+    };
+
+    static constexpr std::size_t subscription_index(Subscription subscription) noexcept
+    {
+        const auto bits{ std::to_underlying(subscription) };
+        assert(std::has_single_bit(bits));
+        return std::countr_zero(bits);
+    }
+
+    auto& subscribers(Subscription subscription) noexcept
+    {
+        return subscribers_[subscription_index(subscription)];
+    }
+
+    auto const& subscribers(Subscription subscription) const noexcept
+    {
+        return subscribers_[subscription_index(subscription)];
+    }
+
     std::vector<std::unique_ptr<Observer>> observers_;
-    std::vector<Observer*> snapshot_observers_, selected_observers_, processed_observers_,
-        stopping_observers_;
+    std::array<std::vector<Observer*>, subscription_flags_.size()> subscribers_;
 };
