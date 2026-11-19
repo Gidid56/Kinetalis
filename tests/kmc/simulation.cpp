@@ -912,10 +912,10 @@ namespace
                     : Observer{ resolution }, active_{ active } { }
 
                 std::string_view name() const override { return "dispatch-probe"; }
-                bool observes_selected() const override { return active_; }
-                bool observes_processed() const override { return active_; }
-                bool checks_stop() const override { return active_; }
-                bool snapshots_enabled() const override { return active_; }
+                Subscription subscriptions() const override
+                {
+                    return active_ ? Subscription::all : Subscription::none;
+                }
 
                 // If the disabled observer is polled, it would terminate the run.
                 bool stop_requested() const override { return not active_; }
