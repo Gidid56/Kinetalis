@@ -4,10 +4,11 @@
 #include "kmc/simulation.h"
 #include "output/basics.h"
 
-#include <algorithm>
+#include <cmath>
 #include <array>
 #include <chrono>
 #include <cstddef>
+#include <numeric>
 #include <print>
 #include <stdexcept>
 #include <string_view>
@@ -19,7 +20,7 @@ namespace
 {
     using Clock = std::chrono::steady_clock;
 
-    constexpr kmc::Step target_steps{ 100'000 };
+    constexpr kmc::Step target_steps{ 1'000'000 };
     constexpr std::size_t warmup_runs{ 1 };
     constexpr std::size_t measured_runs{ 5 };
     constexpr std::array box_sides{ 10_nm, 20_nm, 40_nm };
@@ -76,10 +77,27 @@ namespace
         };
     }
 
-    double median(std::vector<double> values)
+    struct Statistics
     {
-        std::ranges::sort(values);
-        return values[values.size() / 2];
+        double mean{};
+        double standard_deviation{};
+    };
+
+    Statistics summarize(std::vector<double> const& values)
+    {
+        if (values.empty())
+            throw std::invalid_argument{ "Cannot summarize an empty benchmark sample." };
+
+        const auto mean{ std::accumulate(values.begin(), values.end(), 0.0) / values.size() };
+        double sum_squared_deviations{};
+        for (const auto value : values)
+            sum_squared_deviations += (value - mean) * (value - mean);
+
+        // Sample standard deviation (Bessel's correction).
+        const auto variance{
+            values.size() > 1 ? sum_squared_deviations / (values.size() - 1) : 0.0
+        };
+        return { mean, std::sqrt(variance) };
     }
 
     void print_timing(
@@ -91,10 +109,10 @@ namespace
         values.reserve(samples.size());
         for (auto const& sample : samples)
             values.push_back(sample.*field);
-        std::ranges::sort(values);
 
-        std::println("  {:<25} min {:>9.4f} | median {:>9.4f} | max {:>9.4f} s",
-            label, values.front(), values[values.size() / 2], values.back());
+        auto const stats{ summarize(values) };
+        std::println("  {:<25} {:.4f} ± {:.4f} s",
+            label, stats.mean, stats.standard_deviation);
     }
 }
 
@@ -123,13 +141,14 @@ int main()
             print_timing("Total simulation init", samples, &Measurement::initialization_seconds);
             print_timing("KMC execution", samples, &Measurement::execution_seconds);
 
-            std::vector<double> execution_times;
-            execution_times.reserve(samples.size());
+            std::vector<double> throughputs;
+            throughputs.reserve(samples.size());
             for (auto const& sample : samples)
-                execution_times.push_back(sample.execution_seconds);
+                throughputs.push_back(target_steps / sample.execution_seconds);
 
-            std::println("  Median throughput: {:.0f} accepted steps/s",
-                target_steps / median(std::move(execution_times)));
+            auto const throughput{ summarize(throughputs) };
+            std::println("  Throughput: {:.0f} ± {:.0f} accepted steps/s",
+                throughput.mean, throughput.standard_deviation);
         }
         return 0;
     }
