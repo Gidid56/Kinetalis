@@ -17,7 +17,7 @@ namespace kmc
         }
 
         auto temperature() const { return temperature_; }
-        std::size_t invalidation_radius() const noexcept { return 1; }
+        static constexpr std::size_t invalidation_hops{ 1 };
 
     protected:
         Temperature temperature_{ standard_temperature };

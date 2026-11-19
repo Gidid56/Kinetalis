@@ -126,12 +126,10 @@ namespace
     using Descriptor = studies::dealloying::kinetics::LinearBondBreaking::Descriptor;
     using ModelBase = studies::dealloying::kinetics::LinearBondBreaking;
 
-    class TestKinetics final : public ModelBase
+    class TestKinetics : public ModelBase
     {
     public:
-        explicit TestKinetics(std::size_t radius = 1) : radius_{ radius } { }
-
-        std::size_t invalidation_radius() const noexcept { return radius_; }
+        static constexpr std::size_t invalidation_hops{ 1 };
 
         Rate rate(RateClassKey key) const
         {
@@ -140,20 +138,26 @@ namespace
             const auto barrier{ base + 0.005_eV * static_cast<double>(kinetic_class.coordination) };
             return physics::equations::kinetics::tst_rate(Ratio{ 1 }, barrier, temperature());
         }
+    };
 
-    private:
-        std::size_t radius_;
+    struct TwoHopKinetics final : TestKinetics
+    {
+        static constexpr std::size_t invalidation_hops{ 2 };
     };
 
     using TestModel = kmc::Model<TestKinetics, Processes>;
     using TestSimulation = RejectionTreeSimulation<TestModel>;
+    using TwoHopModel = kmc::Model<TwoHopKinetics, Processes>;
+    using TwoHopSimulation = RejectionTreeSimulation<TwoHopModel>;
 
-    Setup<TestModel> make_setup(std::size_t radius = 1)
+    template <class KineticsT = TestKinetics>
+    Setup<kmc::Model<KineticsT, Processes>> make_setup()
     {
-        Setup<TestModel> setup;
+        using ModelT = kmc::Model<KineticsT, Processes>;
+        Setup<ModelT> setup;
         setup.name = "KMC incremental update integration test";
         setup.seed = simulation::Seed{ 1, 2, 3, 4, 5, 6, 7, 8 };
-        setup.model = TestModel{ TestKinetics{ radius } };
+        setup.model = ModelT{ KineticsT{} };
         setup.make_lattice = [] {
             auto cell{ lattice::UnitCell::conventional<lattice::Bravais::cF>(400_pm)
                 .fill(chemistry::Atom{ Element::Au }) };
@@ -177,7 +181,8 @@ namespace
         return setup;
     }
 
-    void expect_reference_state(TestSimulation const& simulation, Processes const& processes, Step step)
+    template <class SimulationT>
+    void expect_reference_state(SimulationT const& simulation, Processes const& processes, Step step)
     {
         auto const& lattice{ simulation.lattice() };
         auto const& classes{ simulation.kinetic_classes() };
@@ -258,10 +263,11 @@ namespace
             << "root rate matches full reconstruction at step " << step;
     }
 
-    class CheckingObserver final : public Observer
+    template <class SimulationT = TestSimulation>
+    class CheckingObserverT final : public Observer
     {
     public:
-        explicit CheckingObserver(Step target, Processes processes = {}, Step initial_step = 0)
+        explicit CheckingObserverT(Step target, Processes processes = {}, Step initial_step = 0)
             : Observer{ Resolution{ 1, 1.0 } }, target_{ target },
               last_step_{ initial_step }, processes_{ processes }
         { }
@@ -271,7 +277,7 @@ namespace
 
         void observe_started(Simulation const& simulation) override
         {
-            expect_reference_state(dynamic_cast<TestSimulation const&>(simulation), processes_, simulation.step());
+            expect_reference_state(dynamic_cast<SimulationT const&>(simulation), processes_, simulation.step());
         }
 
         void observe_selected(event::Record const& record) override
@@ -326,7 +332,7 @@ namespace
             ut::expect(ut::eq(simulation.step(), last_step_ + 1))
                 << "one accepted event per validated snapshot";
             last_step_ = simulation.step();
-            expect_reference_state(dynamic_cast<TestSimulation const&>(simulation),
+            expect_reference_state(dynamic_cast<SimulationT const&>(simulation),
                 processes_, last_step_);
         }
 
@@ -351,6 +357,8 @@ namespace
         std::size_t accepted_site_events_{};
         std::size_t accepted_cluster_events_{};
     };
+
+    using CheckingObserver = CheckingObserverT<>;
 
     class FirstAcceptedObserver final : public Observer
     {
@@ -498,19 +506,18 @@ namespace
                 << "cluster execution conserves atom count";
         };
 
-        "radius-two invalidation recalculates exactly two neighbor shells"_test = [] {
+        "two-hop invalidation recalculates exactly two neighbor shells"_test = [] {
             std::vector<std::size_t> source_checks;
-            auto setup{ make_setup(2) };
+            auto setup{ make_setup<TwoHopKinetics>() };
             setup.model.processes().get<ClusterRule>().enabled = false;
             setup.model.processes().get<SiteRule>().source_checks = &source_checks;
 
-            TestSimulation simulation{ setup };
+            TwoHopSimulation simulation{ setup };
             auto const& lattice{ simulation.lattice() };
             source_checks.resize(lattice.sites().size());
             ut::expect(not simulation.model().processes().get<ClusterRule>().enabled)
                 << "disabled diffusion remains disabled in copied model";
-            ut::expect(ut::eq(simulation.model().kinetics().invalidation_radius(), std::size_t{ 2 }))
-                << "radius from statically typed kinetics";
+            static_assert(TwoHopKinetics::invalidation_hops == 2);
 
             AnalysisPlan plan;
             auto& observer{ plan.add<FirstAcceptedObserver>() };
@@ -536,7 +543,7 @@ namespace
             {
                 const bool visited{ source_checks[index] != 0 };
                 ut::expect(ut::eq(visited, expected[index]))
-                    << "radius-two visit at source " << index;
+                    << "two-hop visit at source " << index;
                 ut::expect(not lattice.sites()[index].is_site_update_queued())
                     << "site-update queue flag cleared after second pass at source " << index;
 
@@ -552,11 +559,12 @@ namespace
             expect_reference_state(simulation, setup.model.processes(), simulation.step());
         };
 
-        "radius-two incremental updates match full reconstruction"_test = [] {
-            auto setup{ make_setup(2) };
-            TestSimulation simulation{ setup };
+        "two-hop incremental updates match full reconstruction"_test = [] {
+            auto setup{ make_setup<TwoHopKinetics>() };
+            TwoHopSimulation simulation{ setup };
             AnalysisPlan plan;
-            auto& checker{ plan.add<CheckingObserver>(40, setup.model.processes()) };
+            auto& checker{ plan.add<CheckingObserverT<TwoHopSimulation>>(
+                40, setup.model.processes()) };
             const auto status{ simulation.run(plan) };
             ut::expect(status == simulation::Status::analysed);
             ut::expect(ut::eq(simulation.step(), Step{ 40 }));

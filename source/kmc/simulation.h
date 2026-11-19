@@ -96,8 +96,8 @@ private:
     void update_affected_rates(event::Record const&);
     void update_site_rate(lattice::Site&);
 
-    template <class Visitor>
-    void visit_neighbor_tree(lattice::Site&, std::size_t radius, Visitor&);
+    template <std::size_t RemainingHops>
+    void collect_affected_sites(lattice::Site&);
 
     ModelT model_;
     std::unique_ptr<rate_tree::Interface> rate_tree_;

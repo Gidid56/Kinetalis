@@ -102,19 +102,8 @@ namespace kmc
         affected_sites_.clear();
         block_updates_.clear();
 
-        auto invalidate = [this](lattice::Site& site) {
-            if (site.is_site_update_queued())
-                return;
-
-            if (not site.is_source_eligible() and not model_.processes().is_candidate(site))
-                return;
-
-            site.set_site_update_queued(true);
-            affected_sites_.push_back(&site);
-        };
-
         for (auto* site : record.sites())
-            visit_neighbor_tree(*site, model_.kinetics().invalidation_radius(), invalidate);
+            collect_affected_sites<ModelT::KineticsType::invalidation_hops>(*site);
 
         for (auto* site : affected_sites_)
             update_site_rate(*site);
@@ -130,20 +119,23 @@ namespace kmc
     }
 
     template <class ModelT>
-    template <class Visitor>
-    void RejectionTreeSimulation<ModelT>::visit_neighbor_tree(
-        lattice::Site& site,
-        std::size_t radius,
-        Visitor& visit)
+    template <std::size_t RemainingHops>
+    void RejectionTreeSimulation<ModelT>::collect_affected_sites(lattice::Site& site)
     {
-        // Enumerate graph walks without allocating a visited-site container.
-        // Sites may recur because the lattice graph contains cycles; the
-        // site-update queue flags prevent duplicate rate calculations.
-        if (radius > 0)
+        // Traverse neighboring sites without allocating a visited-site container.
+        // Repeated paths are allowed; the site-update queue prevents duplicate collection.
+        if constexpr (RemainingHops > 0)
             for (auto* neighbor : lattice_.neighbors(site))
-                visit_neighbor_tree(*neighbor, radius - 1, visit);
+                collect_affected_sites<RemainingHops - 1>(*neighbor);
 
-        visit(site);
+        if (site.is_site_update_queued())
+            return;
+
+        if (not site.is_source_eligible() and not model_.processes().is_candidate(site))
+            return;
+
+        site.set_site_update_queued(true);
+        affected_sites_.push_back(&site);
     }
 
     template <class ModelT>
