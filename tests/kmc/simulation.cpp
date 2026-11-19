@@ -420,7 +420,7 @@ namespace
     }
 
     ut::suite<"kmc.simulation"> simulation_tests = [] {
-        "kinetic-class initialization is independent of rate and population"_test = [] {
+        "kinetic-class initialization is independent of its rate"_test = [] {
             KineticClass uninitialized{};
             ut::expect(not uninitialized.is_initialized());
 
@@ -428,6 +428,36 @@ namespace
             ut::expect(initialized.is_initialized());
             ut::expect(initialized.rate == Rate{});
 
+        };
+
+        "kinetics owns lazy class registration and rate refresh"_test = [] {
+            Kinetics kinetics;
+            kinetics.resize_classes(4);
+            ut::expect(ut::eq(kinetics.kinetic_classes().size(), std::size_t{ 4 }));
+
+            std::size_t evaluations{};
+            auto calculate = [&] {
+                ++evaluations;
+                return Rate{ 3_Hz };
+            };
+            ut::expect(ut::eq(kinetics.register_class(2, event::Type::dissolution, calculate),
+                RateClassKey{ 2 }));
+            ut::expect(ut::eq(kinetics.register_class(2, event::Type::dissolution, calculate),
+                RateClassKey{ 2 }));
+            ut::expect(ut::eq(evaluations, std::size_t{ 1 }));
+            ut::expect(kinetics.kinetic_classes()[2].is_initialized());
+            ut::expect(kinetics.kinetic_classes()[2].rate == 3_Hz);
+            ut::expect(kinetics.kinetic_classes()[2].type == event::Type::dissolution);
+            ut::expect(not kinetics.kinetic_classes()[1].is_initialized());
+
+            kinetics.refresh_classes([](RateClassKey key) {
+                return Rate{ static_cast<double>(key) * 4_Hz };
+            });
+            ut::expect(kinetics.kinetic_classes()[2].rate == 8_Hz);
+            ut::expect(not kinetics.kinetic_classes()[1].is_initialized());
+            ut::expect(ut::throws<std::logic_error>([&] {
+                kinetics.register_class(0, event::Type::diffusion, calculate);
+            }));
         };
 
         "event records own their site-pointer storage"_test = [] {
@@ -598,12 +628,12 @@ namespace
 
             auto const& classes{ simulation.kinetics().kinetic_classes() };
             ut::expect(ut::eq(classes.size(), simulation.model().kinetics().number_keys()));
+            ut::expect(ut::eq(simulation.class_counts().size(), classes.size()));
             for (auto const& kinetic_class : classes)
             {
                 ut::expect(not kinetic_class.is_initialized())
                     << "unused class stays uninitialized";
                 ut::expect(kinetic_class.rate == Rate{}) << "unused class has zero rate";
-                ut::expect(ut::eq(simulation.class_counts().size(), classes.size()));
             }
         };
 
