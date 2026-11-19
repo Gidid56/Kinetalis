@@ -21,7 +21,7 @@ namespace
     using Clock = std::chrono::steady_clock;
 
     constexpr kmc::Step target_steps{ 1'000'000 };
-    constexpr std::size_t warmup_runs{ 1 };
+    constexpr kmc::Step warmup_steps{ 1'000 };
     constexpr std::size_t measured_runs{ 5 };
     constexpr std::array box_sides{ 10_nm, 20_nm, 40_nm };
 
@@ -33,7 +33,7 @@ namespace
         std::size_t lattice_sites{};
     };
 
-    Measurement run_simulation(decltype(10_nm) box_side)
+    Measurement run_simulation(decltype(10_nm) box_side, kmc::Step steps)
     {
         double lattice_seconds{};
 
@@ -58,7 +58,7 @@ namespace
         auto const lattice_sites{ simulation.lattice().sites().size() };
 
         kmc::AnalysisPlan plan;
-        plan.add<control::StepLimit>(target_steps);
+        plan.add<control::StepLimit>(steps);
 
         auto const run_start{ Clock::now() };
         auto const status{ simulation.run(plan) };
@@ -66,7 +66,7 @@ namespace
             std::chrono::duration<double>{ Clock::now() - run_start }.count()
         };
 
-        if (status != simulation::Status::analysed or simulation.step() != target_steps)
+        if (status != simulation::Status::analysed or simulation.step() != steps)
             throw std::runtime_error{ "Benchmark stopped before reaching its step limit." };
 
         return {
@@ -122,33 +122,34 @@ int main()
     {
         std::println("KMC | Dealloying | Minimal observers");
         std::println("  Accepted steps/run: {}", target_steps);
-        std::println("  Warmup runs: {} | Measured runs: {}", warmup_runs, measured_runs);
+        std::println("  Warm-up: {} accepted steps in a {:.0f} nm box",
+            warmup_steps, static_cast<double>(box_sides.front() / 1_nm));
+        std::println("  Measured runs per box: {}", measured_runs);
+        (void)run_simulation(box_sides.front(), warmup_steps);
 
         for (auto const box_side : box_sides)
         {
             std::println("\nBox side: {:.0f} nm", static_cast<double>(box_side / 1_nm));
 
-            for (std::size_t i{}; i < warmup_runs; ++i)
-                (void)run_simulation(box_side);
-
             std::vector<Measurement> samples;
             samples.reserve(measured_runs);
             for (std::size_t i{}; i < measured_runs; ++i)
-                samples.push_back(run_simulation(box_side));
+                samples.push_back(run_simulation(box_side, target_steps));
 
             std::println("  Lattice sites: {}", samples.front().lattice_sites);
             print_timing("Lattice construction", samples, &Measurement::lattice_seconds);
             print_timing("Total simulation init", samples, &Measurement::initialization_seconds);
             print_timing("KMC execution", samples, &Measurement::execution_seconds);
 
-            std::vector<double> throughputs;
-            throughputs.reserve(samples.size());
+            std::vector<double> nanoseconds_per_step;
+            nanoseconds_per_step.reserve(samples.size());
             for (auto const& sample : samples)
-                throughputs.push_back(target_steps / sample.execution_seconds);
+                nanoseconds_per_step.push_back(
+                    sample.execution_seconds * 1e9 / static_cast<double>(target_steps));
 
-            auto const throughput{ summarize(throughputs) };
-            std::println("  Throughput: {:.0f} ± {:.0f} accepted steps/s",
-                throughput.mean, throughput.standard_deviation);
+            auto const step_time{ summarize(nanoseconds_per_step) };
+            std::println("  KMC time/step: {:.1f} ± {:.1f} ns/accepted step",
+                step_time.mean, step_time.standard_deviation);
         }
         return 0;
     }
