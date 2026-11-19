@@ -40,6 +40,13 @@ public:
             observer->observe_completed(simulation);
     }
 
+    [[nodiscard]] bool requires_class_counts() const
+    {
+        return std::ranges::any_of(observers_, [](auto const& observer) {
+            return observer->requires_class_counts();
+        });
+    }
+
     [[nodiscard]] bool stop_requested() const
     {
         return std::ranges::any_of(observers_, [](auto const& observer) {

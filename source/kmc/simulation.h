@@ -40,12 +40,14 @@ public:
 
     auto time() const { return time_; }
     auto const& kinetic_classes() const noexcept { return kinetic_classes_; }
+    bool class_counts_enabled() const noexcept { return class_counts_enabled_; }
 
 protected:
     Time time_{};
     std::size_t rejections_{};
 
     std::vector<KineticClass> kinetic_classes_{ KineticClass{} };
+    bool class_counts_enabled_{};
 };
 
 template <class ModelT>
@@ -80,6 +82,7 @@ private:
     Rate block_rate(lattice::Site&);
     RateClassKey register_class(event::Type, event::Location const&);
     void set_class_key(std::size_t, RateClassKey);
+    void configure_class_counts(bool enabled);
 
     Rate update_site_classes(lattice::Site&);
 

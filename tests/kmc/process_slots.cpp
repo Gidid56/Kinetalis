@@ -208,6 +208,21 @@ namespace
         lattice::Lattice const* lattice_{};
     };
 
+    struct StopAndCount final : Observer
+    {
+        std::string_view name() const override { return "stop-and-count"; }
+        bool requires_class_counts() const override { return true; }
+        bool stop_requested() const override { return true; }
+    };
+
+    void enable_class_counts(ProbeSimulation& simulation)
+    {
+        AnalysisPlan plan;
+        plan.add<StopAndCount>();
+        ut::expect(simulation.run(plan) == simulation::Status::analysed);
+        ut::expect(simulation.class_counts_enabled());
+    }
+
     ut::suite<"kmc.process_slots"> process_slot_tests = [] {
         "three processes have contiguous, correctly decoded local slot ranges"_test = [] {
             Probes processes;
@@ -333,6 +348,8 @@ namespace
                 ut::expect(ut::eq(keys.at(first + 8), site.index() % 2 == 0 ? RateClassKey{ 3 } : RateClassKey{}));
                 ut::expect(ut::eq(keys.at(first + 9), site.index() % 2 == 1 ? RateClassKey{ 3 } : RateClassKey{}));
             }
+            ut::expect(not sparse_only.class_counts_enabled());
+            enable_class_counts(sparse_only);
             ut::expect(ut::eq(sparse_only.kinetic_classes().at(3).count, sparse_only.lattice().sites().size()));
 
             processes.get<SparseProbe>().enabled = false;
@@ -374,6 +391,7 @@ namespace
             for (auto const& site : simulation.lattice().sites())
                 ut::expect(site.is_candidate());
 
+            enable_class_counts(simulation);
             ut::expect(ut::eq(simulation.kinetic_classes().at(2).count, site_count));
             ut::expect(simulation.kinetic_classes().at(2).rate == Rate{});
             ut::expect(simulation.rate_tree()->rate_sum() == Rate{});
@@ -405,6 +423,7 @@ namespace
             }
 
             auto const& classes{ simulation.kinetic_classes() };
+            enable_class_counts(simulation);
             ut::expect(ut::eq(classes.at(0).count, std::size_t{}));
             ut::expect(ut::eq(classes.at(1).count, 2 * site_count));
             ut::expect(ut::eq(classes.at(2).count, site_count));

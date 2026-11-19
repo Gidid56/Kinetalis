@@ -73,6 +73,7 @@ public:
     virtual std::string settings() const { return {}; }
 
     virtual bool uses_snapshot_resolution() const { return false; }
+    virtual bool requires_class_counts() const { return false; }
 
     auto& resolution() const { return resolution_; }
 

@@ -33,6 +33,7 @@ namespace output
 
     private:
         std::string_view name() const override { return "kinetic_statistics"; }
+        bool requires_class_counts() const override { return true; }
 
         std::string settings() const override
         {

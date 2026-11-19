@@ -243,8 +243,12 @@ namespace
 
         ut::expect(ut::eq(classes.size(), expected_classes.size()));
         for (std::size_t key{}; key < classes.size(); ++key)
-            ut::expect(ut::eq(classes[key].count, expected_counts[key]))
-                << "kinetic class count key " << key << ", step " << step;
+            if (simulation.class_counts_enabled())
+                ut::expect(ut::eq(classes[key].count, expected_counts[key]))
+                    << "kinetic class count key " << key << ", step " << step;
+            else
+                ut::expect(ut::eq(classes[key].count, std::size_t{}))
+                    << "disabled class counts remain zero, key " << key;
 
         auto const& tree{ *simulation.rate_tree() };
         for (std::size_t i{}; i < block_sums.size(); ++i)
@@ -273,6 +277,7 @@ namespace
         { }
 
         std::string_view name() const override { return "kmc-integration-test"; }
+        bool requires_class_counts() const override { return true; }
         bool stop_requested() const override { return last_step_ >= target_; }
 
         void observe_started(Simulation const& simulation) override
@@ -359,6 +364,18 @@ namespace
     };
 
     using CheckingObserver = CheckingObserverT<>;
+
+    struct StopWithoutStepping final : Observer
+    {
+        explicit StopWithoutStepping(bool track_counts) : track_counts_{ track_counts } { }
+
+        bool requires_class_counts() const override { return track_counts_; }
+        bool stop_requested() const override { return true; }
+        std::string_view name() const override { return "stop-without-stepping"; }
+
+    private:
+        bool track_counts_{};
+    };
 
     class FirstAcceptedObserver final : public Observer
     {
@@ -777,6 +794,50 @@ namespace
             ut::expect(simulation.run(plan) == simulation::Status::exhausted);
             ut::expect(ut::eq(simulation.step(), Step{}));
             ut::expect(ut::eq(simulation.rejection_fraction(), 0.0));
+        };
+
+        "class populations are enabled on demand and rebuilt when resuming"_test = [] {
+            auto setup{ make_setup() };
+            TestSimulation simulation{ setup };
+
+            ut::expect(not simulation.class_counts_enabled());
+            for (auto const& kinetic_class : simulation.kinetic_classes())
+                ut::expect(ut::eq(kinetic_class.count, std::size_t{}));
+
+            AnalysisPlan plain;
+            plain.add<control::StepLimit>(15);
+            ut::expect(simulation.run(plain) == simulation::Status::analysed);
+            ut::expect(ut::eq(simulation.step(), Step{ 15 }));
+            ut::expect(not simulation.class_counts_enabled());
+            for (auto const& kinetic_class : simulation.kinetic_classes())
+                ut::expect(ut::eq(kinetic_class.count, std::size_t{}));
+
+            auto const keys_before{ simulation.slot_class_keys() };
+            auto const rate_before{ simulation.rate_tree()->rate_sum() };
+
+            AnalysisPlan counting;
+            counting.add<StopWithoutStepping>(true);
+            ut::expect(counting.requires_class_counts());
+            ut::expect(simulation.run(counting) == simulation::Status::analysed);
+            ut::expect(simulation.class_counts_enabled());
+            expect_reference_state(simulation, setup.model.processes(), simulation.step());
+            ut::expect(simulation.slot_class_keys() == keys_before);
+            ut::expect(simulation.rate_tree()->rate_sum() == rate_before);
+
+            AnalysisPlan no_counting;
+            no_counting.add<StopWithoutStepping>(false);
+            ut::expect(not no_counting.requires_class_counts());
+            ut::expect(simulation.run(no_counting) == simulation::Status::analysed);
+            ut::expect(not simulation.class_counts_enabled());
+            for (auto const& kinetic_class : simulation.kinetic_classes())
+                ut::expect(ut::eq(kinetic_class.count, std::size_t{}));
+            ut::expect(simulation.slot_class_keys() == keys_before);
+            ut::expect(simulation.rate_tree()->rate_sum() == rate_before);
+
+            AnalysisPlan counting_again;
+            counting_again.add<StopWithoutStepping>(true);
+            ut::expect(simulation.run(counting_again) == simulation::Status::analysed);
+            expect_reference_state(simulation, setup.model.processes(), simulation.step());
         };
 
         "initial static kinetic-class tables and block rates match a full reconstruction"_test = [] {

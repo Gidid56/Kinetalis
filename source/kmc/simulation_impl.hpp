@@ -24,6 +24,8 @@ namespace kmc
     {
         utility::Guard guard{ timer_ };
 
+        configure_class_counts(analysis_plan.requires_class_counts());
+
         if (status_ == simulation::Status::created)
             analysis_plan.observe_started(*this);
 
@@ -235,14 +237,35 @@ namespace kmc
         if (old_key == new_key)
             return;
 
-        // Key zero denotes an inactive event slot.
-        if (old_key != RateClassKey{})
-            --kinetic_classes_.at(old_key).count;
+        // The slot keys are always needed for event selection; their populations
+        // are maintained only when requested by an observer.
+        if (class_counts_enabled_)
+        {
+            if (old_key != RateClassKey{})
+                --kinetic_classes_.at(old_key).count;
+
+            if (new_key != RateClassKey{})
+                ++kinetic_classes_.at(new_key).count;
+        }
 
         old_key = new_key;
+    }
 
-        if (new_key != RateClassKey{})
-            ++kinetic_classes_.at(new_key).count;
+    template <class ModelT>
+    void RejectionTreeSimulation<ModelT>::configure_class_counts(bool enabled)
+    {
+        if (class_counts_enabled_ == enabled)
+            return;
+
+        for (auto& kinetic_class : kinetic_classes_)
+            kinetic_class.count = 0;
+
+        if (enabled)
+            for (auto const key : slot_class_keys_)
+                if (key != RateClassKey{})
+                    ++kinetic_classes_.at(key).count;
+
+        class_counts_enabled_ = enabled;
     }
 
     template <class ModelT>

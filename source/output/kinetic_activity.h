@@ -35,6 +35,7 @@ namespace output
 
     private:
         std::string_view name() const override { return "kinetic_activity"; }
+        bool requires_class_counts() const override { return true; }
 
         void capture_init(kmc::Simulation const& simulation) override
         {
