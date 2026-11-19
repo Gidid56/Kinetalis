@@ -40,7 +40,10 @@ public:
 
     using Writer::Writer;
 
-    bool observes_processed() const override { return true; }
+    Subscription subscriptions() const override
+    {
+        return Writer::subscriptions() | Subscription::processed;
+    }
     void observe_processed(kmc::event::Record const&) override;
 
     auto& last_data() const { return last_data_; }
