@@ -47,7 +47,7 @@ protected:
     std::size_t rejections_{};
 
     std::vector<KineticClass> kinetic_classes_{ KineticClass{} };
-    bool class_counts_enabled_{};
+    bool class_counts_enabled_{ true };
 };
 
 template <class ModelT>

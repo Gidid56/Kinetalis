@@ -1,4 +1,5 @@
 #include "pch.h"
+
 #include "linear_bond_breaking.h"
 
 using namespace kmc;
@@ -13,50 +14,54 @@ void LinearBondBreaking::ensure_range(Energy bond_energy)
 
 RateClassKey LinearBondBreaking::static_key(Descriptor const& desc)
 {
-    const auto max{ static_cast<std::size_t>(lattice::max_coordination) };
-    const auto offset_dissolution{ 1 + max * std::size(lattice::active_elements) };
-    const auto offset_deposition{ offset_dissolution + max };
-    std::size_t key{};
+    constexpr auto elements{ std::size(lattice::active_elements) };
+    constexpr auto coordinations{ lattice::max_coordination };
+
+    std::size_t event_index{};
     switch (desc.event)
     {
-        case event::Type::diffusion:
-            key = 1 + max * lattice::elementKey(desc.element) + desc.coordination;
-            break;
-        case event::Type::dissolution:
-            key = offset_dissolution + desc.coordination;
-            break;
-        case event::Type::deposition:
-            key = offset_deposition + desc.coordination;
-            break;
-        default: throw std::logic_error{ "Cannot classify an inactive event." };
+        case event::Type::diffusion: event_index = 0; break;
+        case event::Type::dissolution: event_index = 1; break;
+        case event::Type::deposition: event_index = 2; break;
+        default: throw std::logic_error{ "Invalid kinetic event type." };
     }
-    if (desc.coordination >= lattice::max_coordination or key >= key_count)
-        throw std::out_of_range{ "Coordination outside static kinetic classes." };
-    return static_cast<RateClassKey>(key);
+
+    return static_cast<RateClassKey>(
+        1 + (event_index * elements + lattice::elementKey(desc.element)) * coordinations +
+        desc.coordination);
 }
 
-RateClassKey LinearBondBreaking::classify(
-    event::Type type, event::Location const& location, lattice::Lattice const&)
+LinearBondBreaking::Descriptor LinearBondBreaking::descriptor(RateClassKey key) const
+{
+    constexpr std::array events{ event::Type::diffusion,
+        event::Type::dissolution,
+        event::Type::deposition };
+    constexpr auto elements{ std::size(lattice::active_elements) };
+    constexpr auto coordinations{ static_cast<std::size_t>(lattice::max_coordination) };
+
+    if (key == 0 or key >= key_count)
+        throw std::out_of_range{ "Invalid kinetic class key." };
+
+    std::size_t index{ key - 1 };
+
+    const auto coordination{ static_cast<lattice::Coordination>(index % coordinations) };
+    index /= coordinations;
+
+    const auto element{ lattice::active_elements[index % elements] };
+    const auto type{ events[index / elements] };
+
+    return { type, element, coordination };
+}
+
+RateClassKey
+LinearBondBreaking::classify(event::Type type, event::Location const& location, Lattice const&)
 {
     const Descriptor desc{ type, location.source().element(), location.source().coordination() };
-    const auto key{ static_key(desc) };
-    auto& stored{ descriptors_[key] };
-    if (not stored)
-        stored = desc;
-    else if (*stored != desc)
-        throw std::logic_error{ "Static kinetic class key collision." };
-    return key;
+
+    return static_key(desc);
 }
 
 std::size_t LinearBondBreaking::number_keys() const noexcept { return key_count; }
-
-LinearBondBreaking::Descriptor const& LinearBondBreaking::descriptor(RateClassKey key) const
-{
-    auto const& value{ descriptors_.at(key) };
-    if (not value)
-        throw std::logic_error{ "Uninitialized kinetic class." };
-    return *value;
-}
 
 event::Type LinearBondBreaking::class_event(RateClassKey key) const
 {
@@ -83,18 +88,24 @@ Ratio LinearBondBreaking::modulation_ratio(RateClassKey key) const
 Rate LinearBondBreaking::rate(RateClassKey key) const
 {
     return ElectrochemicalInterface::rate(
-        class_event(key), class_element(key), lattice_energy_barrier(key), modulation_ratio(key));
+        class_event(key),
+        class_element(key),
+        lattice_energy_barrier(key),
+        modulation_ratio(key));
 }
 
 std::string LinearBondBreaking::output_text() const
 {
     auto result{ std::format(
         "Model = Linear bond breaking\nBond energy = {:meV}\n{}",
-        constants_.bond_energy, ElectrochemicalInterface::output_text()) };
+        constants_.bond_energy,
+        ElectrochemicalInterface::output_text()) };
     if (modulation_)
         result += std::format(
             "Modulated kinetic class = {}_{}_{}\nModulation ratio = {}\n",
-            enum_name(modulation_->descriptor.event), modulation_->descriptor.element,
-            static_cast<unsigned>(modulation_->descriptor.coordination), modulation_->ratio);
+            enum_name(modulation_->descriptor.event),
+            modulation_->descriptor.element,
+            static_cast<unsigned>(modulation_->descriptor.coordination),
+            modulation_->ratio);
     return result;
 }

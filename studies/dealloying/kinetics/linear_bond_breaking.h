@@ -42,7 +42,7 @@ namespace studies::dealloying::kinetics
         std::string output_text() const;
         kmc::Rate rate(kmc::RateClassKey) const;
         static kmc::RateClassKey static_key(Descriptor const&);
-        Descriptor const& descriptor(kmc::RateClassKey) const;
+        Descriptor descriptor(kmc::RateClassKey key) const;
 
     protected:
         chemistry::Element class_element(kmc::RateClassKey) const;
@@ -53,7 +53,6 @@ namespace studies::dealloying::kinetics
         static constexpr std::size_t key_count{
             1 + lattice::max_coordination * (std::size(lattice::active_elements) + 2)
         };
-        std::array<std::optional<Descriptor>, key_count> descriptors_{};
         std::optional<Modulation> modulation_{};
         Constants constants_{};
     };

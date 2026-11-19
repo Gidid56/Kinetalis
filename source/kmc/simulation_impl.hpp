@@ -14,6 +14,8 @@ namespace kmc
         site_rates_.resize(lattice_.sites().size());
         slot_class_keys_.resize(lattice_.sites().size() * ModelT::slots_per_site);
         kinetic_classes_.resize(model_.kinetics().number_keys());
+
+        update_all_rates();
     }
 
     template <class ModelT>
@@ -23,7 +25,6 @@ namespace kmc
         utility::Guard guard{ timer_ };
 
         class_counts_enabled_ = analysis_plan.requires_class_counts();
-        update_all_rates();
 
         if (status_ == simulation::Status::created)
             analysis_plan.observe_started(*this);
