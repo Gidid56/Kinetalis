@@ -69,16 +69,22 @@ namespace
 
             ut::expect(first_composition != second_composition)
                 << "composition descriptor distinguishes changed neighbor chemistry";
-            ut::expect(composition.class_event(first_composition) == kmc::event::Type::diffusion);
-            ut::expect(output::DescriptorFormat<kinetics::CompositionDependent::Descriptor>::label(composition.descriptor(first_composition)) !=
-                output::DescriptorFormat<kinetics::CompositionDependent::Descriptor>::label(composition.descriptor(second_composition)))
+            ut::expect(first_composition.event == kmc::event::Type::diffusion);
+            ut::expect(output::DescriptorFormat<kinetics::CompositionDependent::Descriptor>::label(first_composition) !=
+                output::DescriptorFormat<kinetics::CompositionDependent::Descriptor>::label(second_composition))
                 << "model-owned class labels distinguish neighbor chemistry";
-            ut::expect(output::DescriptorFormat<kinetics::CompositionDependent::Descriptor>::row(composition.descriptor(first_composition)) !=
-                output::DescriptorFormat<kinetics::CompositionDependent::Descriptor>::row(composition.descriptor(second_composition)))
+            ut::expect(output::DescriptorFormat<kinetics::CompositionDependent::Descriptor>::row(first_composition) !=
+                output::DescriptorFormat<kinetics::CompositionDependent::Descriptor>::row(second_composition))
                 << "CSV metadata preserves model-specific descriptors";
             ut::expect(first_linear == second_linear)
                 << "coordination descriptor ignores irrelevant neighbor chemistry";
+            ut::expect(ut::eq(composition.number_keys(), std::size_t{ 1 }));
+            auto const first_key{ composition.key(first_composition) };
+            auto const second_key{ composition.key(second_composition) };
+            ut::expect(first_key != second_key);
             ut::expect(ut::eq(composition.number_keys(), std::size_t{ 3 }));
+            ut::expect(composition.descriptor(first_key) == first_composition);
+            ut::expect(composition.descriptor(second_key) == second_composition);
             ut::expect(composition.rate(first_composition) != composition.rate(second_composition))
                 << "composition-dependent rates differ for inequivalent classes";
         };

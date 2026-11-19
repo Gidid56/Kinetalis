@@ -131,9 +131,8 @@ namespace
     public:
         static constexpr std::size_t invalidation_hops{ 1 };
 
-        Rate rate(RateClassKey key) const
+        Rate rate(Descriptor const& kinetic_class) const
         {
-            auto const& kinetic_class{ descriptor(key) };
             const auto base{ kinetic_class.event == event::Type::dissolution ? 0.24_eV : 0.30_eV };
             const auto barrier{ base + 0.005_eV * static_cast<double>(kinetic_class.coordination) };
             return physics::equations::kinetics::tst_rate(Ratio{ 1 }, barrier, temperature());
@@ -185,7 +184,7 @@ namespace
     void expect_reference_state(SimulationT const& simulation, Processes const& processes, Step step)
     {
         auto const& lattice{ simulation.lattice() };
-        auto const& classes{ simulation.kinetic_classes() };
+        auto const& classes{ simulation.kinetics().kinetic_classes() };
         constexpr auto block_size{ std::size_t{ 1 } << rate_tree::baseLevel };
         std::vector<Rate> block_sums((lattice.sites().size() + block_size - 1) / block_size);
         std::vector<std::size_t> expected_counts(classes.size());
@@ -201,10 +200,10 @@ namespace
                 << "model descriptor matches rebuilt class, step " << step;
             ut::expect(classes[key].is_initialized())
                 << "kinetic class initialized, step " << step;
-            ut::expect(ut::eq(classes[key].rate.value(), simulation.model().kinetics().rate(key).value()))
+            ut::expect(ut::eq(classes[key].rate.value(), simulation.model().kinetics().rate(descriptor).value()))
                 << "cached model rate, step " << step;
             ++expected_counts[key];
-            site_sum += simulation.model().kinetics().rate(key);
+            site_sum += simulation.model().kinetics().rate(descriptor);
         };
 
         for (auto const& site : lattice.sites())
@@ -241,13 +240,15 @@ namespace
                 << "coordination after event, step " << step;
         }
 
-        ut::expect(ut::eq(classes.size(), expected_classes.size()));
-        for (std::size_t key{}; key < classes.size(); ++key)
+        ut::expect(ut::eq(classes.size(), simulation.model().kinetics().number_keys()));
+        auto const& counts{ simulation.class_counts() };
+        ut::expect(ut::eq(counts.size(), classes.size()));
+        for (std::size_t key{}; key < counts.size(); ++key)
             if (simulation.class_counts_enabled())
-                ut::expect(ut::eq(classes[key].count, expected_counts[key]))
+                ut::expect(ut::eq(counts[key], expected_counts[key]))
                     << "kinetic class count key " << key << ", step " << step;
             else
-                ut::expect(ut::eq(classes[key].count, std::size_t{}))
+                ut::expect(ut::eq(counts[key], std::size_t{}))
                     << "disabled class counts remain zero, key " << key;
 
         auto const& tree{ *simulation.rate_tree() };
@@ -406,7 +407,9 @@ namespace
             << "rejection fraction after resume";
         ut::expect(ut::eq(a.rate_tree()->rate_sum().value(), b.rate_tree()->rate_sum().value()))
             << "total rate after resume";
-        ut::expect(a.kinetic_classes() == b.kinetic_classes()) << "kinetic class counts after resume";
+        ut::expect(a.kinetics().kinetic_classes() == b.kinetics().kinetic_classes())
+            << "kinetic class rates after resume";
+        ut::expect(a.class_counts() == b.class_counts()) << "class populations after resume";
         for (std::size_t i{}; i < a.lattice().sites().size(); ++i)
         {
             ut::expect(a.lattice().sites()[i].element() ==
@@ -421,11 +424,10 @@ namespace
             KineticClass uninitialized{};
             ut::expect(not uninitialized.is_initialized());
 
-            KineticClass initialized{ .rate = Rate{}, .count = 0,
-                                      .type = event::Type::diffusion };
+            KineticClass initialized{ .rate = Rate{}, .type = event::Type::diffusion };
             ut::expect(initialized.is_initialized());
             ut::expect(initialized.rate == Rate{});
-            ut::expect(ut::eq(initialized.count, std::size_t{}));
+
         };
 
         "event records own their site-pointer storage"_test = [] {
@@ -594,22 +596,21 @@ namespace
             setup.model.processes().get<ClusterRule>().enabled = false;
             TestSimulation simulation{ setup };
 
-            auto const& classes{ simulation.kinetic_classes() };
+            auto const& classes{ simulation.kinetics().kinetic_classes() };
             ut::expect(ut::eq(classes.size(), simulation.model().kinetics().number_keys()));
             for (auto const& kinetic_class : classes)
             {
                 ut::expect(not kinetic_class.is_initialized())
                     << "unused class stays uninitialized";
                 ut::expect(kinetic_class.rate == Rate{}) << "unused class has zero rate";
-                ut::expect(ut::eq(kinetic_class.count, std::size_t{}))
-                    << "unused class has zero count";
+                ut::expect(ut::eq(simulation.class_counts().size(), classes.size()));
             }
         };
 
         "static kinetic-class cache initializes encountered events only once"_test = [] {
             auto setup{ make_setup() };
             TestSimulation simulation{ setup };
-            auto const& classes{ simulation.kinetic_classes() };
+            auto const& classes{ simulation.kinetics().kinetic_classes() };
 
             std::size_t initialized{};
             auto const* model{ &simulation.model().kinetics() };
@@ -621,7 +622,7 @@ namespace
                     ut::expect(ut::eq(static_cast<std::size_t>(
                         ModelBase::static_key(model->descriptor(static_cast<RateClassKey>(i)))), i))
                         << "cached class owns its key";
-                    ut::expect(classes[i].rate == simulation.model().kinetics().rate(static_cast<RateClassKey>(i)))
+                    ut::expect(classes[i].rate == simulation.model().kinetics().rate(model->descriptor(static_cast<RateClassKey>(i))))
                         << "cached rate matches model";
                 }
                 else
@@ -636,17 +637,17 @@ namespace
             Descriptor const silver{ event::Type::dissolution, Element::Ag, 5 };
             Descriptor const gold{ event::Type::dissolution, Element::Au, 5 };
             ut::expect(silver != gold);
-            ut::expect(ut::eq(ModelBase::static_key(silver), ModelBase::static_key(gold)))
-                << "current dissolution key intentionally omits element";
+            ut::expect(ModelBase::static_key(silver) != ModelBase::static_key(gold))
+                << "the static key encodes the complete descriptor";
         };
 
-        "distinct kinetic classes sharing a static key are rejected"_test = [] {
+        "distinct dissolution descriptors register independently"_test = [] {
             auto setup{ make_setup() };
             setup.model.processes().get<SiteRule>().allow_gold = true;
             setup.model.processes().get<ClusterRule>().enabled = false;
 
-            // Give both Au and Ag source sites coordination 11, forcing
-            // their dissolution events to collide on the same static key.
+            // Give Au and Ag source sites the same coordination and ensure
+            // their dissolution classes retain distinct keys.
             auto make_lattice{ setup.make_lattice };
             setup.make_lattice = [make_lattice] {
                 auto lattice{ make_lattice() };
@@ -659,9 +660,14 @@ namespace
                 return lattice;
             };
 
-            ut::expect(ut::throws<std::logic_error>([&] {
-                TestSimulation simulation{ setup };
-            })) << "dissolution Au and Ag must not reuse the same static key";
+            TestSimulation simulation{ setup };
+            auto const silver{ ModelBase::static_key(Descriptor{
+                event::Type::dissolution, Element::Ag, 11 }) };
+            auto const gold{ ModelBase::static_key(Descriptor{
+                event::Type::dissolution, Element::Au, 11 }) };
+            ut::expect(silver != gold);
+            ut::expect(simulation.kinetics().kinetic_classes()[silver].is_initialized());
+            ut::expect(simulation.kinetics().kinetic_classes()[gold].is_initialized());
         };
 
         "kinetics and flux CSV columns stay stable as new kinetic classes appear"_test = [] {
@@ -734,7 +740,7 @@ namespace
             })
                 read_csv(file, site_columns);
 
-            auto const& classes{ simulation.kinetic_classes() };
+            auto const& classes{ simulation.kinetics().kinetic_classes() };
             auto lines{ read_csv("kinetic_activity/activity", classes.size() + 1) };
             read_csv("kinetic_activity/time_weighted_activity", classes.size() + 1);
 
@@ -801,16 +807,16 @@ namespace
             TestSimulation simulation{ setup };
 
             ut::expect(not simulation.class_counts_enabled());
-            for (auto const& kinetic_class : simulation.kinetic_classes())
-                ut::expect(ut::eq(kinetic_class.count, std::size_t{}));
+            for (auto const count : simulation.class_counts())
+                ut::expect(ut::eq(count, std::size_t{}));
 
             AnalysisPlan plain;
             plain.add<control::StepLimit>(15);
             ut::expect(simulation.run(plain) == simulation::Status::analysed);
             ut::expect(ut::eq(simulation.step(), Step{ 15 }));
             ut::expect(not simulation.class_counts_enabled());
-            for (auto const& kinetic_class : simulation.kinetic_classes())
-                ut::expect(ut::eq(kinetic_class.count, std::size_t{}));
+            for (auto const count : simulation.class_counts())
+                ut::expect(ut::eq(count, std::size_t{}));
 
             auto const keys_before{ simulation.slot_class_keys() };
             auto const rate_before{ simulation.rate_tree()->rate_sum() };
@@ -829,8 +835,8 @@ namespace
             ut::expect(not no_counting.requires_class_counts());
             ut::expect(simulation.run(no_counting) == simulation::Status::analysed);
             ut::expect(not simulation.class_counts_enabled());
-            for (auto const& kinetic_class : simulation.kinetic_classes())
-                ut::expect(ut::eq(kinetic_class.count, std::size_t{}));
+            for (auto const count : simulation.class_counts())
+                ut::expect(ut::eq(count, std::size_t{}));
             ut::expect(simulation.slot_class_keys() == keys_before);
             ut::expect(simulation.rate_tree()->rate_sum() == rate_before);
 

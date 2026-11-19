@@ -29,6 +29,8 @@ public:
     auto& last_data() const { return data_; }
 
 private:
+    bool requires_class_counts() const override { return true; }
+
     std::string_view name() const override { return "event_flux"; }
 
     kmc::Simulation const* simulation_{};
