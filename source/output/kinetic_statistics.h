@@ -50,6 +50,8 @@ namespace output
             transitions_.clear();
         }
 
+        bool observes_selected() const override { return true; }
+
         void observe_selected(kmc::event::Record const& record) override
         {
             // The selected event already carries its registered kinetic class.
