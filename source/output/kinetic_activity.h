@@ -49,6 +49,8 @@ namespace output
             class_columns_ = {};
         }
 
+        bool observes_selected() const override { return true; }
+
         void observe_selected(kmc::event::Record const&) override
         {
             auto const& simulation{ *simulation_ };
