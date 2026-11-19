@@ -143,6 +143,11 @@ private:
         Subscription::stopping,
     };
 
+    using Subscribers = std::vector<Observer*>;
+
+    std::vector<std::unique_ptr<Observer>> observers_;
+    std::array<Subscribers, subscription_flags_.size()> subscriptions_;
+
     static constexpr std::size_t subscription_index(Subscription subscription) noexcept
     {
         const auto bits{ std::to_underlying(subscription) };
@@ -150,16 +155,13 @@ private:
         return std::countr_zero(bits);
     }
 
-    auto& subscribers(Subscription subscription) noexcept
+    Subscribers& subscribers(Subscription subscription) noexcept
     {
-        return subscribers_[subscription_index(subscription)];
+        return subscriptions_[subscription_index(subscription)];
     }
 
-    auto const& subscribers(Subscription subscription) const noexcept
+    Subscribers const& subscribers(Subscription subscription) const noexcept
     {
-        return subscribers_[subscription_index(subscription)];
+        return subscriptions_[subscription_index(subscription)];
     }
-
-    std::vector<std::unique_ptr<Observer>> observers_;
-    std::array<std::vector<Observer*>, subscription_flags_.size()> subscribers_;
 };
