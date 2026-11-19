@@ -13,6 +13,11 @@ public:
         return self;
     }
 
+    bool observes_selected() const override { return false; }
+    bool observes_processed() const override { return false; }
+    bool checks_stop() const override { return false; }
+    bool snapshots_enabled() const override { return uses_snapshot_resolution(); }
+
     static constexpr auto default_header{ "key:step,time/s" };
 
     [[nodiscard]] auto& root_path() const { return root_; }
