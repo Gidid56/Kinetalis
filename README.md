@@ -9,6 +9,8 @@ Kinetalis provides two applications:
 
 The dealloying study in [`studies/dealloying/`](studies/dealloying/) is a working example of how to use the framework.
 
+Long-term development plans are tracked in [TODO.md](TODO.md).
+
 ## Requirements
 
 - A **C++23 compiler and standard library** (MSVC in Visual Studio 2026 or GCC 14+), including support for `<format>`, `<print>`, and ranges.
