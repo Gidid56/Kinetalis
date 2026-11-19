@@ -99,9 +99,9 @@ namespace kmc
     template <class ModelT>
     void RejectionTreeSimulation<ModelT>::update_affected_rates(event::Record const& record)
     {
+        affected_sites_.clear();
         block_updates_.clear();
 
-        affected_sites_.clear();
         auto invalidate = [this](lattice::Site& site) {
             if (site.is_site_update_queued())
                 return;
@@ -121,11 +121,12 @@ namespace kmc
 
         std::ranges::sort(block_updates_, {}, &rate_tree::BlockUpdate::index);
         for (auto& update : block_updates_)
-            update.rate = block_rate(lattice_.sites().at(update.index));
+        {
+            auto& block_site{ lattice_.sites().at(update.index) };
+            update.rate = block_rate(block_site);
+            block_site.set_block_update_queued(false);
+        }
         rate_tree_->update_rates(block_updates_);
-
-        for (auto const& update : block_updates_)
-            lattice_.sites().at(update.index).set_block_update_queued(false);
     }
 
     template <class ModelT>
