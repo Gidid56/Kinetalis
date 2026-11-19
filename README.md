@@ -136,6 +136,38 @@ GitHub Actions validates Debug tests and Release Batch builds on GCC 14 and
 MSVC. The Batch `--help` smoke test does not run a simulation campaign.
 The No-PCH configuration remains available locally but is not part of CI.
 
+### Performance benchmarks
+
+The standalone [`kinetalis_benchmarks`](benchmarks/) executable measures
+lattice construction, total simulation initialization, and KMC execution
+separately. It is independent of CTest. On Windows, select
+**Windows | Benchmark | Release** or run:
+
+~~~powershell
+cmake --preset windows-benchmark-release
+cmake --build --preset build-windows-benchmark-release
+.\build\windows-benchmark-release\Release\bin\kinetalis_benchmarks.exe
+~~~
+
+The default Ag–Au dealloying workload uses a fixed seed, **100,000 accepted
+steps per run**, five measured runs per size, and a single untimed warm-up of
+1,000 steps in a 5 nm box. Results below are **mean ± sample standard deviation**
+on a **13th Gen Intel Core i7-13700KF** (16 cores / 24 logical processors,
+3.40 GHz base clock), using a Release build:
+
+| FCC box | Sites | Lattice construction (s) | Total initialization (s) | KMC execution (s) | ns/accepted step |
+| ---: | ---: | ---: | ---: | ---: | ---: |
+| 5 nm | 8,788 | 0.0066 ± 0.0003 | 0.0069 ± 0.0002 | 0.0874 ± 0.0006 | **874.4 ± 6.3** |
+| 10 nm | 62,500 | 0.0435 ± 0.0008 | 0.0458 ± 0.0009 | 0.0878 ± 0.0008 | **878.1 ± 7.8** |
+| 20 nm | 500,000 | 0.3356 ± 0.0013 | 0.3553 ± 0.0020 | 0.0900 ± 0.0006 | **900.2 ± 5.8** |
+
+Lattice construction is included in total initialization time. The KMC
+measurement is **per accepted step**, so it includes the cost of rejected
+event selections. These measurements characterize a particular physical
+workload rather than pure event-selector complexity. See
+[benchmarks/README.md](benchmarks/README.md) for the full setup, hardware
+details, and interpretation.
+
 ### Interactive viewer
 
 The viewer uses **Corrade, Magnum, Magnum Integration, SDL2, Dear ImGui, and ImPlot**. These are tracked as Git submodules and built from source when the viewer is enabled.
@@ -268,6 +300,7 @@ The main options are:
 | `KINETALIS_BUILD_BATCH` | `ON` | Build the batch application |
 | `KINETALIS_BUILD_VIEWER` | `OFF` | Build the graphical viewer |
 | `KINETALIS_BUILD_TESTS` | `ON` | Build the unit tests |
+| `KINETALIS_BUILD_BENCHMARKS` | `OFF` | Build the standalone performance benchmarks |
 | `KINETALIS_ENABLE_PCH` | `ON` | Use precompiled headers |
 | `KINETALIS_ENABLE_CLANG_TIDY` | `OFF` | Run static analysis during compilation |
 | `KINETALIS_WARNINGS_AS_ERRORS` | `OFF` | Treat compiler warnings as errors |
