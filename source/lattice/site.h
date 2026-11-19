@@ -32,7 +32,7 @@ public:
         none,
         pristine = 1 << 0,
         dirty = 1 << 1,
-        active = 1 << 2,
+        candidate = 1 << 2,
     };
 
     explicit Site(Position const& position, chemistry::Element element, Index index)
@@ -60,7 +60,7 @@ public:
     }
     void set_pristine(bool enabled) { set<Flags::pristine>(enabled); }
     void set_dirty(bool enabled) { set<Flags::dirty>(enabled); }
-    void set_active(bool enabled) { set<Flags::active>(enabled); }
+    void set_candidate(bool enabled) { set<Flags::candidate>(enabled); }
     void set_layer(Layer layer) { layer_.set(layer); }
     //void setOriginal(Position const& position) { original_ = position; }
     //void resetOriginal() { original_ = position_; }
@@ -83,7 +83,7 @@ public:
     }
     bool is_pristine() const { return is<Flags::pristine>(); }
     bool is_dirty() const { return is<Flags::dirty>(); }
-    bool is_active() const { return is<Flags::active>(); }
+    bool is_candidate() const { return is<Flags::candidate>(); }
 
     chemistry::Element element() const { return element_; }
     Coordination coordination(chemistry::Element) const;
