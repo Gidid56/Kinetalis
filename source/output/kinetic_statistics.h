@@ -50,7 +50,10 @@ namespace output
             transitions_.clear();
         }
 
-        bool observes_selected() const override { return true; }
+        Subscription subscriptions() const override
+        {
+            return Writer::subscriptions() | Subscription::selected;
+        }
 
         void observe_selected(kmc::event::Record const& record) override
         {
