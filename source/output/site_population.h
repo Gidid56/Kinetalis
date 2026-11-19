@@ -62,8 +62,10 @@ namespace output
                     ++counts_[*key];
         }
 
-        bool observes_selected() const override { return true; }
-        bool observes_processed() const override { return true; }
+        Subscription subscriptions() const override
+        {
+            return Writer::subscriptions() | Subscription::selected | Subscription::processed;
+        }
 
         void observe_selected(kmc::event::Record const& record) override
         {
