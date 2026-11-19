@@ -20,9 +20,9 @@ namespace studies::dealloying::analysis_plans
     {
         kmc::AnalysisPlan plan;
 
-        //plan.add<output::Config>(path);
-        //plan.add<output::Rates<Model>>(path);
-        //plan.add<output::Composition>(path);
+        plan.add<output::Config>(path);
+        plan.add<output::Rates<Model>>(path);
+        plan.add<output::Composition>(path);
         plan.add<output::Performance>(path);
 
         return plan;

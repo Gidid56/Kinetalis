@@ -1,5 +1,6 @@
 #pragma once
 #include "observer.h"
+
 #include <limits>
 
 class kmc::AnalysisPlan
@@ -9,26 +10,19 @@ public:
     {
         for (auto& observer : observers_)
             observer->set_resolution(resolution);
-        refresh_next_snapshot_step();
     }
 
     void observe_started(Simulation const& simulation)
     {
         for (auto& observer : observers_)
             observer->observe_started(simulation);
-        refresh_next_snapshot_step();
     }
 
     void observe_step(Simulation const& simulation, Step step)
     {
-        if (step < next_snapshot_step_)
-            return;
-
         for (auto* observer : snapshot_observers_)
             if (step >= observer->next_snapshot_step())
                 observer->observe_step(simulation, step);
-
-        refresh_next_snapshot_step();
     }
 
     void observe_selected(event::Record const& record)
@@ -86,8 +80,6 @@ public:
             snapshot_observers_.push_back(&base);
         if (Observer::has_subscription(flags, Subscription::stopping))
             stopping_observers_.push_back(&base);
-        // A newly added observer may require a snapshot earlier than the current deadline.
-        next_snapshot_step_ = 0;
         return result;
     }
 
@@ -118,11 +110,11 @@ public:
 
         for (std::size_t index{}; auto& observer : observers_)
             //if (auto const settings{ observer->settings() }; not settings.empty())
-                std::format_to(
-                    std::back_inserter(text),
-                    "[{}]\n{}\n\n",
-                    observer->name(),
-                    observer->settings());
+            std::format_to(
+                std::back_inserter(text),
+                "[{}]\n{}\n\n",
+                observer->name(),
+                observer->settings());
 
         return text;
     }
@@ -144,17 +136,7 @@ public:
     }
 
 private:
-    void refresh_next_snapshot_step()
-    {
-        next_snapshot_step_ = std::numeric_limits<Step>::max();
-        for (auto const* observer : snapshot_observers_)
-            next_snapshot_step_ = std::min(next_snapshot_step_, observer->next_snapshot_step());
-    }
-
     std::vector<std::unique_ptr<Observer>> observers_;
-    std::vector<Observer*> snapshot_observers_;
-    std::vector<Observer*> selected_observers_;
-    std::vector<Observer*> processed_observers_;
-    std::vector<Observer*> stopping_observers_;
-    Step next_snapshot_step_{};
+    std::vector<Observer*> snapshot_observers_, selected_observers_, processed_observers_,
+        stopping_observers_;
 };
