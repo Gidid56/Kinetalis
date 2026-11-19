@@ -20,10 +20,10 @@ namespace
 {
     using Clock = std::chrono::steady_clock;
 
-    constexpr kmc::Step target_steps{ 1'000'000 };
+    constexpr kmc::Step target_steps{ 100'000 };
     constexpr kmc::Step warmup_steps{ 1'000 };
     constexpr std::size_t measured_runs{ 5 };
-    constexpr std::array box_sides{ 10_nm, 20_nm, 40_nm };
+    constexpr std::array box_sides{ 5_nm, 10_nm, 20_nm };
 
     struct Measurement
     {
