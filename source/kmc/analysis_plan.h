@@ -1,5 +1,6 @@
 #pragma once
 #include "observer.h"
+#include <limits>
 
 class kmc::AnalysisPlan
 {
@@ -14,23 +15,30 @@ public:
     {
         for (auto& observer : observers_)
             observer->observe_started(simulation);
+        refresh_next_snapshot_step();
     }
 
     void observe_step(Simulation const& simulation, Step step)
     {
+        if (step < next_snapshot_step_)
+            return;
+
         for (auto& observer : observers_)
-            observer->observe_step(simulation, step);
+            if (observer->snapshots_enabled() and step >= observer->next_snapshot_step())
+                observer->observe_step(simulation, step);
+
+        refresh_next_snapshot_step();
     }
 
     void observe_selected(event::Record const& record)
     {
-        for (auto& observer : observers_)
+        for (auto* observer : selected_observers_)
             observer->observe_selected(record);
     }
 
     void observe_processed(event::Record const& record)
     {
-        for (auto& observer : observers_)
+        for (auto* observer : processed_observers_)
             observer->observe_processed(record);
     }
 
@@ -49,7 +57,7 @@ public:
 
     [[nodiscard]] bool stop_requested() const
     {
-        return std::ranges::any_of(observers_, [](auto const& observer) {
+        return std::ranges::any_of(stopping_observers_, [](auto const* observer) {
             return observer->stop_requested();
         });
     }
@@ -66,6 +74,14 @@ public:
 
         auto& result = *observer;
         observers_.push_back(std::move(observer));
+        if (result.observes_selected())
+            selected_observers_.push_back(&result);
+        if (result.observes_processed())
+            processed_observers_.push_back(&result);
+        if (result.checks_stop())
+            stopping_observers_.push_back(&result);
+        // A newly added observer may require a snapshot earlier than the current deadline.
+        next_snapshot_step_ = 0;
         return result;
     }
 
@@ -122,5 +138,17 @@ public:
     }
 
 private:
+    void refresh_next_snapshot_step()
+    {
+        next_snapshot_step_ = std::numeric_limits<Step>::max();
+        for (auto const& observer : observers_)
+            if (observer->snapshots_enabled())
+                next_snapshot_step_ = std::min(next_snapshot_step_, observer->next_snapshot_step());
+    }
+
     std::vector<std::unique_ptr<Observer>> observers_;
+    std::vector<Observer*> selected_observers_;
+    std::vector<Observer*> processed_observers_;
+    std::vector<Observer*> stopping_observers_;
+    Step next_snapshot_step_{};
 };
