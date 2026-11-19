@@ -37,8 +37,10 @@ public:
     void capture_init(kmc::Simulation const&) override;
     void capture_snapshot(kmc::Simulation const&) override;
 
-    bool observes_selected() const override { return true; }
-    bool observes_processed() const override { return true; }
+    Subscription subscriptions() const override
+    {
+        return Writer::subscriptions() | Subscription::selected | Subscription::processed;
+    }
 
     void observe_selected(kmc::event::Record const&) override;
     void observe_processed(kmc::event::Record const&) override;
