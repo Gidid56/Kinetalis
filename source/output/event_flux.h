@@ -16,7 +16,10 @@ public:
 
     using Writer::Writer;
 
-    bool observes_selected() const override { return true; }
+    Subscription subscriptions() const override
+    {
+        return Writer::subscriptions() | Subscription::selected;
+    }
 
     void observe_selected(kmc::event::Record const&) override;
 
