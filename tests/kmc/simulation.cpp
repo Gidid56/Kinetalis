@@ -223,10 +223,12 @@ namespace
                 }
 
             block_sums[site.index() / block_size] += site_sum;
-            ut::expect(ut::eq(site.is_candidate(), site_eligible or cluster_eligible))
+            ut::expect(ut::eq(site.is_source_eligible(), site_eligible or cluster_eligible))
                 << "cached source eligibility, step " << step << ", site " << site.index();
-            ut::expect(not site.is_dirty())
-                << "site clean after rate update, step " << step << ", site " << site.index();
+            ut::expect(not site.is_site_update_queued())
+                << "site-update queue cleared, step " << step << ", site " << site.index();
+            ut::expect(not site.is_block_update_queued())
+                << "block-update queue cleared, step " << step << ", site " << site.index();
             auto const actual_occupied{ std::ranges::count_if(lattice.neighbors(site),
                 [](auto const* other) { return other->is_occupied(); }) };
             ut::expect(ut::eq(static_cast<std::size_t>(site.coordination()),
@@ -535,8 +537,8 @@ namespace
                 const bool visited{ source_checks[index] != 0 };
                 ut::expect(ut::eq(visited, expected[index]))
                     << "radius-two visit at source " << index;
-                ut::expect(not lattice.sites()[index].is_dirty())
-                    << "dirty flag cleared after second pass at source " << index;
+                ut::expect(not lattice.sites()[index].is_site_update_queued())
+                    << "site-update queue flag cleared after second pass at source " << index;
 
                 if (expected[index] and index != source.index())
                 {

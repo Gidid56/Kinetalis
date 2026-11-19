@@ -31,8 +31,9 @@ public:
     {
         none,
         pristine = 1 << 0,
-        dirty = 1 << 1,
-        candidate = 1 << 2,
+        source_eligible = 1 << 1,
+        site_update_queued = 1 << 2,
+        block_update_queued = 1 << 3,
     };
 
     explicit Site(Position const& position, chemistry::Element element, Index index)
@@ -59,8 +60,9 @@ public:
             flags_ &= ~flag;
     }
     void set_pristine(bool enabled) { set<Flags::pristine>(enabled); }
-    void set_dirty(bool enabled) { set<Flags::dirty>(enabled); }
-    void set_candidate(bool enabled) { set<Flags::candidate>(enabled); }
+    void set_source_eligible(bool enabled) { set<Flags::source_eligible>(enabled); }
+    void set_site_update_queued(bool enabled) { set<Flags::site_update_queued>(enabled); }
+    void set_block_update_queued(bool enabled) { set<Flags::block_update_queued>(enabled); }
     void set_layer(Layer layer) { layer_.set(layer); }
     //void setOriginal(Position const& position) { original_ = position; }
     //void resetOriginal() { original_ = position_; }
@@ -82,8 +84,9 @@ public:
         return bool(flags_ & flag);
     }
     bool is_pristine() const { return is<Flags::pristine>(); }
-    bool is_dirty() const { return is<Flags::dirty>(); }
-    bool is_candidate() const { return is<Flags::candidate>(); }
+    bool is_source_eligible() const { return is<Flags::source_eligible>(); }
+    bool is_site_update_queued() const { return is<Flags::site_update_queued>(); }
+    bool is_block_update_queued() const { return is<Flags::block_update_queued>(); }
 
     chemistry::Element element() const { return element_; }
     Coordination coordination(chemistry::Element) const;

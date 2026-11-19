@@ -103,13 +103,13 @@ namespace kmc
 
         affected_sites_.clear();
         auto invalidate = [this](lattice::Site& site) {
-            if (site.is_dirty())
+            if (site.is_site_update_queued())
                 return;
 
-            if (not site.is_candidate() and not model_.processes().is_candidate(site))
+            if (not site.is_source_eligible() and not model_.processes().is_candidate(site))
                 return;
 
-            site.set_dirty(true);
+            site.set_site_update_queued(true);
             affected_sites_.push_back(&site);
         };
 
@@ -123,6 +123,9 @@ namespace kmc
         for (auto& update : block_updates_)
             update.rate = block_rate(lattice_.sites().at(update.index));
         rate_tree_->update_rates(block_updates_);
+
+        for (auto const& update : block_updates_)
+            lattice_.sites().at(update.index).set_block_update_queued(false);
     }
 
     template <class ModelT>
@@ -134,7 +137,7 @@ namespace kmc
     {
         // Enumerate graph walks without allocating a visited-site container.
         // Sites may recur because the lattice graph contains cycles; the
-        // dirty flags prevent duplicate rate calculations during graph traversal.
+        // site-update queue flags prevent duplicate rate calculations.
         if (radius > 0)
             for (auto* neighbor : lattice_.neighbors(site))
                 visit_neighbor_tree(*neighbor, radius - 1, visit);
@@ -145,7 +148,7 @@ namespace kmc
     template <class ModelT>
     void RejectionTreeSimulation<ModelT>::update_site_rate(lattice::Site& site)
     {
-        if (not site.is_dirty())
+        if (not site.is_site_update_queued())
             return;
 
         auto& old_rate{ site_rates_.at(site.index()) };
@@ -160,11 +163,14 @@ namespace kmc
                                                  1 };
             auto const block_start{ site.index() & ~block_mask };
 
-            if (std::ranges::find(block_updates_, block_start, &rate_tree::BlockUpdate::index) ==
-                block_updates_.end())
+            auto& block_site{ lattice_.sites().at(block_start) };
+            if (not block_site.is_block_update_queued())
+            {
+                block_site.set_block_update_queued(true);
                 block_updates_.push_back({ block_start, {} });
+            }
         }
-        site.set_dirty(false);
+        site.set_site_update_queued(false);
     }
 
     template <class ModelT>
@@ -181,7 +187,7 @@ namespace kmc
             total_rate += update_process_slots(process, site, first + offset, eligible);
         });
 
-        site.set_candidate(is_candidate);
+        site.set_source_eligible(is_candidate);
         return total_rate;
     }
 
@@ -193,7 +199,7 @@ namespace kmc
         if (not eligible)
         {
             // A site with no previously eligible source processes has no cached event slots.
-            if (site.is_candidate())
+            if (site.is_source_eligible())
                 for (SlotId slot{}; slot < P::slot_count; ++slot)
                     set_class_key(first + slot, RateClassKey{});
             return {};
@@ -304,7 +310,8 @@ namespace kmc
         for (auto& site : lattice_.sites())
         {
             site_rates_.at(site.index()) = update_site_classes(site);
-            site.set_dirty(false);
+            site.set_site_update_queued(false);
+            site.set_block_update_queued(false);
         }
 
         constexpr auto block_size{ std::size_t{ 1 } << rate_tree::baseLevel };
