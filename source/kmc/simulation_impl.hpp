@@ -278,14 +278,9 @@ namespace kmc
         auto& kinetic_class{ kinetic_classes_[key] };
         if (not kinetic_class.is_initialized())
         {
-            auto const class_type{ model_.kinetics().class_event(key) };
-            if (class_type == event::Type::none)
-                throw std::logic_error{ "An active kinetic class cannot have event type none." };
-
             kinetic_class.rate = model_.kinetics().rate(key);
-            kinetic_class.type = class_type;
+            kinetic_class.type = type;
         }
-
         return key;
     }
 
