@@ -110,6 +110,7 @@ private:
     std::string settings() const override;
 
     void capture_init(kmc::Simulation const&) override;
+    bool observes_selected() const override { return true; }
     void observe_selected(kmc::event::Record const&) override;
     void write_init(kmc::Simulation const&) override;
     void write_snapshot(kmc::Simulation const&) override;
