@@ -205,27 +205,26 @@ namespace
         for (auto const& site : lattice.sites())
         {
             Rate site_sum{};
-            auto has_events{ false };
+            const bool site_eligible{ processes.get<SiteRule>().is_candidate(site) };
+            const bool cluster_eligible{ processes.get<ClusterRule>().is_candidate(site) };
             const event::Location source{ const_cast<Site*>(&site) };
-            if (processes.get<SiteRule>().is_candidate(site) and kmc::is_location_candidate(processes.get<SiteRule>(), source))
+            if (site_eligible and kmc::is_location_candidate(processes.get<SiteRule>(), source))
             {
                 add(site_sum, Descriptor{ SiteRule::event, source.source().element(), source.source().coordination() });
-                has_events = true;
             }
-            if (processes.get<ClusterRule>().is_candidate(site))
+            if (cluster_eligible)
                 for (auto const* target : lattice.neighbors(site))
                 {
                     const event::Location location{ const_cast<Site*>(&site), const_cast<Site*>(target) };
                     if (kmc::is_location_candidate(processes.get<ClusterRule>(), location))
                     {
                         add(site_sum, Descriptor{ ClusterRule::event, location.source().element(), location.source().coordination() });
-                        has_events = true;
-                    }
+                            }
                 }
 
             block_sums[site.index() / block_size] += site_sum;
-            ut::expect(ut::eq(site.is_active(), has_events))
-                << "site active flag, step " << step << ", site " << site.index();
+            ut::expect(ut::eq(site.is_candidate(), site_eligible or cluster_eligible))
+                << "cached source eligibility, step " << step << ", site " << site.index();
             ut::expect(not site.is_dirty())
                 << "site clean after rate update, step " << step << ", site " << site.index();
             auto const actual_occupied{ std::ranges::count_if(lattice.neighbors(site),
