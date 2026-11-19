@@ -64,6 +64,9 @@ public:
     }
 
     bool stop_requested() const override { return has_reached(stop_conditions_); }
+    bool observes_selected() const override { return true; }
+    bool observes_processed() const override { return true; }
+    bool checks_stop() const override { return true; }
 
     auto& phases() const { return phases_; }
     auto& surface() const { return surface_; }
