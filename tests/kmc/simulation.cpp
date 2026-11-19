@@ -905,6 +905,56 @@ namespace
                 << "diffusion update path exercised";
         };
 
+        "observer dispatch respects subscriptions and independent snapshot deadlines"_test = [] {
+            struct Probe final : Observer
+            {
+                explicit Probe(bool active, Resolution resolution)
+                    : Observer{ resolution }, active_{ active } { }
+
+                std::string_view name() const override { return "dispatch-probe"; }
+                bool observes_selected() const override { return active_; }
+                bool observes_processed() const override { return active_; }
+                bool checks_stop() const override { return active_; }
+                bool snapshots_enabled() const override { return active_; }
+
+                // If the disabled observer is polled, it would terminate the run.
+                bool stop_requested() const override { return not active_; }
+                void observe_selected(event::Record const&) override { ++selected_; }
+                void observe_processed(event::Record const&) override { ++processed_; }
+                void observe_started(Simulation const&) override { ++started_; }
+                void observe_completed(Simulation const&) override { ++completed_; }
+                void take_snapshot(Simulation const& simulation) override
+                {
+                    snapshots_.push_back(simulation.step());
+                }
+
+                bool active_{};
+                std::size_t selected_{}, processed_{}, started_{}, completed_{};
+                std::vector<Step> snapshots_;
+            };
+
+            TestSimulation simulation{ make_setup() };
+            AnalysisPlan plan;
+            auto& disabled{ plan.add<Probe>(false, Observer::Resolution{ 1, 1.0 }) };
+            auto& fast{ plan.add<Probe>(true, Observer::Resolution{ 2, 1.0 }) };
+            auto& slow{ plan.add<Probe>(true, Observer::Resolution{ 3, 1.0 }) };
+            plan.add<control::StepLimit>(5);
+
+            ut::expect(simulation.run(plan) == simulation::Status::analysed);
+            ut::expect(ut::eq(simulation.step(), Step{ 5 }));
+            ut::expect(ut::eq(disabled.started_, std::size_t{ 1 }));
+            ut::expect(ut::eq(disabled.completed_, std::size_t{ 1 }));
+            ut::expect(ut::eq(disabled.selected_, std::size_t{}));
+            ut::expect(ut::eq(disabled.processed_, std::size_t{}));
+            ut::expect(disabled.snapshots_.empty());
+            ut::expect(ut::eq(fast.processed_, std::size_t{ 5 }));
+            ut::expect(ut::eq(slow.processed_, std::size_t{ 5 }));
+            ut::expect(ut::that % fast.selected_ >= fast.processed_);
+            ut::expect(ut::eq(slow.selected_, fast.selected_));
+            ut::expect(fast.snapshots_ == std::vector<Step>{ 1, 2, 4 });
+            ut::expect(slow.snapshots_ == std::vector<Step>{ 1, 3 });
+        };
+
         "split and uninterrupted runs yield exactly the same final state"_test = [] {
             auto setup{ make_setup() };
             TestSimulation uninterrupted{ setup }, resumed{ setup };
