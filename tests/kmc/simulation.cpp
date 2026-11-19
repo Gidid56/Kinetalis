@@ -912,11 +912,13 @@ namespace
                     : Observer{ resolution }, active_{ active } { }
 
                 std::string_view name() const override { return "dispatch-probe"; }
+            private:
                 Subscription subscriptions() const override
                 {
                     return active_ ? Subscription::all : Subscription::none;
                 }
 
+            public:
                 // If the disabled observer is polled, it would terminate the run.
                 bool stop_requested() const override { return not active_; }
                 void observe_selected(event::Record const&) override { ++selected_; }
