@@ -18,6 +18,7 @@ public:
     void setViewerBridge(Bridge* bridge) { viewerBridge_ = bridge; }
 
     bool snapshots_enabled() const override { return false; }
+    bool checks_stop() const override { return false; }
     void observe_selected(kmc::event::Record const&) override;
     void observe_processed(kmc::event::Record const&) override;
 
