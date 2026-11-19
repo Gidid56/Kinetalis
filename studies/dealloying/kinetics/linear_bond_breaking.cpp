@@ -26,9 +26,13 @@ RateClassKey LinearBondBreaking::static_key(Descriptor const& desc)
         default: throw std::logic_error{ "Invalid kinetic event type." };
     }
 
+    auto const element{ std::ranges::find(lattice::active_elements, desc.element) };
+    if (element == lattice::active_elements.end() or desc.coordination >= coordinations)
+        throw std::out_of_range{ "Descriptor lies outside static kinetic classes." };
+
     return static_cast<RateClassKey>(
-        1 + (event_index * elements + lattice::elementKey(desc.element)) * coordinations +
-        desc.coordination);
+        1 + (event_index * elements + (element - lattice::active_elements.begin())) *
+            coordinations + desc.coordination);
 }
 
 LinearBondBreaking::Descriptor LinearBondBreaking::descriptor(RateClassKey key) const
@@ -53,12 +57,10 @@ LinearBondBreaking::Descriptor LinearBondBreaking::descriptor(RateClassKey key) 
     return { type, element, coordination };
 }
 
-RateClassKey
-LinearBondBreaking::classify(event::Type type, event::Location const& location, Lattice const&)
+LinearBondBreaking::Descriptor
+LinearBondBreaking::classify(event::Type type, event::Location const& location, Lattice const&) const
 {
-    const Descriptor desc{ type, location.source().element(), location.source().coordination() };
-
-    return static_key(desc);
+    return { type, location.source().element(), location.source().coordination() };
 }
 
 std::size_t LinearBondBreaking::number_keys() const noexcept { return key_count; }
@@ -73,25 +75,22 @@ Element LinearBondBreaking::class_element(RateClassKey key) const
     return descriptor(key).element;
 }
 
-Energy LinearBondBreaking::lattice_energy_barrier(RateClassKey key) const
+Energy LinearBondBreaking::lattice_energy_barrier(Descriptor const& desc) const
 {
-    return constants_.bond_energy * descriptor(key).coordination;
+    return constants_.bond_energy * desc.coordination;
 }
 
-Ratio LinearBondBreaking::modulation_ratio(RateClassKey key) const
+Ratio LinearBondBreaking::modulation_ratio(Descriptor const& desc) const
 {
-    if (modulation_ and descriptor(key) == modulation_->descriptor)
+    if (modulation_ and desc == modulation_->descriptor)
         return modulation_->ratio;
     return 1;
 }
 
-Rate LinearBondBreaking::rate(RateClassKey key) const
+Rate LinearBondBreaking::rate(Descriptor const& desc) const
 {
     return ElectrochemicalInterface::rate(
-        class_event(key),
-        class_element(key),
-        lattice_energy_barrier(key),
-        modulation_ratio(key));
+        desc.event, desc.element, lattice_energy_barrier(desc), modulation_ratio(desc));
 }
 
 std::string LinearBondBreaking::output_text() const

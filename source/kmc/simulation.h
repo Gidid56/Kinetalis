@@ -7,19 +7,6 @@
 
 #include <stop_token>
 
-namespace kmc
-{
-    struct KineticClass
-    {
-        Rate rate{};
-        std::size_t count{};
-        event::Type type{ event::Type::none };
-
-        bool is_initialized() const noexcept { return type != event::Type::none; }
-        bool operator==(KineticClass const&) const = default;
-    };
-}
-
 class kmc::Simulation : public simulation::Base
 {
 public:
@@ -39,15 +26,16 @@ public:
     }
 
     auto time() const { return time_; }
-    auto const& kinetic_classes() const noexcept { return kinetic_classes_; }
+    virtual Kinetics const& kinetics() const noexcept = 0;
+    auto const& class_counts() const noexcept { return class_counts_; }
     bool class_counts_enabled() const noexcept { return class_counts_enabled_; }
 
 protected:
     Time time_{};
     std::size_t rejections_{};
 
-    std::vector<KineticClass> kinetic_classes_{ KineticClass{} };
-    bool class_counts_enabled_{ true };
+    std::vector<std::size_t> class_counts_;
+    bool class_counts_enabled_{};
 };
 
 template <class ModelT>
@@ -60,6 +48,7 @@ public:
     std::string process_settings() const override { return model_.processes().settings(); }
     std::string kinetics_settings() const override { return model_.kinetics().output_text(); }
     Temperature temperature() const override { return model_.kinetics().temperature(); }
+    Kinetics const& kinetics() const noexcept override { return model_.kinetics(); }
 
     auto& model(this auto& self) noexcept { return self.model_; }
     auto& rate_tree() const { return rate_tree_; }
@@ -76,6 +65,7 @@ private:
     Rate block_rate(lattice::Site&);
     RateClassKey register_class(event::Type, event::Location const&);
     void set_class_key(std::size_t, RateClassKey);
+    void configure_class_counts(bool);
 
     Rate update_site_classes(lattice::Site&);
 

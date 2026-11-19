@@ -36,22 +36,23 @@ namespace studies::dealloying::kinetics
 
         auto constants() const { return constants_; }
 
-        kmc::RateClassKey classify(kmc::event::Type, kmc::event::Location const&, lattice::Lattice const&);
+        Descriptor classify(kmc::event::Type, kmc::event::Location const&, lattice::Lattice const&) const;
+        kmc::RateClassKey key(Descriptor const& desc) const { return static_key(desc); }
         std::size_t number_keys() const noexcept;
         kmc::event::Type class_event(kmc::RateClassKey) const;
         std::string output_text() const;
-        kmc::Rate rate(kmc::RateClassKey) const;
+        kmc::Rate rate(Descriptor const&) const;
         static kmc::RateClassKey static_key(Descriptor const&);
         Descriptor descriptor(kmc::RateClassKey key) const;
 
     protected:
         chemistry::Element class_element(kmc::RateClassKey) const;
-        Energy lattice_energy_barrier(kmc::RateClassKey) const;
-        Ratio modulation_ratio(kmc::RateClassKey) const;
+        Energy lattice_energy_barrier(Descriptor const&) const;
+        Ratio modulation_ratio(Descriptor const&) const;
 
     private:
         static constexpr std::size_t key_count{
-            1 + lattice::max_coordination * (std::size(lattice::active_elements) + 2)
+            1 + 3 * lattice::max_coordination * std::size(lattice::active_elements)
         };
         std::optional<Modulation> modulation_{};
         Constants constants_{};

@@ -13,7 +13,8 @@ namespace kmc
         rate_tree_ = rate_tree::make_entry(lattice_.sites().size());
         site_rates_.resize(lattice_.sites().size());
         slot_class_keys_.resize(lattice_.sites().size() * ModelT::slots_per_site);
-        kinetic_classes_.resize(model_.kinetics().number_keys());
+        model_.kinetics().resize_classes(model_.kinetics().number_keys());
+        class_counts_.resize(model_.kinetics().kinetic_classes().size());
 
         update_all_rates();
     }
@@ -24,7 +25,7 @@ namespace kmc
     {
         utility::Guard guard{ timer_ };
 
-        class_counts_enabled_ = analysis_plan.requires_class_counts();
+        configure_class_counts(analysis_plan.requires_class_counts());
 
         if (status_ == simulation::Status::created)
             analysis_plan.observe_started(*this);
@@ -89,8 +90,8 @@ namespace kmc
 
         const auto first{ static_cast<std::size_t>(site_index) * ModelT::slots_per_site };
         auto offset{ first };
-        while (selected_rate >= kinetic_classes_[slot_class_keys_[offset]].rate)
-            selected_rate -= kinetic_classes_[slot_class_keys_[offset++]].rate;
+        while (selected_rate >= model_.kinetics().kinetic_classes()[slot_class_keys_[offset]].rate)
+            selected_rate -= model_.kinetics().kinetic_classes()[slot_class_keys_[offset++]].rate;
 
         if (offset >= first + ModelT::slots_per_site)
             throw std::runtime_error{ "Selected event slot is outside source-site layout." };
@@ -207,7 +208,7 @@ namespace kmc
             set_class_key(first + slot, key);
 
             if (key != RateClassKey{})
-                total_rate += kinetic_classes_[key].rate;
+                total_rate += model_.kinetics().kinetic_classes()[key].rate;
         }
         return total_rate;
     }
@@ -236,19 +237,32 @@ namespace kmc
     {
         auto& old_key{ slot_class_keys_[index] };
 
+        if (old_key == new_key)
+            return;
+
         if (class_counts_enabled_)
         {
-            if (old_key == new_key)
-                return;
-
             if (old_key != RateClassKey{})
-                --kinetic_classes_[old_key].count;
-
+                --class_counts_[old_key];
             if (new_key != RateClassKey{})
-                ++kinetic_classes_[new_key].count;
+                ++class_counts_[new_key];
         }
 
         old_key = new_key;
+    }
+
+    template <class ModelT>
+    void RejectionTreeSimulation<ModelT>::configure_class_counts(bool enabled)
+    {
+        if (class_counts_enabled_ == enabled)
+            return;
+
+        class_counts_.assign(model_.kinetics().kinetic_classes().size(), 0);
+        if (enabled)
+            for (auto const key : slot_class_keys_)
+                if (key != RateClassKey{})
+                    ++class_counts_[key];
+        class_counts_enabled_ = enabled;
     }
 
     template <class ModelT>
@@ -268,29 +282,27 @@ namespace kmc
         event::Type type,
         event::Location const& location)
     {
-        const auto key{ model_.kinetics().classify(type, location, lattice_) };
-        if (key == RateClassKey{})
-            throw std::logic_error{ "Active event maps to reserved key zero." };
+        auto& kinetics{ model_.kinetics() };
+        const auto descriptor{ kinetics.classify(type, location, lattice_) };
+        const auto key{ kinetics.key(descriptor) };
+        const auto registered{ kinetics.register_class(key, type, [&] {
+            return kinetics.rate(descriptor);
+        }) };
 
-        if (key >= kinetic_classes_.size())
-            kinetic_classes_.resize(static_cast<std::size_t>(key) + 1);
+        if (class_counts_.size() < kinetics.kinetic_classes().size())
+            class_counts_.resize(kinetics.kinetic_classes().size());
 
-        auto& kinetic_class{ kinetic_classes_[key] };
-        if (not kinetic_class.is_initialized())
-        {
-            kinetic_class.rate = model_.kinetics().rate(key);
-            kinetic_class.type = type;
-        }
-        return key;
+        return registered;
     }
 
     template <class ModelT>
     void RejectionTreeSimulation<ModelT>::update_all_rates()
     {
-        model_.kinetics().refresh_rates();
-        for (RateClassKey key{ 1 }; key < kinetic_classes_.size(); ++key)
-            if (kinetic_classes_[key].is_initialized())
-                kinetic_classes_[key].rate = model_.kinetics().rate(key);
+        auto& kinetics{ model_.kinetics() };
+        kinetics.refresh_rates();
+        kinetics.refresh_classes([&](RateClassKey key) {
+            return kinetics.rate(kinetics.descriptor(key));
+        });
 
         for (auto& site : lattice_.sites())
         {
