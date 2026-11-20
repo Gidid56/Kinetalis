@@ -1,5 +1,6 @@
 #pragma once
 #include "basics.h"
+#include "utility/csv.h"
 #include "lattice/types.h"
 
 class output::Phases : public output::Writer
@@ -47,6 +48,7 @@ public:
 
     void write_init(kmc::Simulation const&) override;
     void write_snapshot(kmc::Simulation const&) override;
+    void write_final(kmc::Simulation const&) override;
 
     auto count(Phase const phase) const { return counts_.at(phase); }
     auto fraction(Phase phase) const { return last_data_.fractions.at(phase); }
@@ -73,6 +75,8 @@ private:
     lattice::Distance next_neighbor_distance_{};
     Area outer_surface_area_{};
     std::size_t site_count_{};
+
+    utility::csv::Writer csv_;
 
     // TODO by layers
 };

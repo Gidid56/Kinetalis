@@ -224,8 +224,12 @@ void Regime::write_snapshot(kmc::Simulation const& kmc)
     event_flux_.write_snapshot(kmc);
 }
 
-void Regime::write_final(kmc::Simulation const&)
+void Regime::write_final(kmc::Simulation const& kmc)
 {
+    phases_.write_final(kmc);
+    surface_.write_final(kmc);
+    event_flux_.write_final(kmc);
+
     std::string text{ "key:condition,step,time/s" };
 
     for (auto const phase : output::Phases::active_phases)
