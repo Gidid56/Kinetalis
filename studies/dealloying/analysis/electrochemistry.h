@@ -1,6 +1,7 @@
 #pragma once
 #include "kmc/event.h"
 #include "output/writer.h"
+#include "utility/csv.h"
 
 namespace studies::dealloying::analysis { class Electrochemistry; }
 
@@ -56,8 +57,10 @@ private:
 
     void write_init(kmc::Simulation const&) override;
     void write_snapshot(kmc::Simulation const&) override;
+    void write_final(kmc::Simulation const&) override;
 
     Electrochemistry::Data last_data_{};
+    utility::csv::Writer csv_;
 
     // Commulative charge transfer per event
     std::array<ChargeTransfer, events.size()> charge_transfers_{};
