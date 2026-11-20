@@ -68,8 +68,7 @@ void Regime::observe_selected(kmc::event::Record const& record)
 {
     phases_.observe_selected(record);
 
-    if ((observer_conditions_ & Condition::passivated) != Condition::none)
-        surface_.observe_selected(record);
+    surface_.observe_selected(record);
 
     if ((observer_conditions_ & Condition::arrested) != Condition::none)
         event_flux_.observe_selected(record);
@@ -79,8 +78,7 @@ void Regime::observe_processed(kmc::event::Record const& record)
 {
     phases_.observe_processed(record);
 
-    if ((observer_conditions_ & Condition::passivated) != Condition::none)
-        surface_.observe_processed(record);
+    surface_.observe_processed(record);
 }
 
 auto Regime::lookback_start_step(Condition condition) const
@@ -224,8 +222,12 @@ void Regime::write_snapshot(kmc::Simulation const& kmc)
     event_flux_.write_snapshot(kmc);
 }
 
-void Regime::write_final(kmc::Simulation const&)
+void Regime::write_final(kmc::Simulation const& kmc)
 {
+    phases_.write_final(kmc);
+    surface_.write_final(kmc);
+    event_flux_.write_final(kmc);
+
     std::string text{ "key:condition,step,time/s" };
 
     for (auto const phase : output::Phases::active_phases)

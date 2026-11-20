@@ -3,6 +3,7 @@
 #include "dealloying/analysis/regime.h"
 #include "kmc/analysis_plan.h"
 #include "output/basics.h"
+#include "output/composition.h"
 #include "output/rates.h"
 #include "dealloying/kinetics/descriptor_format.h"
 #include "output/phases.h"
@@ -66,7 +67,7 @@ namespace studies::dealloying::analysis_plans
             .set_threshold(bifurcated, 1.0) // R_vol / ℓ_ac
             .set_threshold(passivated, 1.0) // f_pas
             .set_threshold(porous, 0.8)     // φ_pristine
-            .set_threshold(arrested, 1e-6)  // Γ_dis / Γ_tot
+            .set_threshold(arrested, 1e-6)  // Γ_dis / Γ_dis,max (historical maximum of snapshot-averaged flux)
 
             .set_stop_conditions(bifurcated | passivated)
             //.set_lookback_period(coarsening, 0.1)

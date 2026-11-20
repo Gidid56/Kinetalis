@@ -14,8 +14,12 @@ namespace utility::file
 
     template <FileStream Stream>
     [[nodiscard]]
-    Stream wait_for_open(std::filesystem::path const& path, std::ios_base::openmode mode)
+    Stream wait_for_open(std::filesystem::path const& path, std::ios_base::openmode mode,
+        std::chrono::steady_clock::duration timeout = std::chrono::minutes{ 10 })
     {
+        using Clock = std::chrono::steady_clock;
+        const auto deadline{ Clock::now() + timeout };
+
         if constexpr (std::same_as<Stream, std::ofstream>)
             if (auto const parent{ path.parent_path() }; not parent.empty())
                 std::filesystem::create_directories(parent);
@@ -34,8 +38,17 @@ namespace utility::file
                         std::format("Input file '{}' does not exist.", path.string())
                     };
 
-            std::print("Could not open \"{}\". Retry in {}.\n", path.string(), retry_delay);
-            std::this_thread::sleep_for(retry_delay);
+            const auto remaining{ deadline - Clock::now() };
+            if (remaining <= Clock::duration::zero())
+                throw std::runtime_error{ std::format(
+                    "Timed out opening '{}' after {}.",
+                    path.string(), std::chrono::duration_cast<std::chrono::seconds>(timeout)) };
+
+            const auto delay{ std::min(remaining,
+                std::chrono::duration_cast<Clock::duration>(retry_delay)) };
+            std::print("Could not open \"{}\". Retry in {:.1f} s.\n",
+                path.string(), std::chrono::duration<double>(delay).count());
+            std::this_thread::sleep_for(delay);
         }
     }
 

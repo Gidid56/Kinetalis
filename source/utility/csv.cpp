@@ -6,6 +6,127 @@
 
 using namespace utility;
 
+
+std::filesystem::path csv::Writer::path(std::string_view suffix) const
+{
+    auto result{ base_path_ };
+    if (not suffix.empty())
+        result += std::format(".{}", suffix);
+    result += std::format(".{}", enum_name(file::Type::csv));
+    return result;
+}
+
+void csv::Writer::initialize(
+    std::filesystem::path base_path, Formatter header, Formatter row)
+{
+    base_path_ = std::move(base_path);
+    header_ = std::move(header);
+    row_ = std::move(row);
+    rows_ = {};
+    previous_columns_.reset();
+
+    // A new output session replaces any completed CSV at this path.
+    std::filesystem::remove(path());
+    file::write<file::Type::csv>(path("data"), "");
+    file::write<file::Type::csv>(path("schema"), "");
+}
+
+void csv::Writer::append(std::size_t data_columns)
+{
+    if (not header_ or not row_)
+        throw std::logic_error{ "CSV writer is not initialized." };
+
+    if (previous_columns_ and data_columns < *previous_columns_)
+        throw std::logic_error{ "CSV data-column count decreased." };
+
+    if (not previous_columns_ or data_columns != *previous_columns_)
+    {
+        file::append<file::Type::csv>(
+            path("schema"),
+            std::format("{},{},{}\n",
+                rows_, data_columns, Table::encode_field(header_())));
+        previous_columns_ = data_columns;
+    }
+
+    file::append<file::Type::csv>(path("data"), row_() + '\n');
+    ++rows_;
+}
+
+void csv::Writer::finalize()
+{
+    if (not header_ or not row_)
+        throw std::logic_error{ "CSV writer is not initialized." };
+
+    struct Change
+    {
+        std::size_t first_row;
+        std::size_t columns;
+    };
+
+    std::vector<Change> changes;
+    Table schema;
+    schema.read(path("schema"));
+    for (auto const& fields : schema.data())
+        changes.push_back({ std::stoull(fields[0]), std::stoull(fields[1]) });
+
+    // Labels can become available without changing the number of kinetic classes.
+    auto const final_header{ header_() };
+
+    auto const final_columns{ changes.empty() ? std::size_t{} : changes.back().columns };
+    auto completed_path{ path() };
+    auto temporary_path{ completed_path };
+    temporary_path += ".tmp";
+
+    {
+        auto input{ file::wait_for_read(path("data")) };
+        auto output{ file::wait_for_open<std::ofstream>(
+            temporary_path, std::ios::out | std::ios::binary | std::ios::trunc) };
+
+        output << final_header << '\n';
+
+        std::size_t current_columns{};
+        std::size_t next_change{};
+        std::size_t row_index{};
+
+        for (std::string line; std::getline(input, line); ++row_index)
+        {
+            while (next_change < changes.size() and changes[next_change].first_row <= row_index)
+            {
+                current_columns = changes[next_change].columns;
+                ++next_change;
+            }
+
+            if (line.ends_with('\r'))
+                line.pop_back();
+            output << line;
+
+            for (auto column{ current_columns }; column < final_columns; ++column)
+            {
+                output.put(',');
+                if (padding_ == Padding::zero)
+                    output.put('0');
+            }
+            output.put('\n');
+        }
+
+        if (input.bad() or not output)
+            throw std::runtime_error{ "Failed to combine CSV data and schema." };
+
+        output.close();
+        if (not output)
+            throw std::runtime_error{ "Failed to close combined CSV." };
+    }
+
+    std::filesystem::rename(temporary_path, completed_path);
+    std::filesystem::remove(path("data"));
+    std::filesystem::remove(path("schema"));
+
+    header_ = {};
+    row_ = {};
+    previous_columns_.reset();
+    rows_ = {};
+}
+
 csv::Table& csv::Table::read(std::filesystem::path path)
 {
     *this = Reader{ std::move(path) }.read();

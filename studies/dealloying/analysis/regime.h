@@ -21,7 +21,8 @@ public:
     explicit Regime(std::filesystem::path const& root = {})
         : Writer{ root },
           phases_{ root },
-          surface_{ root }
+          surface_{ root },
+          event_flux_{ root }
     {}
 
     auto& set_save_lattice(bool enabled)
@@ -63,7 +64,7 @@ public:
         return (reached_conditions_ & conditions) != Condition::none;
     }
 
-    bool stop_requested() const override { return has_reached(stop_conditions_); }
+    bool stop_requested(kmc::Simulation const&) const override { return has_reached(stop_conditions_); }
     Subscription subscriptions() const override
     {
         return Writer::subscriptions() | Subscription::selected |
@@ -76,6 +77,10 @@ public:
 
 private:
     std::string_view name() const override { return "regime"; }
+    bool requires_class_counts() const override
+    {
+        return (marker_conditions_ & Condition::arrested) != Condition::none;
+    }
     std::string settings() const override;
 
     void capture_init(kmc::Simulation const&) override;

@@ -75,7 +75,7 @@ namespace math
 
         constexpr auto begin() const noexcept { return data_.begin(); }
         constexpr auto end() const noexcept { return data_.end(); }
-        constexpr auto size() const noexcept { return data_.end(); }
+        constexpr std::size_t size() const noexcept { return N; }
 
         [[nodiscard]] static constexpr std::size_t elements() noexcept { return N * M; }
 

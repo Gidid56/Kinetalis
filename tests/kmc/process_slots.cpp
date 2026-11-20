@@ -222,7 +222,7 @@ namespace
     {
         std::string_view name() const override { return "stop-and-count"; }
         bool requires_class_counts() const override { return true; }
-        bool stop_requested() const override { return true; }
+        bool stop_requested(Simulation const&) const override { return true; }
     };
 
     void enable_class_counts(ProbeSimulation& simulation)

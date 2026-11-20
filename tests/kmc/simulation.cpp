@@ -3,6 +3,8 @@
 #include "dealloying/kinetics/linear_bond_breaking.h"
 #include "dealloying/kinetics/composition_dependent.h"
 #include "output/basics.h"
+#include "output/composition.h"
+#include "dealloying/analysis/regime.h"
 #include "physics/equations/kinetics.h"
 #include "kmc/analysis_plan.h"
 #include "lattice/lattice.h"
@@ -11,6 +13,8 @@
 #include "output/site_population.h"
 #include "dealloying/kinetics/descriptor_format.h"
 #include "output/event_flux.h"
+#include "output/surface.h"
+#include "utility/csv.h"
 
 #include <algorithm>
 #include <array>
@@ -288,7 +292,7 @@ namespace
 
         std::string_view name() const override { return "kmc-integration-test"; }
         bool requires_class_counts() const override { return true; }
-        bool stop_requested() const override { return last_step_ >= target_; }
+        bool stop_requested(Simulation const&) const override { return last_step_ >= target_; }
 
         void observe_started(Simulation const& simulation) override
         {
@@ -380,7 +384,7 @@ namespace
         explicit StopWithoutStepping(bool track_counts) : track_counts_{ track_counts } { }
 
         bool requires_class_counts() const override { return track_counts_; }
-        bool stop_requested() const override { return true; }
+        bool stop_requested(Simulation const&) const override { return true; }
         std::string_view name() const override { return "stop-without-stepping"; }
 
     private:
@@ -391,7 +395,7 @@ namespace
     {
     public:
         std::string_view name() const override { return "first-accepted-event"; }
-        bool stop_requested() const override { return accepted_; }
+        bool stop_requested(Simulation const&) const override { return accepted_; }
 
         void observe_processed(event::Record const& record) override
         {
@@ -429,6 +433,23 @@ namespace
     }
 
     ut::suite<"kmc.simulation"> simulation_tests = [] {
+        "stopping predicates use the supplied simulation without retaining a pointer"_test = [] {
+            auto setup{ make_setup() };
+            TestSimulation first{ setup };
+            TestSimulation second{ setup };
+
+            AnalysisPlan plan;
+            plan.add<control::StepLimit>(1);
+
+            ut::expect(not plan.stop_requested(first));
+            ut::expect(not plan.stop_requested(second));
+
+            ut::expect(first.run(plan) == simulation::Status::analysed);
+            ut::expect(ut::eq(first.step(), Step{ 1 }));
+            ut::expect(plan.stop_requested(first));
+            ut::expect(not plan.stop_requested(second));
+        };
+
         "kinetic-class initialization is independent of its rate"_test = [] {
             KineticClass uninitialized{};
             ut::expect(not uninitialized.is_initialized());
@@ -646,6 +667,42 @@ namespace
             }
         };
 
+        "kinetic activity includes the full static class range before any event"_test = [] {
+            auto setup{ make_setup() };
+            setup.model.processes().get<SiteRule>().enabled = false;
+            setup.model.processes().get<ClusterRule>().enabled = false;
+            TestSimulation simulation{ setup };
+
+            auto const root{ std::filesystem::temp_directory_path() /
+                std::format("kinetalis-static-activity-{}",
+                    std::chrono::steady_clock::now().time_since_epoch().count()) };
+            struct Cleanup
+            {
+                std::filesystem::path path;
+                ~Cleanup() { std::error_code error; std::filesystem::remove_all(path, error); }
+            } cleanup{ root };
+
+            AnalysisPlan plan;
+            plan.add<output::KineticActivity<TestModel>>(root);
+            ut::expect(simulation.run(plan) == simulation::Status::exhausted);
+
+            auto const activity{ utility::csv::Table{}.read(root / "kinetic_activity/activity") };
+            auto const weighted{ utility::csv::Table{}.read(
+                root / "kinetic_activity/time_weighted_activity") };
+            auto const count{ simulation.model().kinetics().number_keys() };
+            ut::expect(ut::eq(activity.front().size(), count + 1));
+            ut::expect(ut::eq(weighted.front().size(), count + 1));
+            for (std::size_t key{ 1 }; key < count; ++key)
+            {
+                auto const descriptor{ simulation.model().kinetics().descriptor(
+                    static_cast<RateClassKey>(key)) };
+                auto const label{ output::DescriptorFormat<Descriptor>::label(descriptor) };
+                ut::expect(activity.front()[key + 1] == label);
+                ut::expect(weighted.front()[key + 1] == label);
+                ut::expect(not simulation.kinetics().kinetic_classes()[key].is_initialized());
+            }
+        };
+
         "static kinetic-class cache initializes encountered events only once"_test = [] {
             auto setup{ make_setup() };
             TestSimulation simulation{ setup };
@@ -709,7 +766,7 @@ namespace
             ut::expect(simulation.kinetics().kinetic_classes()[gold].is_initialized());
         };
 
-        "kinetics and flux CSV columns stay stable as new kinetic classes appear"_test = [] {
+        "legacy output observers write consistent predefined CSV columns"_test = [] {
             auto setup{ make_setup() };
             TestSimulation simulation{ setup };
             const auto root{ std::filesystem::temp_directory_path() /
@@ -723,6 +780,10 @@ namespace
             } cleanup{ root };
 
             AnalysisPlan plan;
+            plan.add<output::Composition>(root)
+                .set_resolution({ .min_snapshot_step = 1, .snapshot_scale_factor = 1.0 });
+            plan.add<output::Time>(root)
+                .set_resolution({ .min_snapshot_step = 1, .snapshot_scale_factor = 1.0 });
             plan.add<output::KineticActivity<TestModel>>(root)
                 .set_resolution({ .min_snapshot_step = 1, .snapshot_scale_factor = 1.0 });
             auto& statistics{ plan.add<output::KineticStatistics<TestModel>>(root)
@@ -768,9 +829,7 @@ namespace
                 return lines;
             };
 
-            constexpr auto site_columns{
-                std::size(lattice::active_elements) * lattice::max_coordination + 2
-            };
+            auto const site_columns{ lattice::active_elements.size() * lattice::max_coordination + 2 };
             for (auto const* file : {
                 "site_population/site_count",
                 "site_population/population",
@@ -783,22 +842,78 @@ namespace
             auto lines{ read_csv("kinetic_activity/activity", classes.size() + 1) };
             read_csv("kinetic_activity/time_weighted_activity", classes.size() + 1);
 
-            if (not lines.empty())
-                for (std::size_t key{ 1 }; key < classes.size(); ++key)
+            auto const activity_table{ utility::csv::Table{}.read(root / "kinetic_activity/activity") };
+            auto const weighted_table{ utility::csv::Table{}.read(
+                root / "kinetic_activity/time_weighted_activity") };
+            ut::expect(activity_table.rows_match_header());
+            ut::expect(weighted_table.rows_match_header());
+            for (std::size_t key{ 1 }; key < classes.size(); ++key)
+            {
+                auto const label{ output::DescriptorFormat<Descriptor>::label(
+                    simulation.model().kinetics().descriptor(static_cast<RateClassKey>(key))) };
+                ut::expect(activity_table.front()[key + 1] == label)
+                    << "class key has a stable label, including uninitialized classes " << key;
+                ut::expect(weighted_table.front()[key + 1] == label)
+                    << "weighted activity uses the same fixed class order";
+
+                if (classes[key].is_initialized())
+                    continue;
+
+                for (std::size_t row{ 1 }; row < activity_table.size(); ++row)
                 {
-                    auto const label{ classes[key].is_initialized()
-                        ? output::DescriptorFormat<Descriptor>::label(
-                            simulation.model().kinetics().descriptor(
-                                static_cast<RateClassKey>(key)))
-                        : std::format("not_encountered_{}", key) };
-                    ut::expect(lines.front().find("," + label) != std::string::npos)
-                        << "activity header includes final key label " << key;
+                    ut::expect(activity_table[row][key + 1] == "0")
+                        << "unencountered classes have zero activity";
+                    ut::expect(weighted_table[row][key + 1] == "0")
+                        << "unencountered classes have zero weighted activity";
                 }
+            }
 
             // Three declared event types plus step and time, two fields per type.
             auto const flux_columns{ std::size_t{ 2 } +
                 2 * (enum_values<event::Type>().size() - 1) };
             read_csv("event_flux", flux_columns);
+
+            auto composition_path{ root / "composition.csv" };
+            ut::expect(std::filesystem::exists(composition_path));
+            auto const composition{ utility::csv::Table{}.read(composition_path) };
+            ut::expect(composition.rows_match_header());
+            ut::expect(ut::eq(composition.size(), std::size_t{ 34 }));
+            utility::csv::Table::Row expected_composition_header{ "key:step", "time/s" };
+            for (auto element : lattice::active_elements)
+                expected_composition_header.push_back(std::format("{}_fraction", element));
+            ut::expect(composition.front() == expected_composition_header)
+                << "composition header uses the configured element order";
+
+            auto const site_data{ utility::csv::Table{}.read(root / "site_population/site_count") };
+            ut::expect(site_data.rows_match_header());
+            utility::csv::Table::Row expected_site_header{ "key:step", "time/s" };
+            for (auto element : lattice::active_elements)
+                for (lattice::Coordination coordination{}; coordination < lattice::max_coordination;
+                    ++coordination)
+                    expected_site_header.push_back(std::format("{}_{}",
+                        enum_name(element), static_cast<unsigned>(coordination)));
+            ut::expect(site_data.front() == expected_site_header)
+                << "surface populations retain every predefined element/coordination class";
+
+            read_csv("time", 2);
+
+            for (auto const& name : {
+                "composition", "time",
+                "kinetic_activity/activity", "kinetic_activity/time_weighted_activity",
+                "site_population/site_count", "site_population/population",
+                "site_population/time_weighted_site_count",
+                "site_population/time_weighted_population", "event_flux"
+            })
+            {
+                auto data{ root / name };
+                data += ".data.csv";
+                auto schema{ root / name };
+                schema += ".schema.csv";
+                ut::expect(not std::filesystem::exists(data))
+                    << "finalized writer removed temporary data " << name;
+                ut::expect(not std::filesystem::exists(schema))
+                    << "finalized writer removed temporary schema " << name;
+            }
         };
 
         "site populations are independent of composition-dependent kinetic classes"_test = [] {
@@ -839,6 +954,61 @@ namespace
             ut::expect(simulation.run(plan) == simulation::Status::exhausted);
             ut::expect(ut::eq(simulation.step(), Step{}));
             ut::expect(ut::eq(simulation.rejection_fraction(), 0.0));
+        };
+
+        "regime surface tracks events even without passivation detection"_test = [] {
+            using Regime = studies::dealloying::analysis::Regime;
+            auto setup{ make_setup() };
+            TestSimulation simulation{ setup };
+
+            const auto root{ std::filesystem::temp_directory_path() /
+                std::format("kinetalis-regime-surface-{}",
+                    std::chrono::steady_clock::now().time_since_epoch().count()) };
+            struct Cleanup
+            {
+                std::filesystem::path path;
+                ~Cleanup() { std::error_code error; std::filesystem::remove_all(path, error); }
+            } cleanup{ root };
+
+            AnalysisPlan plan;
+            auto& regime{ plan.add<Regime>(root / "regime") };
+            auto& reference{ plan.add<output::Surface>(root / "reference") };
+            plan.add<control::StepLimit>(40);
+
+            ut::expect(not plan.requires_class_counts());
+            ut::expect(simulation.run(plan) == simulation::Status::analysed);
+            ut::expect(ut::eq(regime.surface().sites(), reference.sites()));
+            ut::expect(ut::eq(regime.surface().bonds(), reference.bonds()));
+            ut::expect(ut::eq(regime.surface().sites(), simulation.lattice().surface_atoms()));
+            ut::expect(ut::eq(regime.surface().bonds(), simulation.lattice().broken_bonds()));
+        };
+
+        "regime arrest detection enables kinetic-class counts on demand"_test = [] {
+            using Regime = studies::dealloying::analysis::Regime;
+
+            AnalysisPlan plain;
+            auto& plain_regime{ plain.add<Regime>() };
+            ut::expect(not plain.requires_class_counts());
+            plain_regime.set_marker_conditions(Regime::Condition::porous);
+            ut::expect(not plain.requires_class_counts());
+
+            AnalysisPlan marker_only;
+            marker_only.add<Regime>().set_marker_conditions(Regime::Condition::arrested);
+            ut::expect(marker_only.requires_class_counts());
+
+            AnalysisPlan stopping;
+            auto& regime{ stopping.add<Regime>() };
+            regime.set_stop_conditions(Regime::Condition::arrested)
+                .set_threshold(Regime::Condition::arrested, 0.0);
+            stopping.add<control::StepLimit>(5);
+            ut::expect(stopping.requires_class_counts());
+
+            auto setup{ make_setup() };
+            TestSimulation simulation{ setup };
+            ut::expect(not simulation.class_counts_enabled());
+            ut::expect(simulation.run(stopping) == simulation::Status::analysed);
+            ut::expect(simulation.class_counts_enabled());
+            expect_reference_state(simulation, setup.model.processes(), simulation.step());
         };
 
         "class populations are enabled on demand and rebuilt when resuming"_test = [] {
@@ -929,7 +1099,7 @@ namespace
 
             public:
                 // If the disabled observer is polled, it would terminate the run.
-                bool stop_requested() const override { return not active_; }
+                bool stop_requested(Simulation const&) const override { return not active_; }
                 void observe_selected(event::Record const&) override { ++selected_; }
                 void observe_processed(event::Record const&) override { ++processed_; }
                 void observe_started(Simulation const&) override { ++started_; }
