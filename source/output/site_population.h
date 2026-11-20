@@ -57,10 +57,15 @@ namespace output
             accumulation_ = {};
             affected_.clear();
             counts_.clear();
+            columns_.clear();
 
             for (auto const& site : simulation.lattice().sites())
                 if (auto const key{ classify_site(site) })
+                {
+                    if (not counts_.contains(*key))
+                        columns_.push_back(*key);
                     ++counts_[*key];
+                }
         }
 
         Subscription subscriptions() const override
@@ -129,7 +134,11 @@ namespace output
                     --count;
                 }
                 if (after)
+                {
+                    if (not counts_.contains(*after))
+                        columns_.push_back(*after);
                     ++counts_[*after];
+                }
             }
             affected_.clear();
         }
@@ -141,13 +150,11 @@ namespace output
 
         void write_init(kmc::Simulation const& simulation) override
         {
-            auto header = [] {
+            auto header = [this] {
                 std::string text{ Writer::default_header };
-                for (auto element : lattice::active_elements)
-                    for (lattice::Coordination coordination{};
-                         coordination < lattice::max_coordination; ++coordination)
-                        std::format_to(std::back_inserter(text), ",{}_{}",
-                            enum_name(element), static_cast<unsigned>(coordination));
+                for (auto const& [element, coordination] : columns_)
+                    std::format_to(std::back_inserter(text), ",{}_{}",
+                        enum_name(element), static_cast<unsigned>(coordination));
                 return text;
             };
 
@@ -155,10 +162,8 @@ namespace output
                 auto const samples{ static_cast<double>(last_data_.samples) };
                 std::string text{ std::format("{},{:v:}", simulation.step(), simulation.time()) };
 
-                for (auto element : lattice::active_elements)
-                    for (lattice::Coordination coordination{};
-                         coordination < lattice::max_coordination; ++coordination)
-                    {
+                for (auto const& [element, coordination] : columns_)
+                {
                         Accumulation value{};
                         if (auto it{ last_data_.sites.find(SiteKey{ element, coordination }) };
                             it != last_data_.sites.end())
@@ -195,12 +200,10 @@ namespace output
                 last_data_.residence_time <= physics::quantity::TimeDifference{})
                 return;
 
-            constexpr auto columns{ std::size(lattice::active_elements) *
-                lattice::max_coordination };
-            site_count_csv_.append(columns);
-            population_csv_.append(columns);
-            weighted_count_csv_.append(columns);
-            weighted_population_csv_.append(columns);
+            site_count_csv_.append(columns_.size());
+            population_csv_.append(columns_.size());
+            weighted_count_csv_.append(columns_.size());
+            weighted_population_csv_.append(columns_.size());
         }
 
         void write_final(kmc::Simulation const&) override
@@ -214,9 +217,12 @@ namespace output
         kmc::Simulation const* simulation_{};
         kmc::Time last_time_{};
         Counts counts_;
+        std::vector<SiteKey> columns_;
         std::vector<std::pair<lattice::Site const*, std::optional<SiteKey>>> affected_;
         Data last_data_{}, accumulation_{};
-        utility::csv::Writer site_count_csv_, population_csv_,
-            weighted_count_csv_, weighted_population_csv_;
+        utility::csv::Writer site_count_csv_{ utility::csv::Padding::zero },
+            population_csv_{ utility::csv::Padding::zero },
+            weighted_count_csv_{ utility::csv::Padding::zero },
+            weighted_population_csv_{ utility::csv::Padding::zero };
     };
 }
