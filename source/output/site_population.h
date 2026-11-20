@@ -1,5 +1,6 @@
 #pragma once
 #include "writer.h"
+#include "utility/csv.h"
 #include "kmc/simulation.h"
 #include "lattice/lattice.h"
 #include "utility/file.h"
@@ -138,61 +139,76 @@ namespace output
             last_data_ = std::exchange(accumulation_, {});
         }
 
-        void write_init(kmc::Simulation const&) override
+        void write_init(kmc::Simulation const& simulation) override
         {
-            std::string header{ Writer::default_header };
-            for (auto element : lattice::active_elements)
-                for (lattice::Coordination coordination{}; coordination < lattice::max_coordination;
-                     ++coordination)
-                    std::format_to(std::back_inserter(header), ",{}_{}",
-                        enum_name(element), static_cast<unsigned>(coordination));
-            header += '\n';
+            auto header = [] {
+                std::string text{ Writer::default_header };
+                for (auto element : lattice::active_elements)
+                    for (lattice::Coordination coordination{};
+                         coordination < lattice::max_coordination; ++coordination)
+                        std::format_to(std::back_inserter(text), ",{}_{}",
+                            enum_name(element), static_cast<unsigned>(coordination));
+                return text;
+            };
 
-            for (auto const* file : { "site_count", "population",
-                "time_weighted_site_count", "time_weighted_population" })
-                utility::file::write<utility::file::Type::csv>(writer_path() / file, header);
+            auto row = [this, &simulation](int kind) {
+                auto const samples{ static_cast<double>(last_data_.samples) };
+                std::string text{ std::format("{},{:v:}", simulation.step(), simulation.time()) };
+
+                for (auto element : lattice::active_elements)
+                    for (lattice::Coordination coordination{};
+                         coordination < lattice::max_coordination; ++coordination)
+                    {
+                        Accumulation value{};
+                        if (auto it{ last_data_.sites.find(SiteKey{ element, coordination }) };
+                            it != last_data_.sites.end())
+                            value = it->second;
+
+                        switch (kind)
+                        {
+                            case 0: std::format_to(std::back_inserter(text), ",{}",
+                                value.count / samples); break;
+                            case 1: std::format_to(std::back_inserter(text), ",{}",
+                                value.population_fraction / samples); break;
+                            case 2: std::format_to(std::back_inserter(text), ",{}",
+                                value.count_time / last_data_.residence_time); break;
+                            default: std::format_to(std::back_inserter(text), ",{}",
+                                value.population_time / last_data_.residence_time); break;
+                        }
+                    }
+                return text;
+            };
+
+            site_count_csv_.initialize(writer_path() / "site_count", header,
+                [row] { return row(0); });
+            population_csv_.initialize(writer_path() / "population", header,
+                [row] { return row(1); });
+            weighted_count_csv_.initialize(writer_path() / "time_weighted_site_count", header,
+                [row] { return row(2); });
+            weighted_population_csv_.initialize(writer_path() / "time_weighted_population",
+                std::move(header), [row] { return row(3); });
         }
 
-        void write_snapshot(kmc::Simulation const& simulation) override
+        void write_snapshot(kmc::Simulation const&) override
         {
             if (last_data_.samples == 0 or
                 last_data_.residence_time <= physics::quantity::TimeDifference{})
                 return;
 
-            auto const prefix{ std::format("{},{:v:}", simulation.step(), simulation.time()) };
-            auto const samples{ static_cast<double>(last_data_.samples) };
+            constexpr auto columns{ std::size(lattice::active_elements) *
+                lattice::max_coordination };
+            site_count_csv_.append(columns);
+            population_csv_.append(columns);
+            weighted_count_csv_.append(columns);
+            weighted_population_csv_.append(columns);
+        }
 
-            std::string site_count{ prefix };
-            std::string population{ prefix };
-            std::string weighted_count{ prefix };
-            std::string weighted_population{ prefix };
-
-            for (auto element : lattice::active_elements)
-                for (lattice::Coordination coordination{}; coordination < lattice::max_coordination;
-                     ++coordination)
-                {
-                    Accumulation value{};
-                    if (auto it{ last_data_.sites.find(SiteKey{ element, coordination }) };
-                        it != last_data_.sites.end())
-                        value = it->second;
-
-                    std::format_to(std::back_inserter(site_count), ",{}", value.count / samples);
-                    std::format_to(std::back_inserter(population), ",{}",
-                        value.population_fraction / samples);
-                    std::format_to(std::back_inserter(weighted_count), ",{}",
-                        value.count_time / last_data_.residence_time);
-                    std::format_to(std::back_inserter(weighted_population), ",{}",
-                        value.population_time / last_data_.residence_time);
-                }
-
-            utility::file::append<utility::file::Type::csv>(
-                writer_path() / "site_count", site_count + '\n');
-            utility::file::append<utility::file::Type::csv>(
-                writer_path() / "population", population + '\n');
-            utility::file::append<utility::file::Type::csv>(
-                writer_path() / "time_weighted_site_count", weighted_count + '\n');
-            utility::file::append<utility::file::Type::csv>(
-                writer_path() / "time_weighted_population", weighted_population + '\n');
+        void write_final(kmc::Simulation const&) override
+        {
+            site_count_csv_.finalize();
+            population_csv_.finalize();
+            weighted_count_csv_.finalize();
+            weighted_population_csv_.finalize();
         }
 
         kmc::Simulation const* simulation_{};
@@ -200,5 +216,7 @@ namespace output
         Counts counts_;
         std::vector<std::pair<lattice::Site const*, std::optional<SiteKey>>> affected_;
         Data last_data_{}, accumulation_{};
+        utility::csv::Writer site_count_csv_, population_csv_,
+            weighted_count_csv_, weighted_population_csv_;
     };
 }
