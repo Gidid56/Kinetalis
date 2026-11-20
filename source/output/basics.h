@@ -1,5 +1,6 @@
 #pragma once
 #include "writer.h"
+#include "utility/csv.h"
 
 class control::StepLimit : public kmc::Observer
 {
@@ -94,11 +95,6 @@ private:
 class output::Composition : public output::Writer
 {
 public:
-    static constexpr std::array active_elements{
-        chemistry::Element::Ag,
-        chemistry::Element::Au,
-    };
-
     using Writer::Writer;
 
 private:
@@ -113,6 +109,9 @@ private:
     void observe_selected(kmc::event::Record const&) override;
     void write_init(kmc::Simulation const&) override;
     void write_snapshot(kmc::Simulation const&) override;
+    void write_final(kmc::Simulation const&) override;
 
     std::map<chemistry::Element, std::size_t> element_counts_;
+    std::vector<chemistry::Element> columns_;
+    utility::csv::Writer csv_{ utility::csv::Padding::zero };
 };
