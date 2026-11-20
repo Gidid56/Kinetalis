@@ -666,6 +666,42 @@ namespace
             }
         };
 
+        "kinetic activity includes the full static class range before any event"_test = [] {
+            auto setup{ make_setup() };
+            setup.model.processes().get<SiteRule>().enabled = false;
+            setup.model.processes().get<ClusterRule>().enabled = false;
+            TestSimulation simulation{ setup };
+
+            auto const root{ std::filesystem::temp_directory_path() /
+                std::format("kinetalis-static-activity-{}",
+                    std::chrono::steady_clock::now().time_since_epoch().count()) };
+            struct Cleanup
+            {
+                std::filesystem::path path;
+                ~Cleanup() { std::error_code error; std::filesystem::remove_all(path, error); }
+            } cleanup{ root };
+
+            AnalysisPlan plan;
+            plan.add<output::KineticActivity<TestModel>>(root);
+            ut::expect(simulation.run(plan) == simulation::Status::exhausted);
+
+            auto const activity{ utility::csv::Table{}.read(root / "kinetic_activity/activity") };
+            auto const weighted{ utility::csv::Table{}.read(
+                root / "kinetic_activity/time_weighted_activity") };
+            auto const count{ simulation.model().kinetics().number_keys() };
+            ut::expect(ut::eq(activity.front().size(), count + 1));
+            ut::expect(ut::eq(weighted.front().size(), count + 1));
+            for (std::size_t key{ 1 }; key < count; ++key)
+            {
+                auto const descriptor{ simulation.model().kinetics().descriptor(
+                    static_cast<RateClassKey>(key)) };
+                auto const label{ output::DescriptorFormat<Descriptor>::label(descriptor) };
+                ut::expect(activity.front()[key + 1] == label);
+                ut::expect(weighted.front()[key + 1] == label);
+                ut::expect(not simulation.kinetics().kinetic_classes()[key].is_initialized());
+            }
+        };
+
         "static kinetic-class cache initializes encountered events only once"_test = [] {
             auto setup{ make_setup() };
             TestSimulation simulation{ setup };
@@ -805,17 +841,31 @@ namespace
             auto lines{ read_csv("kinetic_activity/activity", classes.size() + 1) };
             read_csv("kinetic_activity/time_weighted_activity", classes.size() + 1);
 
-            if (not lines.empty())
-                for (std::size_t key{ 1 }; key < classes.size(); ++key)
+            auto const activity_table{ utility::csv::Table{}.read(root / "kinetic_activity/activity") };
+            auto const weighted_table{ utility::csv::Table{}.read(
+                root / "kinetic_activity/time_weighted_activity") };
+            ut::expect(activity_table.rows_match_header());
+            ut::expect(weighted_table.rows_match_header());
+            for (std::size_t key{ 1 }; key < classes.size(); ++key)
+            {
+                auto const label{ output::DescriptorFormat<Descriptor>::label(
+                    simulation.model().kinetics().descriptor(static_cast<RateClassKey>(key))) };
+                ut::expect(activity_table.front()[key + 1] == label)
+                    << "class key has a stable label, including uninitialized classes " << key;
+                ut::expect(weighted_table.front()[key + 1] == label)
+                    << "weighted activity uses the same fixed class order";
+
+                if (classes[key].is_initialized())
+                    continue;
+
+                for (std::size_t row{ 1 }; row < activity_table.size(); ++row)
                 {
-                    auto const label{ classes[key].is_initialized()
-                        ? output::DescriptorFormat<Descriptor>::label(
-                            simulation.model().kinetics().descriptor(
-                                static_cast<RateClassKey>(key)))
-                        : std::format("not_encountered_{}", key) };
-                    ut::expect(lines.front().find("," + label) != std::string::npos)
-                        << "activity header includes final key label " << key;
+                    ut::expect(activity_table[row][key + 1] == "0")
+                        << "unencountered classes have zero activity";
+                    ut::expect(weighted_table[row][key + 1] == "0")
+                        << "unencountered classes have zero weighted activity";
                 }
+            }
 
             // Three declared event types plus step and time, two fields per type.
             auto const flux_columns{ std::size_t{ 2 } +

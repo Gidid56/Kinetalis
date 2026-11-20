@@ -34,6 +34,13 @@ namespace output
         auto const& last_data() const noexcept { return last_data_; }
 
     private:
+        // Static-key kinetics can enumerate every descriptor without creating
+        // or activating its rate cache. Dynamically keyed models cannot.
+        static constexpr bool fixed_class_range = requires(Descriptor const& descriptor) {
+            { ModelT::KineticsType::static_key(descriptor) } ->
+                std::convertible_to<kmc::RateClassKey>;
+        };
+
         std::string_view name() const override { return "kinetic_activity"; }
         bool requires_class_counts() const override { return true; }
 
@@ -99,13 +106,16 @@ namespace output
             auto const& classes{ simulation.kinetics().kinetic_classes() };
             for (std::size_t key{ 1 }; key < classes.size(); ++key)
             {
-                if (classes[key].is_initialized())
-                    std::format_to(std::back_inserter(text), ",{}",
-                        DescriptorFormat<Descriptor>::label(
-                            model.kinetics().descriptor(
-                                static_cast<kmc::RateClassKey>(key))));
-                else
-                    std::format_to(std::back_inserter(text), ",not_encountered_{}", key);
+                if constexpr (not fixed_class_range)
+                    if (not classes[key].is_initialized())
+                    {
+                        std::format_to(std::back_inserter(text), ",not_encountered_{}", key);
+                        continue;
+                    }
+
+                std::format_to(std::back_inserter(text), ",{}",
+                    DescriptorFormat<Descriptor>::label(
+                        model.kinetics().descriptor(static_cast<kmc::RateClassKey>(key))));
             }
             return text;
         }
@@ -153,17 +163,21 @@ namespace output
                 last_data_.residence_time <= physics::quantity::TimeDifference{})
                 return;
 
-            auto const new_header{ header(simulation, *model_) };
-            if (new_header != class_header_)
+            if constexpr (not fixed_class_range)
             {
-                auto const new_columns{ simulation.kinetics().kinetic_classes().size() - 1 };
-                if (new_columns < class_columns_)
-                    throw std::logic_error{ "Kinetic class count shrank during output." };
-                auto const extra{ new_columns - class_columns_ };
-                replace_header(writer_path() / "activity", new_header, extra);
-                replace_header(writer_path() / "time_weighted_activity", new_header, extra);
-                class_header_ = new_header;
-                class_columns_ = new_columns;
+                // Only dynamically assigned keys require schema growth.
+                auto const new_header{ header(simulation, *model_) };
+                if (new_header != class_header_)
+                {
+                    auto const new_columns{ simulation.kinetics().kinetic_classes().size() - 1 };
+                    if (new_columns < class_columns_)
+                        throw std::logic_error{ "Kinetic class count shrank during output." };
+                    auto const extra{ new_columns - class_columns_ };
+                    replace_header(writer_path() / "activity", new_header, extra);
+                    replace_header(writer_path() / "time_weighted_activity", new_header, extra);
+                    class_header_ = new_header;
+                    class_columns_ = new_columns;
+                }
             }
 
             auto const prefix{ std::format("{},{:v:}", simulation.step(), simulation.time()) };
@@ -173,12 +187,13 @@ namespace output
 
             for (std::size_t i{ 1 }; i < simulation.kinetics().kinetic_classes().size(); ++i)
             {
-                if (not simulation.kinetics().kinetic_classes()[i].is_initialized())
-                {
-                    activity += ',';
-                    weighted += ',';
-                    continue;
-                }
+                if constexpr (not fixed_class_range)
+                    if (not simulation.kinetics().kinetic_classes()[i].is_initialized())
+                    {
+                        activity += ',';
+                        weighted += ',';
+                        continue;
+                    }
 
                 Accumulation value{};
                 auto const& descriptor{ model_->kinetics().descriptor(static_cast<kmc::RateClassKey>(i)) };
