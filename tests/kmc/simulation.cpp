@@ -13,6 +13,7 @@
 #include "output/site_population.h"
 #include "dealloying/kinetics/descriptor_format.h"
 #include "output/event_flux.h"
+#include "output/surface.h"
 
 #include <algorithm>
 #include <array>
@@ -885,6 +886,33 @@ namespace
             ut::expect(simulation.run(plan) == simulation::Status::exhausted);
             ut::expect(ut::eq(simulation.step(), Step{}));
             ut::expect(ut::eq(simulation.rejection_fraction(), 0.0));
+        };
+
+        "regime surface tracks events even without passivation detection"_test = [] {
+            using Regime = studies::dealloying::analysis::Regime;
+            auto setup{ make_setup() };
+            TestSimulation simulation{ setup };
+
+            const auto root{ std::filesystem::temp_directory_path() /
+                std::format("kinetalis-regime-surface-{}",
+                    std::chrono::steady_clock::now().time_since_epoch().count()) };
+            struct Cleanup
+            {
+                std::filesystem::path path;
+                ~Cleanup() { std::error_code error; std::filesystem::remove_all(path, error); }
+            } cleanup{ root };
+
+            AnalysisPlan plan;
+            auto& regime{ plan.add<Regime>(root / "regime") };
+            auto& reference{ plan.add<output::Surface>(root / "reference") };
+            plan.add<control::StepLimit>(40);
+
+            ut::expect(not plan.requires_class_counts());
+            ut::expect(simulation.run(plan) == simulation::Status::analysed);
+            ut::expect(ut::eq(regime.surface().sites(), reference.sites()));
+            ut::expect(ut::eq(regime.surface().bonds(), reference.bonds()));
+            ut::expect(ut::eq(regime.surface().sites(), simulation.lattice().surface_atoms()));
+            ut::expect(ut::eq(regime.surface().bonds(), simulation.lattice().broken_bonds()));
         };
 
         "regime arrest detection enables kinetic-class counts on demand"_test = [] {

@@ -104,6 +104,8 @@ namespace
             };
 
             static_assert(matrix.elements() == 6);
+            static_assert(matrix.size() == 2);
+            static_assert(std::ranges::size(matrix) == 2);
             static_assert(matrix.x() == Vector{ 1, 2, 3 });
             static_assert(matrix.y() == Vector{ 4, 5, 6 });
             static_assert(matrix[0][1] == 2);

@@ -30,6 +30,7 @@ kinetalis_add_test_suite(lattice
 )
 kinetalis_add_test_suite(utility
     utility/csv.cpp
+    utility/file.cpp
 )
 add_subdirectory(chemistry)
 add_subdirectory(kinetics)
