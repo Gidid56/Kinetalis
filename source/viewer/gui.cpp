@@ -13,6 +13,7 @@
 using namespace viewer;
 using namespace lattice;
 using namespace kmc;
+using chemistry::Element;
 using namespace Magnum::GL;
 
 GUI::GUI(Viewer& app, ImGuiContext* context)

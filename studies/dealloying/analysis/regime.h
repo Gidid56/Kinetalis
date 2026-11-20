@@ -64,6 +64,11 @@ public:
     }
 
     bool stop_requested() const override { return has_reached(stop_conditions_); }
+    Subscription subscriptions() const override
+    {
+        return Writer::subscriptions() | Subscription::selected |
+               Subscription::processed | Subscription::stopping;
+    }
 
     auto& phases() const { return phases_; }
     auto& surface() const { return surface_; }

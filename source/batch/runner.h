@@ -4,7 +4,7 @@
 #include "batch/types.h"
 #include "kmc/types.h"
 
-template <class ModelType>
+template <class ModelT>
 class batch::Runner
 {
 public:
@@ -16,13 +16,13 @@ public:
             throw std::invalid_argument{ "Batch concurrency must be positive." };
     }
 
-    bool run(CampaignFactory<ModelType>);
+    bool run(CampaignFactory<ModelT>);
 
     std::size_t sample_count() const;
     std::size_t worker_count() const;
 
 private:
-    void initialize(CampaignFactory<ModelType>);
+    void initialize(CampaignFactory<ModelT>);
 
     void generate_seeds();
 
@@ -49,7 +49,7 @@ private:
 
     bool used_{}; // Runner is one-time use only
 
-    Campaign<ModelType> campaign_;
+    Campaign<ModelT> campaign_;
 
     std::unique_ptr<Terminal> terminal_{};
 

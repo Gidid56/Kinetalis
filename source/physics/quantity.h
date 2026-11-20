@@ -22,7 +22,7 @@ namespace physics
     {
         Value value_;
 
-        static constexpr void validate(Value value)
+        static constexpr void validate_value(Value value)
         {
             if constexpr (satisfies(domain, Domain::non_negative))
                 if (not(value >= 0))
@@ -34,10 +34,9 @@ namespace physics
         }
 
         template <typename Other>
-        constexpr void assign_value(Other value)
+        constexpr void assign_value(Other value) noexcept
         {
             const auto converted{ static_cast<Value>(value) };
-            validate(converted);
             value_ = converted;
         }
 
@@ -49,12 +48,12 @@ namespace physics
         static constexpr Reference reference_value{ reference };
         static constexpr Domain domain_value{ domain };
 
-        constexpr Quantity() : value_{ reference == Reference::ratio ? 1.0 : 0.0 } { }
+        constexpr Quantity() noexcept : value_{ reference == Reference::ratio ? 1.0 : 0.0 } { }
 
-        explicit(not IsDimensionless<Dimension>) constexpr Quantity(Value value) : value_{ value }
-        {
-            validate(value_);
-        }
+        // Domains describe the intended range but are not validated implicitly.
+        explicit(not IsDimensionless<Dimension>) constexpr Quantity(Value value) noexcept
+            : value_{ value }
+        { }
 
         template <
             IsDimension OtherDimension,
@@ -65,7 +64,7 @@ namespace physics
                  //(other_reference == reference) and
                  //(satisfies(other_domain, domain)) and
                  std::convertible_to<Other, Value>
-        constexpr Quantity(Quantity<OtherDimension, other_reference, other_domain, Other> other)
+        constexpr Quantity(Quantity<OtherDimension, other_reference, other_domain, Other> other) noexcept
             : Quantity{ static_cast<Value>(other.value()) }
         { }
 
@@ -79,15 +78,21 @@ namespace physics
                  //(satisfies(other_domain, domain)) and
                  std::convertible_to<Other, Value>
         constexpr Quantity& operator=(
-            Quantity<OtherDimension, other_reference, other_domain, Other> other)
+            Quantity<OtherDimension, other_reference, other_domain, Other> other) noexcept
         {
             assign_value(other.value());
             return *this;
         }
 
-        constexpr Value value() const { return value_; }
+        // Explicitly enforce the declared domain at validation boundaries.
+        constexpr void validate() const { validate_value(value_); }
 
-        constexpr operator Value() const requires IsDimensionless<Dimension> { return value_; }
+        constexpr Value value() const noexcept { return value_; }
+
+        constexpr operator Value() const noexcept requires IsDimensionless<Dimension>
+        {
+            return value_;
+        }
 
         template <
             IsDimension OtherDimension,
@@ -96,7 +101,7 @@ namespace physics
             std::floating_point Other>
         requires dimension::Equivalent<Dimension, OtherDimension> and (reference == other_reference)
         constexpr bool operator==(
-            Quantity<OtherDimension, other_reference, other_domain, Other> other) const
+            Quantity<OtherDimension, other_reference, other_domain, Other> other) const noexcept
         {
             return value_ == other.value();
         }
@@ -108,18 +113,18 @@ namespace physics
             std::floating_point Other>
         requires dimension::Equivalent<Dimension, OtherDimension> and (reference == other_reference)
         constexpr auto operator<=>(
-            Quantity<OtherDimension, other_reference, other_domain, Other> other) const
+            Quantity<OtherDimension, other_reference, other_domain, Other> other) const noexcept
         {
             return value_ <=> other.value();
         }
 
         template <std::floating_point To>
-        constexpr auto to() const
+        constexpr auto to() const noexcept
         {
             return Quantity<Dimension, reference, domain, To>{ static_cast<To>(value_) };
         }
 
-        constexpr auto operator-() const requires(summable(reference))
+        constexpr auto operator-() const noexcept requires(summable(reference))
         {
             return Quantity<Dimension, reference, Domain::unrestricted, decltype(-value_)>{
                 -value_
@@ -135,7 +140,7 @@ namespace physics
                  (summable(reference) and summable(other_reference)) and
                  (add(reference, other_reference) == reference)
         constexpr Quantity& operator+=(
-            Quantity<OtherDimension, other_reference, other_domain, Other> other)
+            Quantity<OtherDimension, other_reference, other_domain, Other> other) noexcept
         {
             assign_value(value_ + other.value());
             return *this;
@@ -150,7 +155,7 @@ namespace physics
                  (summable(reference) and summable(other_reference))
         //and (subtract(reference, other_reference) == reference)
         constexpr Quantity& operator-=(
-            Quantity<OtherDimension, other_reference, other_domain, Other> other)
+            Quantity<OtherDimension, other_reference, other_domain, Other> other) noexcept
         {
             assign_value(value_ - other.value());
             return *this;
@@ -164,7 +169,7 @@ namespace physics
         requires dimension::Equivalent<Dimension, OtherDimension> and
                  (summable(reference) and summable(other_reference))
         constexpr auto operator+(
-            Quantity<OtherDimension, other_reference, other_domain, Other> other) const
+            Quantity<OtherDimension, other_reference, other_domain, Other> other) const noexcept
         {
             using ResultDimension = std::conditional_t<
                 dimension::Same<Dimension, OtherDimension>,
@@ -186,7 +191,7 @@ namespace physics
         requires dimension::Equivalent<Dimension, OtherDimension> and
                  (summable(reference) and summable(other_reference))
         constexpr auto operator-(
-            Quantity<OtherDimension, other_reference, other_domain, Other> other) const
+            Quantity<OtherDimension, other_reference, other_domain, Other> other) const noexcept
         {
             using ResultDimension = std::conditional_t<
                 dimension::Same<Dimension, OtherDimension>,
@@ -200,33 +205,33 @@ namespace physics
                 decltype(value_ - other.value())>{ value_ - other.value() };
         }
 
-        constexpr Quantity& operator*=(math::Arithmetic auto other)
+        constexpr Quantity& operator*=(math::Arithmetic auto other) noexcept
         {
             assign_value(value_ * other);
             return *this;
         }
 
-        constexpr Quantity& operator/=(math::Arithmetic auto other)
+        constexpr Quantity& operator/=(math::Arithmetic auto other) noexcept
         {
             assign_value(value_ / other);
             return *this;
         }
 
-        constexpr auto operator*(math::Arithmetic auto other) const
+        constexpr auto operator*(math::Arithmetic auto other) const noexcept
         {
             return Quantity<Dimension, reference, Domain::unrestricted, decltype(value_ * other)>{
                 value_ * other
             };
         }
 
-        constexpr auto operator/(math::Arithmetic auto other) const
+        constexpr auto operator/(math::Arithmetic auto other) const noexcept
         {
             return Quantity<Dimension, reference, Domain::unrestricted, decltype(value_ / other)>{
                 value_ / other
             };
         }
 
-        constexpr auto operator+(math::Arithmetic auto other) const
+        constexpr auto operator+(math::Arithmetic auto other) const noexcept
             requires IsDimensionless<Dimension> and (summable(reference))
         {
             return Quantity<Dimension, reference, Domain::unrestricted, decltype(value_ + other)>{
@@ -234,7 +239,7 @@ namespace physics
             };
         }
 
-        constexpr auto operator-(math::Arithmetic auto other) const
+        constexpr auto operator-(math::Arithmetic auto other) const noexcept
             requires IsDimensionless<Dimension> and (summable(reference))
         {
             return Quantity<Dimension, reference, Domain::unrestricted, decltype(value_ - other)>{
@@ -248,7 +253,7 @@ namespace physics
             Domain other_domain,
             std::floating_point Other>
         constexpr auto operator*(
-            Quantity<OtherDimension, other_reference, other_domain, Other> other) const
+            Quantity<OtherDimension, other_reference, other_domain, Other> other) const noexcept
         {
             return Quantity<
                 decltype(Dimension{} + OtherDimension{}),
@@ -263,7 +268,7 @@ namespace physics
             Domain other_domain,
             std::floating_point Other>
         constexpr auto operator/(
-            Quantity<OtherDimension, other_reference, other_domain, Other> other) const
+            Quantity<OtherDimension, other_reference, other_domain, Other> other) const noexcept
         {
             return Quantity<
                 decltype(Dimension{} - OtherDimension{}),
@@ -278,7 +283,7 @@ namespace physics
         Reference reference,
         Domain domain,
         std::floating_point Value>
-    constexpr auto operator+(Scalar left, Quantity<Dimensionless, reference, domain, Value> right)
+    constexpr auto operator+(Scalar left, Quantity<Dimensionless, reference, domain, Value> right) noexcept
         requires(summable(reference))
     {
         return right + left;
@@ -289,7 +294,7 @@ namespace physics
         Reference reference,
         Domain domain,
         std::floating_point Value>
-    constexpr auto operator-(Scalar left, Quantity<Dimensionless, reference, domain, Value> right)
+    constexpr auto operator-(Scalar left, Quantity<Dimensionless, reference, domain, Value> right) noexcept
         requires(summable(reference))
     {
         return Quantity<
@@ -305,7 +310,7 @@ namespace physics
         Reference reference,
         Domain domain,
         std::floating_point Value>
-    constexpr auto operator*(Scalar left, Quantity<Dimension, reference, domain, Value> right)
+    constexpr auto operator*(Scalar left, Quantity<Dimension, reference, domain, Value> right) noexcept
     {
         return Quantity<Dimension, reference, Domain::unrestricted, decltype(left * right.value())>{
             left * right.value()
@@ -318,7 +323,7 @@ namespace physics
         Reference reference,
         Domain domain,
         std::floating_point Value>
-    constexpr auto operator/(Scalar left, Quantity<Dimension, reference, domain, Value> right)
+    constexpr auto operator/(Scalar left, Quantity<Dimension, reference, domain, Value> right) noexcept
     {
         return Quantity<
             decltype(-Dimension{}),

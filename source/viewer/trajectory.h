@@ -17,6 +17,10 @@ public:
 
     void setViewerBridge(Bridge* bridge) { viewerBridge_ = bridge; }
 
+    Subscription subscriptions() const override
+    {
+        return Subscription::selected | Subscription::processed;
+    }
     void observe_selected(kmc::event::Record const&) override;
     void observe_processed(kmc::event::Record const&) override;
 

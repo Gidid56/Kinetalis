@@ -8,6 +8,21 @@
 class kmc::Observer
 {
 public:
+    enum class Subscription : std::uint8_t
+    {
+        none = 0,
+        selected = 1 << 0,
+        processed = 1 << 1,
+        snapshot = 1 << 2,
+        stopping = 1 << 3,
+        all = 0x0f,
+    };
+
+    static constexpr bool has_subscription(Subscription flags, Subscription flag) noexcept
+    {
+        return (static_cast<std::uint8_t>(flags) & static_cast<std::uint8_t>(flag)) != 0;
+    }
+
     struct Resolution
     {
         kmc::Step min_snapshot_step{ 100 };
@@ -69,10 +84,16 @@ public:
 
     virtual bool stop_requested() const { return false; }
 
+    // Opt-out metadata only; all callbacks remain enabled for existing observers.
+    virtual Subscription subscriptions() const { return Subscription::all; }
+
+    Step next_snapshot_step() const noexcept { return next_snapshot_step_; }
+
     virtual std::string_view name() const = 0;
     virtual std::string settings() const { return {}; }
 
     virtual bool uses_snapshot_resolution() const { return false; }
+    virtual bool requires_class_counts() const { return false; }
 
     auto& resolution() const { return resolution_; }
 
@@ -85,3 +106,13 @@ protected:
 private:
     Step next_snapshot_step_{};
 };
+
+namespace kmc
+{
+    constexpr Observer::Subscription operator|(
+        Observer::Subscription lhs, Observer::Subscription rhs) noexcept
+    {
+        return static_cast<Observer::Subscription>(
+            static_cast<std::uint8_t>(lhs) | static_cast<std::uint8_t>(rhs));
+    }
+}

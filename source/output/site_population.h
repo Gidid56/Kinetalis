@@ -17,7 +17,7 @@ namespace output
     {
     public:
         using Writer::Writer;
-        using SiteKey = std::pair<lattice::Element, lattice::Coordination>;
+        using SiteKey = std::pair<chemistry::Element, lattice::Coordination>;
         using Counts = std::map<SiteKey, std::size_t>;
 
         struct Accumulation
@@ -60,6 +60,11 @@ namespace output
             for (auto const& site : simulation.lattice().sites())
                 if (auto const key{ classify_site(site) })
                     ++counts_[*key];
+        }
+
+        Subscription subscriptions() const override
+        {
+            return Writer::subscriptions() | Subscription::selected | Subscription::processed;
         }
 
         void observe_selected(kmc::event::Record const& record) override

@@ -1,8 +1,8 @@
 #pragma once
 
 #include "dealloying/analysis/regime.h"
-#include "dealloying/events.h"
-#include "dealloying/models/descriptor_format.h"
+#include "dealloying/model.h"
+#include "dealloying/kinetics/descriptor_format.h"
 #include "kmc/model.h"
 #include "kmc/observer.h"
 #include "output/event_flux.h"

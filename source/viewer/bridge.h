@@ -8,6 +8,11 @@ class viewer::Bridge final : public kmc::Observer
 public:
     explicit Bridge(Lattice const&, kmc::AnalysisPlan const&);
 
+    Subscription subscriptions() const override
+    {
+        return Subscription::processed | Subscription::snapshot;
+    }
+
     void observe_processed(kmc::event::Record const&) override;
     void take_snapshot(kmc::Simulation const&) override;
     void observe_completed(kmc::Simulation const&) override;

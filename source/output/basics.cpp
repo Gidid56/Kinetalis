@@ -10,8 +10,6 @@ using enum file::Type;
 
 using namespace output;
 
-namespace global { std::string settings(); }
-
 bool control::StepLimit::stop_requested() const
 {
     return simulation_ and simulation_->step() >= limit_;
@@ -27,8 +25,7 @@ void output::Config::write_init(kmc::Simulation const& kmc)
     file::write<txt>(root_path() / "kinetics", kmc.kinetics_settings());
     file::write<txt>(root_path() / "lattice", std::format("{}", kmc.lattice()));
     file::write<txt>(root_path() / "seed", std::format("{}", kmc.rng()));
-    file::write<txt>(root_path() / "settings", global::settings());
-    file::write<txt>(root_path() / "transformations", kmc.transformation_settings());
+    file::write<txt>(root_path() / "processes", kmc.process_settings());
 }
 
 void output::Time::write_init(kmc::Simulation const&)
@@ -147,24 +144,4 @@ void output::Composition::write_snapshot(kmc::Simulation const& kmc)
     }
 
     file::append<csv>(writer_path(), line += '\n');
-}
-
-std::string global::settings()
-{
-    std::string settings;
-
-    settings += std::format(
-        "Lattice Settings\n"
-        "active_elements = {}\n"
-        "element_specific_neighbors = {}\n"
-        "use_layers = {}\n"
-        "epsilon::length = {:fm}\n"
-        "epsilon::coordinate = {}\n",
-        format_range(lattice::active_elements),
-        lattice::element_specific_neighbors,
-        lattice::use_layers,
-        lattice::epsilon::length,
-        lattice::epsilon::coordinate);
-
-    return settings;
 }

@@ -7,6 +7,7 @@ public:
     explicit StepLimit(kmc::Step limit) : limit_{ limit } { }
 
     bool stop_requested() const override;
+    Subscription subscriptions() const override { return Subscription::stopping; }
 
 private:
     std::string_view name() const override { return "step_limit"; }
@@ -24,6 +25,7 @@ public:
     explicit DurationLimit(Duration limit) : limit_{ limit } { }
 
     bool stop_requested() const override;
+    Subscription subscriptions() const override { return Subscription::stopping; }
 
     void set_cap(Duration limit) { limit_ = limit; }
 
@@ -99,8 +101,8 @@ class output::Composition : public output::Writer
 {
 public:
     static constexpr std::array active_elements{
-        lattice::Element::Ag,
-        lattice::Element::Au,
+        chemistry::Element::Ag,
+        chemistry::Element::Au,
     };
 
     using Writer::Writer;
@@ -110,9 +112,13 @@ private:
     std::string settings() const override;
 
     void capture_init(kmc::Simulation const&) override;
+    Subscription subscriptions() const override
+    {
+        return Writer::subscriptions() | Subscription::selected;
+    }
     void observe_selected(kmc::event::Record const&) override;
     void write_init(kmc::Simulation const&) override;
     void write_snapshot(kmc::Simulation const&) override;
 
-    std::map<lattice::Element, std::size_t> element_counts_;
+    std::map<chemistry::Element, std::size_t> element_counts_;
 };

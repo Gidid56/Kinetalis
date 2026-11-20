@@ -19,7 +19,7 @@ bool Phases::is_phase(Site const& site, Phase phase)
         case Phase::pore: return site.is_vacant();
         case Phase::solid: return site.is_occupied();
         case Phase::pristine: return site.is_occupied() and site.is_pristine();
-        case Phase::silver: return site.element() == Element::Ag;
+        case Phase::silver: return site.element() == chemistry::Element::Ag;
     }
     return false;
 }

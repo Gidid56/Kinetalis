@@ -14,12 +14,12 @@ namespace output
 {
     // The model owns its descriptor and kinetic equivalence relation. The writer
     // aggregates event observations and active kinetic-class populations.
-    template <class ModelType>
+    template <class ModelT>
     class KineticStatistics : public Writer
     {
     public:
         using Writer::Writer;
-        using Descriptor = typename ModelType::KineticsType::Descriptor;
+        using Descriptor = typename ModelT::KineticsType::Descriptor;
         using CountMap = std::map<Descriptor, std::size_t>;
 
         auto& set_output_transitions(bool enabled)
@@ -33,6 +33,7 @@ namespace output
 
     private:
         std::string_view name() const override { return "kinetic_statistics"; }
+        bool requires_class_counts() const override { return true; }
 
         std::string settings() const override
         {
@@ -41,12 +42,17 @@ namespace output
 
         void capture_init(kmc::Simulation const& simulation) override
         {
-            model_ = &dynamic_cast<kmc::RejectionTreeSimulation<ModelType> const&>(
+            model_ = &dynamic_cast<kmc::RejectionTreeSimulation<ModelT> const&>(
                 simulation).model();
 
             last_descriptor_.reset();
             counts_.clear();
             transitions_.clear();
+        }
+
+        Subscription subscriptions() const override
+        {
+            return Writer::subscriptions() | Subscription::selected;
         }
 
         void observe_selected(kmc::event::Record const& record) override
@@ -114,7 +120,7 @@ namespace output
         }
 
         bool output_transitions_{ false };
-        ModelType const* model_{};
+        ModelT const* model_{};
         std::optional<Descriptor> last_descriptor_{};
         std::map<kmc::event::Outcome, CountMap> counts_;
         std::map<Descriptor, CountMap> transitions_;

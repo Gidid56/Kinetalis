@@ -13,6 +13,11 @@ public:
         return self;
     }
 
+    Subscription subscriptions() const override
+    {
+        return uses_snapshot_resolution() ? Subscription::snapshot : Subscription::none;
+    }
+
     static constexpr auto default_header{ "key:step,time/s" };
 
     [[nodiscard]] auto& root_path() const { return root_; }

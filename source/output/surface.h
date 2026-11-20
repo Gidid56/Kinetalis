@@ -8,6 +8,11 @@ public:
 
     void capture_init(kmc::Simulation const&) override;
 
+    Subscription subscriptions() const override
+    {
+        return Writer::subscriptions() | Subscription::selected | Subscription::processed;
+    }
+
     void observe_selected(kmc::event::Record const&) override;
     void observe_processed(kmc::event::Record const&) override;
 

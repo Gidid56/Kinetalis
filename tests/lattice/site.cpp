@@ -12,6 +12,7 @@ using namespace physics::unit::literals;
 namespace
 {
     using namespace lattice;
+    using chemistry::Element;
 
     Lattice make_fcc()
     {
@@ -55,13 +56,13 @@ namespace
             expect_coordination_consistent(lattice);
             for (auto& s : lattice.sites())
             {
-                s.set_dirty(false);
+                s.set_site_update_queued(false);
                 s.set_pristine(true);
             }
 
             site.set_element(lattice, Element::none);
-            ut::expect(not site.is_dirty());
-            ut::expect(not adjacent->is_dirty());
+            ut::expect(not site.is_site_update_queued());
+            ut::expect(not adjacent->is_site_update_queued());
             ut::expect(not site.is_pristine());
             ut::expect(site.is_vacant());
             ut::expect(ut::eq(lattice.number_atoms(), initial_atoms - 1));
@@ -85,14 +86,40 @@ namespace
             expect_coordination_consistent(lattice);
         };
 
+        "site eligibility and update-queue flags are independent"_test = [] {
+            auto lattice{ make_fcc() };
+            auto& site{ lattice.sites().front() };
+
+            ut::expect(not site.is_source_eligible());
+            ut::expect(not site.is_site_update_queued());
+            ut::expect(not site.is_block_update_queued());
+
+            site.set_source_eligible(true);
+            site.set_site_update_queued(true);
+            site.set_block_update_queued(true);
+
+            ut::expect(site.is_source_eligible());
+            ut::expect(site.is_site_update_queued());
+            ut::expect(site.is_block_update_queued());
+
+            site.set_site_update_queued(false);
+            ut::expect(not site.is_site_update_queued());
+            ut::expect(site.is_source_eligible());
+            ut::expect(site.is_block_update_queued());
+
+            site.set_block_update_queued(false);
+            ut::expect(not site.is_block_update_queued());
+            ut::expect(site.is_source_eligible());
+        };
+
         "setting an unchanged element leaves coordination untouched"_test = [] {
             auto lattice{ make_fcc() };
             auto& site{ lattice.sites().front() };
             auto const coordination{ site.coordination() };
-            site.set_dirty(false);
+            site.set_site_update_queued(false);
             site.set_pristine(true);
             site.set_element(lattice, Element::Au);
-            ut::expect(not site.is_dirty());
+            ut::expect(not site.is_site_update_queued());
             ut::expect(site.is_pristine());
             ut::expect(ut::eq(site.coordination(), coordination));
             expect_coordination_consistent(lattice);

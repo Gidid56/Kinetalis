@@ -10,8 +10,6 @@
 
 namespace kmc
 {
-    using chemistry::Element;
-
     using Step = std::uint64_t;
     using Steps = std::vector<Step>;
 
@@ -19,10 +17,9 @@ namespace kmc
 
     using Temperature = physics::quantity::AbsoluteTemperature;
 
-    using physics::quantity::Frequency;
     using physics::quantity::Time;
 
-    using Rate = Frequency;
+    using Rate = physics::quantity::Frequency;
     using Rates = std::vector<Rate>;
 
     namespace rate_tree { struct Interface; }
@@ -33,15 +30,15 @@ namespace kmc
     namespace event { class Record; }
 
     class Kinetics;
-    template <class KineticsT, class TransformationsT> class Model;
+    template <class KineticsT, class ProcessesT> class Model;
     class Simulation;
 
     using SlotId = std::size_t;
 
-    template <class ModelType>
+    template <class ModelT>
     struct Setup;
 
-    template <class ModelType>
+    template <class ModelT>
     class RejectionTreeSimulation;
 
     class Observer;

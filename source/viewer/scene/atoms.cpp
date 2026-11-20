@@ -5,8 +5,8 @@
 #include "atoms.h"
 
 #include "lattice/lattice.h"
-#include "dealloying/events.h"
-#include "dealloying/models/gtc.h"
+#include "dealloying/process.h"
+#include "dealloying/gtc.h"
 #include "viewer/bridge.h"
 
 using namespace viewer::scene;
@@ -173,19 +173,19 @@ void Atoms::rebuildHolograms()
 
     // Temporary study-specific hologram filter until event models expose
     // their own candidate visualization interfaces.
-    studies::dealloying::events::Diffusion diffusion{};
+    studies::dealloying::process::Diffusion diffusion{};
 
     auto for_each_diffusion_cluster = [&](auto&& function) {
         for (auto source_index : highlightedSites_)
         {
             auto& source{ lattice_.sites().at(source_index) };
-            if (not diffusion.is_source_candidate(source))
+            if (not diffusion.is_candidate(source))
                 continue;
 
             for (auto destination : lattice_.neighbors(source))
             {
-                lattice::Cluster<2> const cluster{ &source, destination };
-                const kmc::event::Location location{ cluster };
+                std::array<lattice::Site*, 2> const cluster{ &source, destination };
+                const kmc::event::Location location{ cluster[0], cluster[1] };
 
                 if (diffusion.is_candidate(location) and not diffusion.is_rejected(location))
                     std::invoke(function, cluster);
@@ -194,13 +194,13 @@ void Atoms::rebuildHolograms()
     };
 
     // Transition-state holograms first.
-    for_each_diffusion_cluster([&](lattice::Cluster<2> const& cluster) {
+    for_each_diffusion_cluster([&](std::array<lattice::Site*, 2> const& cluster) {
         for (auto const& position : studies::dealloying::gtc::transition_states(cluster, lattice_))
             points_.emplace_back(position, scene::Point::State::Transition);
     });
 
     // Final-site holograms follow.
-    for_each_diffusion_cluster([&](lattice::Cluster<2> const& cluster) {
+    for_each_diffusion_cluster([&](std::array<lattice::Site*, 2> const& cluster) {
         const auto position{ cluster[0]->position() +
             lattice_.displacement(*cluster[0], *cluster[1]) };
         points_.emplace_back(position, scene::Point::State::Final);

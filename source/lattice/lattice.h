@@ -46,11 +46,11 @@ private:
     Layers::iterator get_layer(physics::quantity::Displacement);
 
 public:
-    void fill(Element);
-    void fill(simulation::Engine&, Composition const&);
-    void fill(Element, Shape const&, bool place_inside = true);
-    void fill(simulation::Engine&, Composition const&, Shape const&, bool place_inside = true);
-    void fill_exact(simulation::Engine&, Composition const&, Shape const&, bool place_inside = true);
+    void fill(chemistry::Element);
+    void fill(simulation::Engine&, chemistry::Composition const&);
+    void fill(chemistry::Element, Shape const&, bool place_inside = true);
+    void fill(simulation::Engine&, chemistry::Composition const&, Shape const&, bool place_inside = true);
+    void fill_exact(simulation::Engine&, chemistry::Composition const&, Shape const&, bool place_inside = true);
 
     void set_fill_function(FillFunction&& function) { fill_function_ = std::move(function); }
     void apply_fill_function(simulation::Engine& rng)
@@ -62,9 +62,9 @@ public:
 
     void gradient_fill(
         simulation::Engine&,
-        Composition const& bottom,
+        chemistry::Composition const& bottom,
         Displacement,
-        Composition const& top,
+        chemistry::Composition const& top,
         Displacement,
         std::function<double(double)> function = math::identity<double>,
         math::Axis axis = math::Axis::z);
@@ -108,7 +108,7 @@ public:
 
     std::size_t number_atoms() const;
     double solid_fraction() const;
-    double fraction(Element) const;
+    double fraction(chemistry::Element) const;
     std::size_t broken_bonds() const;
     std::size_t surface_atoms(Coordination vacancies = 1) const;
 
@@ -144,7 +144,7 @@ private:
     Layers layers_;
 
     lattice::FillFunction fill_function_;
-    Composition master_alloy_{};
+    chemistry::Composition master_alloy_{};
     std::string label_{};
 };
 

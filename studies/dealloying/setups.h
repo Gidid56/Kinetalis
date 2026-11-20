@@ -1,9 +1,9 @@
 #pragma once
 #include "kmc/setup.h"
 #include "lattice/lattice.h"
-#include "dealloying/models/linear_bond_breaking.h"
+#include "dealloying/kinetics/linear_bond_breaking.h"
 #include "parameters.h"
-#include "events.h"
+#include "model.h"
 #include "simulation/engine.h"
 
 namespace studies::dealloying::setups
@@ -11,7 +11,7 @@ namespace studies::dealloying::setups
     using namespace lattice;
 
     template <Bravais bravais>
-    Lattice cube(Element element, Length side = {}, Indices surface_orientation = Indices::unit_z())
+    Lattice cube(chemistry::Element element, Length side = {}, Indices surface_orientation = Indices::unit_z())
     {
         using enum math::Axis;
         UnitCell unit_cell{ UnitCell::conventional<bravais>(chemistry::Atom{ element }) };
@@ -26,12 +26,12 @@ namespace studies::dealloying::setups
     }
 
     static inline Lattice
-    bulk_with_vacancy(Composition::Quantity x0 = 10, Length side = utility::is_debug ? 5_nm : 30_nm)
+    bulk_with_vacancy(chemistry::Composition::Quantity x0 = 10, Length side = 30_nm)
     {
-        Lattice lattice{ cube<Bravais::cF>(Element::Au, side) };
+        Lattice lattice{ cube<Bravais::cF>(chemistry::Element::Au, side) };
         lattice.set_fill_function([x0](Lattice& lattice, simulation::Engine& rng) {
-            using enum Element;
-            Composition composition{ { Ag, 100 - x0 }, { Au, x0 } };
+            using enum chemistry::Element;
+            chemistry::Composition composition{ { Ag, 100 - x0 }, { Au, x0 } };
             lattice.set_label("bulk with vacancy");
             lattice.fill(rng, composition);
             lattice.center_site().set_element(lattice, none);
@@ -42,9 +42,9 @@ namespace studies::dealloying::setups
     static inline Lattice
     cut_sphere(Length box_side, physics::quantity::Radius radius, bool inverted)
     {
-        Lattice lattice{ cube<Bravais::cF>(Element::Au, box_side) };
+        Lattice lattice{ cube<Bravais::cF>(chemistry::Element::Au, box_side) };
         lattice.set_fill_function([radius, inverted](Lattice& lattice, simulation::Engine& rng) {
-            using enum Element;
+            using enum chemistry::Element;
             lattice.set_label("nanopore");
             lattice.fill(inverted ? Au : none);
             if (radius > 0_nm)
@@ -58,10 +58,10 @@ namespace studies::dealloying::setups
     static inline Lattice
     passivation_schematic(int dissolved_layers, int total_layers = 8, int noble_factor = 4)
     {
-        Lattice lattice{ cube<Bravais::cF>(Element::Au, 1.5_nm) };
+        Lattice lattice{ cube<Bravais::cF>(chemistry::Element::Au, 1.5_nm) };
         lattice.set_fill_function([=](Lattice& lattice, simulation::Engine& rng) {
             lattice.set_label("passivation schematic");
-            using enum Element;
+            using enum chemistry::Element;
 
             auto layer{ lattice.shape() };
             layer.scale(math::Vector<3>{ 1.0, 1.0, 1.0 / total_layers });
@@ -73,8 +73,8 @@ namespace studies::dealloying::setups
             const auto layer_sites{ lattice.sites().size() / total_layers };
             const auto noble_sites{ layer_sites / noble_factor };
 
-            Composition alloy{ { Au, noble_sites }, { Ag, layer_sites - noble_sites } };
-            Composition dealloyed{ { Au, dissolved_layers * noble_sites },
+            chemistry::Composition alloy{ { Au, noble_sites }, { Ag, layer_sites - noble_sites } };
+            chemistry::Composition dealloyed{ { Au, dissolved_layers * noble_sites },
                 { none, layer_sites - dissolved_layers * noble_sites } };
 
             for (int i = 0; i < total_layers; ++i)
@@ -100,10 +100,10 @@ namespace studies::dealloying::setups
 
     static inline Setup pore_dealloying(
         CampaignType campaign_type,
-        lattice::Composition::Quantity x0 = 10,
+        chemistry::Composition::Quantity x0 = 10,
         ElectricPotential overpotential = 0_V,
         kmc::Temperature temperature = 300_K,
-        std::optional<models::LinearBondBreaking::Modulation> modulation = {})
+        std::optional<kinetics::LinearBondBreaking::Modulation> modulation = {})
     {
         Setup setup;
 

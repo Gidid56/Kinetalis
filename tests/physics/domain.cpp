@@ -3,8 +3,10 @@
 #include <boost/ut.hpp>
 #include <cmath>
 #include <concepts>
+#include <limits>
 #include <stdexcept>
 #include <type_traits>
+#include <utility>
 
 namespace ut = boost::ut;
 using namespace boost::ut::literals;
@@ -98,21 +100,48 @@ namespace
             ut::expect(ut::eq(ceiled.value(), 1.0));
         };
 
-        "restricted storage still validates construction and compound assignments"_test = [] {
-            ut::expect(ut::throws<std::domain_error>([] { (void)Distance{ -1.0 }; }));
-            ut::expect(ut::throws<std::domain_error>([] { (void)Fraction{ 1.5 }; }));
+        "construction and arithmetic are unchecked and nonthrowing"_test = [] {
+            static_assert(noexcept(Distance{ -1.0 }));
+            static_assert(noexcept(Fraction{ 1.5 }));
+            static_assert(noexcept(std::declval<Distance&>() += std::declval<Distance>()));
+            static_assert(noexcept(std::declval<Distance&>() *= -1));
+            static_assert(noexcept(std::declval<Fraction&>() /= 2));
+            static_assert(noexcept(std::declval<Distance const&>() + std::declval<Distance>()));
+            static_assert(noexcept(std::declval<Distance const&>().template to<float>()));
+            static_assert(not noexcept(std::declval<Distance const&>().validate()));
+            static_assert(Distance{ -1.0 }.value() == -1.0);
 
             Distance distance{ 2_m };
-            ut::expect(ut::throws<std::domain_error>([&] { distance *= -1; }));
-            ut::expect(ut::eq(distance.value(), 2.0));
+            distance *= -1;
+            ut::expect(ut::eq(distance.value(), -2.0));
 
             Fraction fraction{ 0.75 };
-            ut::expect(ut::throws<std::domain_error>([&] { fraction += Fraction{ 0.5 }; }));
-            ut::expect(ut::eq(fraction.value(), 0.75));
+            fraction += Fraction{ 0.5 };
+            ut::expect(ut::eq(fraction.value(), 1.25));
+
+            fraction = Fraction{ -0.5 };
+            ut::expect(ut::eq(fraction.value(), -0.5));
+
+            ut::expect(ut::eq(Distance{ -1.0 }.to<float>().value(), -1.0f));
+        };
+
+        "domain validation is explicit through validate and ensure"_test = [] {
+            ut::expect(ut::throws<std::domain_error>([] { Distance{ -1.0 }.validate(); }));
+            ut::expect(ut::throws<std::domain_error>([] { Fraction{ 1.5 }.validate(); }));
+            ut::expect(ut::throws<std::domain_error>([] {
+                Fraction{ std::numeric_limits<double>::quiet_NaN() }.validate();
+            }));
+
+            Distance{ 2.0 }.validate();
+            Fraction{ 0.25 }.validate();
 
             ut::expect(ut::eq(ensure_non_negative(-(-2_m)).value(), 2.0));
+            ut::expect(ut::eq(ensure_unit_interval(Factor{ 0.5 }).value(), 0.5));
             ut::expect(ut::throws<std::domain_error>([] {
                 (void)ensure_non_negative(-2_m);
+            }));
+            ut::expect(ut::throws<std::domain_error>([] {
+                (void)ensure_unit_interval(Fraction{ 1.5 });
             }));
         };
     };

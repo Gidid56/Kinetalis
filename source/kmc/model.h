@@ -1,31 +1,31 @@
 #pragma once
-#include "transformations.h"
+#include "process.h"
 #include "kinetics.h"
 
 #include <utility>
 
 namespace kmc
 {
-    // A model contains the kinetic model and its statically typed transformations.
-    template <class KineticsT, class TransformationsT>
+    // A model contains the kinetic model and its statically typed processes.
+    template <class KineticsT, class ProcessesT>
     class Model
     {
     public:
         using KineticsType = KineticsT;
-        using TransformationsType = TransformationsT;
+        using ProcessesType = ProcessesT;
 
-        static constexpr std::size_t slots_per_site{ TransformationsT::slot_count };
+        static constexpr std::size_t slots_per_site{ ProcessesT::slot_count };
 
-        explicit Model(KineticsT kinetics = KineticsT{}, TransformationsT transformations = TransformationsT{})
+        explicit Model(KineticsT kinetics = KineticsT{}, ProcessesT processes = ProcessesT{})
             : kinetics_{ std::move(kinetics) },
-              transformations_{ std::move(transformations) }
+              processes_{ std::move(processes) }
         { }
 
         auto& kinetics(this auto& self) noexcept { return self.kinetics_; }
-        auto& transformations(this auto& self) noexcept { return self.transformations_; }
+        auto& processes(this auto& self) noexcept { return self.processes_; }
 
     private:
         KineticsT kinetics_;
-        TransformationsT transformations_;
+        ProcessesT processes_;
     };
 }

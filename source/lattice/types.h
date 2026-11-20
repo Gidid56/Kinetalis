@@ -17,14 +17,11 @@ namespace simulation { class Engine; }
 
 namespace lattice
 {
-    using chemistry::Composition;
-    using chemistry::Element;
-
     // Add new elements here if desired
     inline constexpr std::array active_elements{
-        Element::Ag,
-        Element::Au,
-        //Element::Cu,
+        chemistry::Element::Ag,
+        chemistry::Element::Au,
+        //chemistry::Element::Cu,
     };
 
     inline constexpr bool element_specific_neighbors{ false }, use_layers{ false };
@@ -36,11 +33,6 @@ namespace lattice
     using Sites = std::vector<Site>;
 
     using Coord = math::Vector<4, std::int16_t>;
-
-    // Ordered, non-owning sites participating in an event; site 0 is the source.
-    template <std::size_t N>
-    requires (N > 0)
-    using Cluster = std::array<Site*, N>;
 
     using Coordination = std::uint8_t;
     // Implemented for static performance optimizations,

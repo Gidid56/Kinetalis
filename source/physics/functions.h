@@ -13,7 +13,9 @@ namespace physics
         std::floating_point Value>
     constexpr auto ensure(Quantity<Dimension, reference, domain, Value> value)
     {
-        return Quantity<Dimension, reference, constraint, Value>{ value.value() };
+        auto checked{ Quantity<Dimension, reference, constraint, Value>{ value.value() } };
+        checked.validate();
+        return checked;
     }
     constexpr auto ensure_non_negative(quantity::IsQuantity auto value)
     {

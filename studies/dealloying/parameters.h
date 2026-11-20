@@ -20,7 +20,7 @@ static constexpr Length min_box_size(CampaignType campaign_type)
     }
 }
 
-static constexpr Length box_size(lattice::Composition::Quantity x0, CampaignType campaign_type)
+static constexpr Length box_size(chemistry::Composition::Quantity x0, CampaignType campaign_type)
 {
     static constexpr auto default_x0 = 10.0;
 
@@ -28,7 +28,7 @@ static constexpr Length box_size(lattice::Composition::Quantity x0, CampaignType
 }
 
 static constexpr ElectricPotential critical_potential(
-    lattice::Composition::Quantity x0,
+    chemistry::Composition::Quantity x0,
     physics::quantity::AbsoluteTemperature temperature = 300_K,
     ElectricPotential resolution = 0.1_mV)
 {
@@ -97,9 +97,9 @@ static constexpr ElectricPotential critical_potential(
     return potentials.back();
 }
 
-static std::vector<studies::dealloying::models::LinearBondBreaking::Descriptor> modulated_descriptors()
+static std::vector<studies::dealloying::kinetics::LinearBondBreaking::Descriptor> modulated_descriptors()
 {
-    std::vector<studies::dealloying::models::LinearBondBreaking::Descriptor> descriptors;
+    std::vector<studies::dealloying::kinetics::LinearBondBreaking::Descriptor> descriptors;
 
     for (lattice::Coordination coordination{ 7 }; coordination <= 10; ++coordination)
         descriptors.emplace_back(kmc::event::Type::dissolution, chemistry::Element::Ag, coordination);

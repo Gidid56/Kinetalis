@@ -6,7 +6,7 @@
 
 using namespace lattice;
 
-std::vector<Position> studies::dealloying::gtc::transition_states(Cluster<2> const& cluster, Lattice const& lattice)
+std::vector<Position> studies::dealloying::gtc::transition_states(std::array<Site*, 2> const& cluster, Lattice const& lattice)
 {
     /*
 		Temporary dynamic construction of minimal GTC path proposals.

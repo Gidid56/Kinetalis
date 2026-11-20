@@ -27,6 +27,10 @@
 */
 class lattice::unitcell::UnitCell : public shape::Parallelepiped
 {
+private:
+    Bravais bravais_;
+    unitcell::Sites sites_;
+
 public:
     constexpr UnitCell(
         Bravais bravais,
@@ -244,10 +248,6 @@ public:
     constexpr auto bravais() const { return bravais_; }
     constexpr auto system() const { return lattice::system(bravais_); }
     constexpr auto& sites() const { return sites_; }
-
-private:
-    Bravais bravais_;
-    unitcell::Sites sites_;
 };
 
 template <>

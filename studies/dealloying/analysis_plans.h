@@ -4,12 +4,12 @@
 #include "kmc/analysis_plan.h"
 #include "output/basics.h"
 #include "output/rates.h"
-#include "dealloying/models/descriptor_format.h"
+#include "dealloying/kinetics/descriptor_format.h"
 #include "output/phases.h"
 #include "output/kinetic_activity.h"
 #include "output/site_population.h"
-#include "dealloying/models/linear_bond_breaking.h"
-#include "dealloying/events.h"
+#include "dealloying/kinetics/linear_bond_breaking.h"
+#include "dealloying/model.h"
 #include "output/kinetic_statistics.h"
 
 namespace studies::dealloying::analysis_plans

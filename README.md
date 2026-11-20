@@ -9,6 +9,10 @@ Kinetalis provides two applications:
 
 The dealloying study in [`studies/dealloying/`](studies/dealloying/) is a working example of how to use the framework.
 
+Long-term development plans are tracked in [TODO.md](TODO.md).
+
+Supporting reference data and viewer assets are organized under [`resources/`](resources/README.md).
+
 ## Requirements
 
 - A **C++23 compiler and standard library** (MSVC in Visual Studio 2026 or GCC 14+), including support for `<format>`, `<print>`, and ranges.
@@ -134,6 +138,38 @@ GitHub Actions validates Debug tests and Release Batch builds on GCC 14 and
 MSVC. The Batch `--help` smoke test does not run a simulation campaign.
 The No-PCH configuration remains available locally but is not part of CI.
 
+### Performance benchmarks
+
+The standalone [`kinetalis_benchmarks`](benchmarks/) executable measures
+lattice construction, total simulation initialization, and KMC execution
+separately. It is independent of CTest. On Windows, select
+**Windows | Benchmark | Release** or run:
+
+~~~powershell
+cmake --preset windows-benchmark-release
+cmake --build --preset build-windows-benchmark-release
+.\build\windows-benchmark-release\Release\bin\kinetalis_benchmarks.exe
+~~~
+
+The default Ag–Au dealloying workload uses a fixed seed, **100,000 accepted
+steps per run**, five measured runs per size, and a single untimed warm-up of
+1,000 steps in a 5 nm box. Results below are **mean ± sample standard deviation**
+on a **13th Gen Intel Core i7-13700KF** (16 cores / 24 logical processors,
+3.40 GHz base clock), using a Release build:
+
+| FCC box | Sites | Lattice construction (s) | Total initialization (s) | KMC execution (s) | ns/accepted step |
+| ---: | ---: | ---: | ---: | ---: | ---: |
+| 5 nm | 8,788 | 0.0066 ± 0.0003 | 0.0069 ± 0.0002 | 0.0874 ± 0.0006 | **874.4 ± 6.3** |
+| 10 nm | 62,500 | 0.0435 ± 0.0008 | 0.0458 ± 0.0009 | 0.0878 ± 0.0008 | **878.1 ± 7.8** |
+| 20 nm | 500,000 | 0.3356 ± 0.0013 | 0.3553 ± 0.0020 | 0.0900 ± 0.0006 | **900.2 ± 5.8** |
+
+Lattice construction is included in total initialization time. The KMC
+measurement is **per accepted step**, so it includes the cost of rejected
+event selections. These measurements characterize a particular physical
+workload rather than pure event-selector complexity. See
+[benchmarks/README.md](benchmarks/README.md) for the full setup, hardware
+details, and interpretation.
+
 ### Interactive viewer
 
 The viewer uses **Corrade, Magnum, Magnum Integration, SDL2, Dear ImGui, and ImPlot**. These are tracked as Git submodules and built from source when the viewer is enabled.
@@ -180,38 +216,40 @@ policy. Review scripts before executing them.
 
 ## Framework overview
 
-Kinetalis separates **which events can occur and how fast** from **how events are sampled, executed, and measured**. The KMC core is generic; the dealloying study provides concrete transformations, a kinetic model, and simulation setups.
+Kinetalis separates **which events can occur and how fast** from **how events are sampled, executed, and measured**. The KMC core is generic; the dealloying study provides concrete processs, a kinetic model, and simulation setups.
 
 | Component | Responsibility |
 | --- | --- |
 | [`lattice`](source/lattice/) | Crystal geometry, sites, neighbor lists, periodic boundaries, and initial configurations |
-| [`kmc::Transformation` and `kmc::Transformations<Ts...>`](source/kmc/transformations.h) | Define possible changes to the lattice and the geometric slots associated with them |
-| [`kmc::Kinetics`](source/kmc/kinetics.h) and [study-specific kinetic models](studies/dealloying/models/) | Classify candidate events, calculate their rates, and define the local rate-dependency radius |
-| [`kmc::Model<KineticsT, TransformationsT>`](source/kmc/model.h) | Compose a concrete kinetic model and a statically typed collection of transformations |
-| [`kmc::Setup<ModelType>`](source/kmc/setup.h) | Hold the lattice generator, model configuration, and optional random seed |
-| [`kmc::RejectionTreeSimulation<ModelType>`](source/kmc/simulation.h) | Sample events, advance physical time, execute accepted transformations, and update cached rates |
+| [`kmc::Process`](source/kmc/process.h) and [`kmc::Processes<Ts...>`](source/kmc/process.h) | Define possible changes to the lattice and the geometric slots associated with them |
+| [`kmc::Kinetics`](source/kmc/kinetics.h) and [study-specific kinetics](studies/dealloying/kinetics/) | Construct event descriptors, map them to class keys, and cache physical rates and event types |
+| [`kmc::Model<KineticsT, ProcessesT>`](source/kmc/model.h) | Compose a concrete kinetic model and a statically typed collection of event processes |
+| [`kmc::Setup<ModelT>`](source/kmc/setup.h) | Hold the lattice generator, model configuration, and optional random seed |
+| [`kmc::RejectionTreeSimulation<ModelT>`](source/kmc/simulation.h) | Sample events, advance physical time, execute accepted events, and update cached rates |
 | [`kmc::Simulation`](source/kmc/simulation.h), [`kmc::AnalysisPlan`](source/kmc/analysis_plan.h), and [observers](source/output/) | Provide a non-templated simulation interface, measurements, snapshots, and stopping conditions |
-| [`batch::Campaign<ModelType>`](source/batch/campaign.h) and [`batch::Runner<ModelType>`](source/batch/runner.h) | Execute parameter studies and independent replicates, then aggregate results |
+| [`batch::Campaign<ModelT>`](source/batch/campaign.h) and [`batch::Runner<ModelT>`](source/batch/runner.h) | Execute parameter studies and independent replicates, then aggregate results |
 
 ### Event lifecycle
 
-A `Transformation` is a C++ concept, not a runtime base class. Each transformation declares an event type and a compile-time `slot_count` per source site. A slot can resolve to an [`event::Location`](source/kmc/event.h) containing the source site and, for example, a diffusion target; nonexistent locations and geometrically invalid candidates contribute no rate. The current `Location` representation supports up to two sites.
+An [`kmc::Process`](source/kmc/process.h) is a C++ concept, not a runtime base class. Each process declares an event type and a compile-time `slot_count` per source site. A slot can resolve to an [`event::Location`](source/kmc/event.h) containing the source site and, for example, a diffusion target; nonexistent locations and geometrically invalid candidates contribute no rate. The current `Location` representation accepts one or two `lattice::Site*` arguments directly.
 
-A kinetic model assigns each candidate a `RateClassKey` using the event type and its local environment. Key zero denotes an inactive slot. Rates are cached by class, while a hierarchical [rate-sum tree](source/kmc/rate_tree.h) stores the summed rates of source sites for efficient event selection. The simulation resolves the selected slot into a location, evaluates any postselection rejection, and advances physical time for **both accepted and rejected selections**. Only accepted selections modify the lattice, increment the accepted-step counter, and trigger local rate updates.
+A kinetic model constructs an event `Descriptor` from the event type and its local environment, then maps it to a `RateClassKey`. The physical rate law consumes the descriptor, not the key. The kinetics object owns its cached class rates and event types; the simulation owns event-slot keys and optional class-population counts. Key zero denotes an inactive slot. A hierarchical [rate-sum tree](source/kmc/rate_tree.h) stores the summed rates of source sites for efficient event selection. The simulation resolves the selected slot into a location, evaluates any postselection rejection, and advances physical time for **both accepted and rejected selections**. Only accepted selections modify the lattice, increment the accepted-step counter, and trigger local rate updates.
 
-The KMC scheduler uses static dispatch for the concrete kinetic model and transformations. Its non-templated `kmc::Simulation` interface allows observers and the viewer to operate without knowing the model type. Mathematical utilities, [dimension-aware physical quantities](source/physics/), and [chemical data](source/chemistry/) are shared across studies.
+The KMC scheduler uses static dispatch for the concrete kinetic model and processs. Its non-templated `kmc::Simulation` interface allows observers and the viewer to operate without knowing the model type. Mathematical utilities, [dimension-aware physical quantities](source/physics/), and [chemical data](source/chemistry/) are shared across studies.
+
+Physical quantity domain annotations (such as nonnegative or unit interval) are **not checked implicitly** during construction, conversion, assignment, or arithmetic. These operations are nonthrowing by default. At input and invariant boundaries, explicitly call `value.validate()` or `physics::ensure_non_negative(value)` / `physics::ensure_unit_interval(value)`; explicit validation throws `std::domain_error` for out-of-range values. Dimensional and reference constraints remain enforced at compile time.
 
 ### Extend the framework
 
-Most studies can be implemented under `studies/` without modifying the KMC scheduler. The [dealloying study](studies/dealloying/) provides a complete reference:
+Most studies can be implemented under `studies/` without modifying the KMC scheduler. The [dealloying study](studies/dealloying/) provides a complete reference. The elementary process definitions are grouped in [`process.h`](studies/dealloying/process.h), while kinetic models live under [`kinetics/`](studies/dealloying/kinetics/):
 
-1. Define one or more transformation types implementing the [`kmc::Transformation` concept](source/kmc/transformations.h): `event`, `slot_count`, `location(...)`, `is_source_candidate(...)`, `is_candidate(...)`, `is_rejected(...)`, `execute(...)`, and `settings()`. An optional `is_candidate_after_source_check(...)` avoids repeating a source predicate for every slot.
-2. Implement a kinetic model, typically deriving from [`kmc::Kinetics`](source/kmc/kinetics.h), with `classify(...)`, `number_keys()`, `class_event(...)`, `rate(...)`, `refresh_rates()`, and `output_text()`. Ensure `invalidation_radius()` covers all source-site rates affected by an accepted lattice change.
-3. Combine the types into a `Model` and configure them in [setup factories](studies/dealloying/setups.h). The current study uses these aliases in [`events.h`](studies/dealloying/events.h):
+1. Define elementary processes implementing the [`kmc::Process` concept](source/kmc/process.h): `event`, `cluster_size`, `slot_count`, `is_candidate(Site const&)`, `execute(...)`, and `settings()`. Multi-site processes must provide `location(...)`; single-site processes get a default location. Optional `has_slot(...)`, `is_candidate(Location const&)`, and `is_rejected(...)` refine geometrical availability, candidate eligibility, and postselection rejection respectively.
+2. Implement a kinetic model deriving from [`kmc::Kinetics`](source/kmc/kinetics.h). Define `Descriptor`, `classify(event, location, lattice) -> Descriptor`, `key(descriptor) -> RateClassKey`, `descriptor(key) -> Descriptor`, `rate(descriptor) -> Rate`, `number_keys()`, `refresh_rates()`, and `output_text()`. The base caches rates and event types; derived models supply the physical calculations. Ensure the static `invalidation_hops` constant covers every source-site rate affected by an accepted lattice change (measured in nearest-neighbor hops).
+3. Combine the types into a `Model` and configure them in [setup factories](studies/dealloying/setups.h). The current study uses these aliases in [`model.h`](studies/dealloying/model.h):
 
 ~~~cpp
-using Transformations = kmc::Transformations<events::Dissolution, events::Diffusion>;
-using Model = kmc::Model<models::LinearBondBreaking, Transformations>;
+using Processes = kmc::Processes<process::Dissolution, process::Diffusion>;
+using Model = kmc::Model<kinetics::LinearBondBreaking, Processes>;
 using Setup = kmc::Setup<Model>;
 using Campaign = batch::Campaign<Model>;
 ~~~
@@ -264,6 +302,7 @@ The main options are:
 | `KINETALIS_BUILD_BATCH` | `ON` | Build the batch application |
 | `KINETALIS_BUILD_VIEWER` | `OFF` | Build the graphical viewer |
 | `KINETALIS_BUILD_TESTS` | `ON` | Build the unit tests |
+| `KINETALIS_BUILD_BENCHMARKS` | `OFF` | Build the standalone performance benchmarks |
 | `KINETALIS_ENABLE_PCH` | `ON` | Use precompiled headers |
 | `KINETALIS_ENABLE_CLANG_TIDY` | `OFF` | Run static analysis during compilation |
 | `KINETALIS_WARNINGS_AS_ERRORS` | `OFF` | Treat compiler warnings as errors |

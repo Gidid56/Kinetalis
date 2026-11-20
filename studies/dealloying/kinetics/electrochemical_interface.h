@@ -2,7 +2,7 @@
 #include "kmc/kinetics.h"
 #include "kmc/event.h"
 
-namespace studies::dealloying::models
+namespace studies::dealloying::kinetics
 {
     using namespace kmc;
     using namespace physics::unit::literals;
@@ -51,10 +51,10 @@ namespace studies::dealloying::models
         auto& constants() const { return constants_; }
 
     protected:
-        kmc::Rate rate(kmc::event::Type, kmc::Element, Energy, Ratio = Ratio{ 1 }) const;
+        kmc::Rate rate(kmc::event::Type, chemistry::Element, Energy, Ratio = Ratio{ 1 }) const;
 
     private:
-        Ratio transmission_coefficient(kmc::event::Type, kmc::Element) const;
+        Ratio transmission_coefficient(kmc::event::Type, chemistry::Element) const;
         Energy activation_gibbs_energy(kmc::event::Type, Energy) const;
 
         ElectricPotential potential_{ Constants{}.reference_potential };

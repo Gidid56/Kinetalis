@@ -16,6 +16,11 @@ public:
 
     using Writer::Writer;
 
+    Subscription subscriptions() const override
+    {
+        return Writer::subscriptions() | Subscription::selected;
+    }
+
     void observe_selected(kmc::event::Record const&) override;
 
     void capture_init(kmc::Simulation const&) override;
@@ -29,6 +34,8 @@ public:
     auto& last_data() const { return data_; }
 
 private:
+    bool requires_class_counts() const override { return true; }
+
     std::string_view name() const override { return "event_flux"; }
 
     kmc::Simulation const* simulation_{};

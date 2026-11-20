@@ -53,7 +53,7 @@ void Regime::capture_init(kmc::Simulation const& kmc)
     surface_.capture_init(kmc);
     event_flux_.capture_init(kmc);
 
-    master_alloy_fraction_ = kmc.lattice().master_alloy().fraction(lattice::Element::Au);
+    master_alloy_fraction_ = kmc.lattice().master_alloy().fraction(chemistry::Element::Au);
     lattice_volume_ = kmc.lattice().shape().volume();
     max_surface_excess_ = std::numeric_limits<double>::lowest();
 

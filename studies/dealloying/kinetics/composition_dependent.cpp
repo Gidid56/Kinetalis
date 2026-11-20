@@ -3,11 +3,12 @@
 #include "lattice/lattice.h"
 
 using namespace kmc;
-using namespace studies::dealloying::models;
+using chemistry::Element;
+using namespace studies::dealloying::kinetics;
 
-namespace studies::dealloying::models::composition_dependent
+namespace studies::dealloying::kinetics::composition_dependent
 {
-    using enum Element;
+    using enum chemistry::Element;
 
     Energy bond_energy(Element element)
     {
@@ -51,14 +52,19 @@ namespace studies::dealloying::models::composition_dependent
 
 CompositionDependent::CompositionDependent() = default;
 
-RateClassKey CompositionDependent::classify(
-    event::Type type, event::Location const& location, lattice::Lattice const& lattice)
+CompositionDependent::Descriptor CompositionDependent::classify(
+    event::Type type, event::Location const& location, lattice::Lattice const& lattice) const
 {
     auto const& source{ location.source() };
     Descriptor desc{ type, source.element(), source.coordination(), {} };
     for (auto const* neighbor : lattice.neighbors(source))
         if (neighbor->is_occupied())
             ++desc.element_neighbors[lattice::elementKey(neighbor->element())];
+    return desc;
+}
+
+RateClassKey CompositionDependent::key(Descriptor const& desc)
+{
     if (auto it{ keys_.find(desc) }; it != keys_.end()) return it->second;
 
     if (descriptors_.size() > std::numeric_limits<RateClassKey>::max())
@@ -70,19 +76,8 @@ RateClassKey CompositionDependent::classify(
     return key;
 }
 
-event::Type CompositionDependent::class_event(RateClassKey key) const
+Energy CompositionDependent::lattice_energy_barrier(Descriptor const& desc) const
 {
-    return descriptor(key).event;
-}
-
-Element CompositionDependent::class_element(RateClassKey key) const
-{
-    return descriptor(key).element;
-}
-
-Energy CompositionDependent::lattice_energy_barrier(RateClassKey key) const
-{
-    auto const& desc{ descriptors_.at(key) };
     Energy energy{};
     for (auto&& [element, count] :
         std::views::zip(lattice::active_elements, desc.element_neighbors))
@@ -90,10 +85,10 @@ Energy CompositionDependent::lattice_energy_barrier(RateClassKey key) const
     return energy;
 }
 
-Rate CompositionDependent::rate(RateClassKey key) const
+Rate CompositionDependent::rate(Descriptor const& desc) const
 {
     return ElectrochemicalInterface::rate(
-        class_event(key), class_element(key), lattice_energy_barrier(key));
+        desc.event, desc.element, lattice_energy_barrier(desc));
 }
 
 std::string CompositionDependent::output_text() const

@@ -2,11 +2,12 @@
 #include "power_law_bond_energy.h"
 
 using namespace kmc;
-using namespace studies::dealloying::models;
+using chemistry::Element;
+using namespace studies::dealloying::kinetics;
 
-namespace studies::dealloying::models::power_law_bond_energy
+namespace studies::dealloying::kinetics::power_law_bond_energy
 {
-    using enum Element;
+    using enum chemistry::Element;
 
     Energy dimer_bond_energy(Element element)
     {
@@ -49,18 +50,17 @@ namespace studies::dealloying::models::power_law_bond_energy
 }
 
 
-Energy PowerLawBondEnergy::lattice_energy_barrier(RateClassKey key) const
+Energy PowerLawBondEnergy::lattice_energy_barrier(Descriptor const& desc) const
 {
-    auto const& desc{ descriptor(key) };
     return power_law_bond_energy::dimer_bond_energy(desc.element) *
            std::pow(static_cast<double>(desc.coordination),
                     power_law_bond_energy::coordination_exponent(desc.element));
 }
 
-Rate PowerLawBondEnergy::rate(RateClassKey key) const
+Rate PowerLawBondEnergy::rate(Descriptor const& desc) const
 {
     return ElectrochemicalInterface::rate(
-        class_event(key), class_element(key), lattice_energy_barrier(key), modulation_ratio(key));
+        desc.event, desc.element, lattice_energy_barrier(desc), modulation_ratio(desc));
 }
 
 std::string PowerLawBondEnergy::output_text() const

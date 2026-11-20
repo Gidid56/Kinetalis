@@ -11,7 +11,7 @@ namespace chemistry::element
     // to the proton number for the 118 chemical elements. Element::none
     // is the zero-valued sentinel used to represent a vacant or unassigned site.
     //
-    // The element data are generated from data/elements.xlsx.
+    // The element data originate from resources/codegen/chemistry.xlsx.
     // Colors follow the Jmol color scheme where values are available.
     //
     // The binary metal/nonmetal classification is intentionally simplified.

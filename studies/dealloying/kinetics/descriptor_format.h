@@ -9,7 +9,7 @@
 #include <string>
 #include <string_view>
 
-namespace studies::dealloying::models::formatting
+namespace studies::dealloying::kinetics::formatting
 {
     inline constexpr std::string_view csv_header{
         "key:event,key:element,key:coordination,key:details"
@@ -33,29 +33,29 @@ namespace studies::dealloying::models::formatting
 namespace output
 {
     template <>
-    struct DescriptorFormat<studies::dealloying::models::LinearBondBreaking::Descriptor>
+    struct DescriptorFormat<studies::dealloying::kinetics::LinearBondBreaking::Descriptor>
     {
-        using Descriptor = studies::dealloying::models::LinearBondBreaking::Descriptor;
+        using Descriptor = studies::dealloying::kinetics::LinearBondBreaking::Descriptor;
 
-        static constexpr std::string_view header() { return studies::dealloying::models::formatting::csv_header; }
+        static constexpr std::string_view header() { return studies::dealloying::kinetics::formatting::csv_header; }
 
         static std::string label(Descriptor const& descriptor)
         {
-            return studies::dealloying::models::formatting::base_label(descriptor);
+            return studies::dealloying::kinetics::formatting::base_label(descriptor);
         }
 
         static std::string row(Descriptor const& descriptor)
         {
-            return studies::dealloying::models::formatting::base_row(descriptor, {});
+            return studies::dealloying::kinetics::formatting::base_row(descriptor, {});
         }
     };
 
     template <>
-    struct DescriptorFormat<studies::dealloying::models::CompositionDependent::Descriptor>
+    struct DescriptorFormat<studies::dealloying::kinetics::CompositionDependent::Descriptor>
     {
-        using Descriptor = studies::dealloying::models::CompositionDependent::Descriptor;
+        using Descriptor = studies::dealloying::kinetics::CompositionDependent::Descriptor;
 
-        static constexpr std::string_view header() { return studies::dealloying::models::formatting::csv_header; }
+        static constexpr std::string_view header() { return studies::dealloying::kinetics::formatting::csv_header; }
 
         static std::string details(Descriptor const& descriptor)
         {
@@ -70,7 +70,7 @@ namespace output
 
         static std::string label(Descriptor const& descriptor)
         {
-            auto text{ studies::dealloying::models::formatting::base_label(descriptor) };
+            auto text{ studies::dealloying::kinetics::formatting::base_label(descriptor) };
             if (auto const suffix{ details(descriptor) }; not suffix.empty())
                 text += "_" + suffix;
             return text;
@@ -78,7 +78,7 @@ namespace output
 
         static std::string row(Descriptor const& descriptor)
         {
-            return studies::dealloying::models::formatting::base_row(descriptor, details(descriptor));
+            return studies::dealloying::kinetics::formatting::base_row(descriptor, details(descriptor));
         }
     };
 }

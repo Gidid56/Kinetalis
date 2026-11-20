@@ -4,11 +4,11 @@
 #include "kmc/types.h"
 #include "kmc/model.h"
 
-template <class ModelType>
+template <class ModelT>
 struct kmc::Setup
 {
     std::string name{};
     lattice::Generator make_lattice;
-    ModelType model{};
+    ModelT model{};
     std::optional<simulation::Seed> seed;
 };
