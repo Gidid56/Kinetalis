@@ -740,6 +740,10 @@ namespace
             } cleanup{ root };
 
             AnalysisPlan plan;
+            plan.add<output::Composition>(root)
+                .set_resolution({ .min_snapshot_step = 1, .snapshot_scale_factor = 1.0 });
+            plan.add<output::Time>(root)
+                .set_resolution({ .min_snapshot_step = 1, .snapshot_scale_factor = 1.0 });
             plan.add<output::KineticActivity<TestModel>>(root)
                 .set_resolution({ .min_snapshot_step = 1, .snapshot_scale_factor = 1.0 });
             auto& statistics{ plan.add<output::KineticStatistics<TestModel>>(root)
@@ -816,6 +820,31 @@ namespace
             auto const flux_columns{ std::size_t{ 2 } +
                 2 * (enum_values<event::Type>().size() - 1) };
             read_csv("event_flux", flux_columns);
+
+            auto composition_path{ root / "composition.csv" };
+            ut::expect(std::filesystem::exists(composition_path));
+            auto const composition{ utility::csv::Table{}.read(composition_path) };
+            ut::expect(composition.rows_match_header());
+            ut::expect(ut::eq(composition.size(), std::size_t{ 34 }));
+            read_csv("time", 2);
+
+            for (auto const& name : {
+                "composition", "time",
+                "kinetic_activity/activity", "kinetic_activity/time_weighted_activity",
+                "site_population/site_count", "site_population/population",
+                "site_population/time_weighted_site_count",
+                "site_population/time_weighted_population", "event_flux"
+            })
+            {
+                auto data{ root / name };
+                data += ".data.csv";
+                auto schema{ root / name };
+                schema += ".schema.csv";
+                ut::expect(not std::filesystem::exists(data))
+                    << "finalized writer removed temporary data " << name;
+                ut::expect(not std::filesystem::exists(schema))
+                    << "finalized writer removed temporary schema " << name;
+            }
         };
 
         "site populations are independent of composition-dependent kinetic classes"_test = [] {
