@@ -789,9 +789,7 @@ namespace
                 return lines;
             };
 
-            constexpr auto site_columns{
-                std::size(lattice::active_elements) * lattice::max_coordination + 2
-            };
+            auto const site_columns{ site_population.counts().size() + 2 };
             for (auto const* file : {
                 "site_population/site_count",
                 "site_population/population",
