@@ -28,6 +28,9 @@ kinetalis_add_test_suite(lattice
     lattice/ordering.cpp
     lattice/site.cpp
 )
+kinetalis_add_test_suite(utility
+    utility/csv.cpp
+)
 add_subdirectory(chemistry)
 add_subdirectory(kinetics)
 add_subdirectory(simulation)
