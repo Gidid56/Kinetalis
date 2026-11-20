@@ -4,6 +4,7 @@
 #include <cstddef>
 #include <filesystem>
 #include <fstream>
+#include <functional>
 #include <optional>
 #include <string>
 #include <string_view>
@@ -31,6 +32,37 @@ namespace utility::csv
 
         return value;
     }
+
+
+    enum class Padding
+    {
+        empty,
+        zero,
+    };
+
+    // Streaming, append-only wide CSV with an on-disk column-growth history.
+    // Column identities and their order are supplied by the owner; new columns
+    // may only be appended. Formatter callbacks produce single-line CSV records.
+    class Writer
+    {
+    public:
+        using Formatter = std::function<std::string()>;
+
+        explicit Writer(Padding padding = Padding::empty) : padding_{ padding } { }
+
+        void initialize(std::filesystem::path base_path, Formatter header, Formatter row);
+        void append(std::size_t data_columns);
+        void finalize();
+
+    private:
+        std::filesystem::path path(std::string_view suffix = {}) const;
+
+        std::filesystem::path base_path_;
+        Formatter header_, row_;
+        Padding padding_;
+        std::size_t rows_{};
+        std::optional<std::size_t> previous_columns_;
+    };
 
     class Table
     {
