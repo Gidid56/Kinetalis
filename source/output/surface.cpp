@@ -45,14 +45,14 @@ void Surface::observe_processed(kmc::event::Record const& record)
     update(*record.sites()[1], kmc::event::neighbor_change(record.type, false));
 }
 
-void Surface::write_init(kmc::Simulation const& kmc)
+void Surface::write_init(kmc::Simulation const&)
 {
-    csv_.initialize(writer_path(),
-        [] { return std::string{ default_header } + ",surface_sites,broken_bonds"; },
-        [this, &kmc] {
-            return std::format("{},{:v:},{},{}", kmc.step(), kmc.time(), sites_, bonds_);
-        });
+    write<csv>(writer_path(), std::string{ default_header } + ",surface_sites,broken_bonds\n");
 }
 
-void Surface::write_snapshot(kmc::Simulation const&) { csv_.append(2); }
-void Surface::write_final(kmc::Simulation const&) { csv_.finalize(); }
+void Surface::write_snapshot(kmc::Simulation const& kmc)
+{
+    append<csv>(
+        writer_path(),
+        std::format("{},{:v:},{},{}\n", kmc.step(), kmc.time(), sites_, bonds_));
+}

@@ -146,31 +146,32 @@ Length Phases::calculate_correlation_length(Phase phase)
     return next_neighbor_distance_ / (1 - auto_correlation);
 }
 
-void Phases::write_init(kmc::Simulation const& kmc)
+void Phases::write_init(kmc::Simulation const&)
 {
-    auto header = [] {
-        std::string text{ default_header };
-        for (auto phase : active_phases)
-            std::format_to(std::back_inserter(text),
-                ",{0}_fraction,{0}_correlation_length/nm", phase);
-        return text;
-    };
-    auto row = [this, &kmc] {
-        std::string text{ std::format("{},{:v:}", kmc.step(), kmc.time()) };
-        for (auto phase : active_phases)
-            std::format_to(std::back_inserter(text), ",{},{:v:nm}",
-                fraction(phase), correlation_length(phase));
-        return text;
-    };
-    csv_.initialize(writer_path(), std::move(header), std::move(row));
+    std::string header{ default_header };
+
+    for (auto phase : active_phases)
+        std::format_to(
+            std::back_inserter(header),
+            ",{0}_fraction,{0}_correlation_length/nm",
+            phase);
+
+    file::write<csv>(writer_path(), header += '\n');
 }
 
-void Phases::write_snapshot(kmc::Simulation const&)
+void Phases::write_snapshot(kmc::Simulation const& kmc)
 {
-    csv_.append(2 * active_phases.size());
-}
+    std::string text{ std::format("{},{:v:}", kmc.step(), kmc.time()) };
 
-void Phases::write_final(kmc::Simulation const&) { csv_.finalize(); }
+    for (auto phase : active_phases)
+        std::format_to(
+            std::back_inserter(text),
+            ",{},{:v:nm}",
+            fraction(phase),
+            correlation_length(phase));
+
+    file::append<csv>(writer_path(), text += '\n');
+}
 
 //if constexpr (lattice::use_layers)
 //{

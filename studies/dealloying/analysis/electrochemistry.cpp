@@ -43,28 +43,31 @@ void Electrochemistry::capture_snapshot(kmc::Simulation const& kmc)
     last_data_ = std::move(now);
 }
 
-void Electrochemistry::write_init(kmc::Simulation const& kmc)
+void Electrochemistry::write_init(kmc::Simulation const&)
 {
-    auto header = [] {
-        std::string text{ default_header };
-        for (auto event : events)
-            std::format_to(std::back_inserter(text),
-                ",{0}_charge_transfer,{0}_interval_current/A", enum_name(event));
-        return text;
-    };
-    auto row = [this, &kmc] {
-        std::string text{ std::format("{},{:v:}", kmc.step(), kmc.time()) };
-        for (std::size_t i{}; i < events.size(); ++i)
-            std::format_to(std::back_inserter(text), ",{},{:v:}",
-                last_data_.charge_transfers[i], last_data_.currents[i]);
-        return text;
-    };
-    csv_.initialize(writer_path(), std::move(header), std::move(row));
+    std::string header{ default_header };
+
+    for (auto& event : events)
+        std::format_to(
+            std::back_inserter(header),
+            ",{0}_charge_transfer,{0}_interval_current/A",
+            enum_name(event));
+
+    write<csv>(writer_path(), header += '\n');
 }
 
-void Electrochemistry::write_snapshot(kmc::Simulation const&)
+void Electrochemistry::write_snapshot(kmc::Simulation const& kmc)
 {
-    csv_.append(2 * events.size());
-}
+    std::string line{ std::format("{},{:v:}", kmc.step(), kmc.time()) };
 
-void Electrochemistry::write_final(kmc::Simulation const&) { csv_.finalize(); }
+    for (size_t index{}; index < events.size(); index++)
+    {
+        std::format_to(
+            std::back_inserter(line),
+            ",{},{:v:}",
+            last_data_.charge_transfers[index],
+            last_data_.currents[index]);
+    }
+
+    append<csv>(writer_path(), line += '\n');
+}

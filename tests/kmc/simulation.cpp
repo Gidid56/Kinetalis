@@ -729,7 +729,7 @@ namespace
             ut::expect(simulation.kinetics().kinetic_classes()[gold].is_initialized());
         };
 
-        "kinetics and flux CSV columns stay stable as new kinetic classes appear"_test = [] {
+        "legacy output observers write consistent predefined CSV columns"_test = [] {
             auto setup{ make_setup() };
             TestSimulation simulation{ setup };
             const auto root{ std::filesystem::temp_directory_path() /
@@ -792,7 +792,7 @@ namespace
                 return lines;
             };
 
-            auto const site_columns{ site_population.counts().size() + 2 };
+            auto const site_columns{ lattice::active_elements.size() * lattice::max_coordination + 2 };
             for (auto const* file : {
                 "site_population/site_count",
                 "site_population/population",
@@ -827,6 +827,23 @@ namespace
             auto const composition{ utility::csv::Table{}.read(composition_path) };
             ut::expect(composition.rows_match_header());
             ut::expect(ut::eq(composition.size(), std::size_t{ 34 }));
+            utility::csv::Table::Row expected_composition_header{ "key:step", "time/s" };
+            for (auto element : lattice::active_elements)
+                expected_composition_header.push_back(std::format("{}_fraction", element));
+            ut::expect(composition.front() == expected_composition_header)
+                << "composition header uses the configured element order";
+
+            auto const site_data{ utility::csv::Table{}.read(root / "site_population/site_count") };
+            ut::expect(site_data.rows_match_header());
+            utility::csv::Table::Row expected_site_header{ "key:step", "time/s" };
+            for (auto element : lattice::active_elements)
+                for (lattice::Coordination coordination{}; coordination < lattice::max_coordination;
+                    ++coordination)
+                    expected_site_header.push_back(std::format("{}_{}",
+                        enum_name(element), static_cast<unsigned>(coordination)));
+            ut::expect(site_data.front() == expected_site_header)
+                << "surface populations retain every predefined element/coordination class";
+
             read_csv("time", 2);
 
             for (auto const& name : {

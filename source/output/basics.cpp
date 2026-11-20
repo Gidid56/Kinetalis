@@ -28,31 +28,34 @@ void output::Config::write_init(kmc::Simulation const& kmc)
     file::write<txt>(root_path() / "processes", kmc.process_settings());
 }
 
-void output::Time::write_init(kmc::Simulation const& kmc)
+void output::Time::write_init(kmc::Simulation const&)
 {
-    csv_.initialize(writer_path(), [] { return std::string{ default_header }; },
-        [&kmc] { return std::format("{},{:v:}", kmc.step(), kmc.time()); });
+    file::write<csv>(writer_path(), std::format("{}\n", default_header));
 }
 
-void output::Time::write_snapshot(kmc::Simulation const&) { csv_.append(0); }
-void output::Time::write_final(kmc::Simulation const&) { csv_.finalize(); }
-
-void output::Performance::write_init(kmc::Simulation const& kmc)
+void output::Time::write_snapshot(kmc::Simulation const& kmc)
 {
-    csv_.initialize(writer_path(),
-        [] { return std::string{ "key:step,runtime/s,per_step/ns" }; },
-        [&kmc] {
-            return std::format("{},{:v:},{:v:ns}",
-                kmc.step(), kmc.run_duration(), kmc.run_duration() / kmc.step());
-        });
+    file::append<csv>(writer_path(), std::format("{},{:v:}\n", kmc.step(), kmc.time()));
+}
+
+void output::Performance::write_init(kmc::Simulation const&)
+{
+    file::write<csv>(writer_path(), "key:step,runtime/s,per_step/ns\n");
 }
 
 void output::Performance::write_snapshot(kmc::Simulation const& kmc)
 {
-    if (kmc.step())
-        csv_.append(2);
+    if (not kmc.step())
+        return;
+
+    file::append<csv>(
+        writer_path(),
+        std::format(
+            "{},{:v:},{:v:ns}\n",
+            kmc.step(),
+            kmc.run_duration(),
+            kmc.run_duration() / kmc.step()));
 }
-void output::Performance::write_final(kmc::Simulation const&) { csv_.finalize(); }
 
 void output::Lattice::write_init(kmc::Simulation const&)
 {
@@ -71,3 +74,4 @@ void output::Lattice::write_final(kmc::Simulation const& kmc)
     if (not save_bulk_)
         file::write<xyz>(writer_path() / "final", kmc.lattice().to_xyz_file(true));
 }
+
