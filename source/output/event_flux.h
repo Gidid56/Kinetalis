@@ -1,6 +1,7 @@
 #pragma once
 #include "kmc/event.h"
 #include "writer.h"
+#include "utility/csv.h"
 
 class output::EventFlux : public output::Writer
 {
@@ -28,6 +29,7 @@ public:
 
     void write_init(kmc::Simulation const&) override;
     void write_snapshot(kmc::Simulation const&) override;
+    void write_final(kmc::Simulation const&) override;
 
     std::optional<double> relative_flux(kmc::event::Type event) const;
 
@@ -43,4 +45,5 @@ private:
     physics::quantity::TimeDifference residence_time_{};
 
     Data data_;
+    utility::csv::Writer csv_;
 };

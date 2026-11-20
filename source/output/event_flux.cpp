@@ -75,41 +75,33 @@ std::optional<double> EventFlux::relative_flux(kmc::event::Type event) const
     return *flux.value / flux.maximum;
 }
 
-void EventFlux::write_init(kmc::Simulation const&)
+void EventFlux::write_init(kmc::Simulation const& simulation)
 {
-    std::string header{ Writer::default_header };
-
-    for (auto const& [event, _] : data_)
-        std::format_to(
-            std::back_inserter(header),
-            ",{}_flux/Hz,{}_relative_flux",
-            enum_name(event),
-            enum_name(event));
-
-    header += '\n';
-
-    file::write<csv>(writer_path(), header);
+    auto header = [this] {
+        std::string text{ Writer::default_header };
+        for (auto const& [event, _] : data_)
+            std::format_to(std::back_inserter(text),
+                ",{}_flux/Hz,{}_relative_flux", enum_name(event), enum_name(event));
+        return text;
+    };
+    auto row = [this, &simulation] {
+        std::string text{ std::format("{},{:v:}", simulation.step(), simulation.time()) };
+        for (auto const& [event, flux] : data_)
+        {
+            auto const relative{ relative_flux(event) };
+            std::format_to(std::back_inserter(text), ",{},{}",
+                flux.value->value(),
+                relative.value_or(std::numeric_limits<double>::quiet_NaN()));
+        }
+        return text;
+    };
+    csv_.initialize(writer_path(), std::move(header), std::move(row));
 }
 
-void EventFlux::write_snapshot(kmc::Simulation const& simulation)
+void EventFlux::write_snapshot(kmc::Simulation const&)
 {
-    if (data_.empty() or not data_.begin()->second.value)
-        return;
-
-    std::string text{ std::format("{},{:v:}", simulation.step(), simulation.time()) };
-
-    for (auto const& [event, flux] : data_)
-    {
-        auto const relative{ relative_flux(event) };
-
-        std::format_to(
-            std::back_inserter(text),
-            ",{},{}",
-            flux.value->value(),
-            relative.value_or(std::numeric_limits<double>::quiet_NaN()));
-    }
-
-    text += '\n';
-
-    file::append<csv>(writer_path(), text);
+    if (not data_.empty() and data_.begin()->second.value)
+        csv_.append(2 * data_.size());
 }
+
+void EventFlux::write_final(kmc::Simulation const&) { csv_.finalize(); }
