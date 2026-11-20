@@ -1,5 +1,6 @@
 #pragma once
 #include "writer.h"
+#include "utility/csv.h"
 
 class output::Surface : public output::Writer
 {
@@ -18,6 +19,7 @@ public:
 
     void write_init(kmc::Simulation const&) override;
     void write_snapshot(kmc::Simulation const&) override;
+    void write_final(kmc::Simulation const&) override;
 
     auto sites() const { return sites_; }
     auto bonds() const { return bonds_; }
@@ -30,4 +32,5 @@ private:
     lattice::Lattice const* lattice_{};
 
     std::size_t sites_{}, bonds_{};
+    utility::csv::Writer csv_;
 };
