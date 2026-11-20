@@ -72,8 +72,8 @@ void csv::Writer::finalize()
         final_header = fields[2];
     }
 
-    if (changes.empty())
-        final_header = header_();
+    // Labels can become available without changing the number of kinetic classes.
+    final_header = header_();
 
     auto const final_columns{ changes.empty() ? std::size_t{} : changes.back().columns };
     auto completed_path{ path() };
