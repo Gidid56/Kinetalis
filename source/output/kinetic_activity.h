@@ -132,9 +132,12 @@ namespace output
                         it != last_data_.classes.end())
                         value = it->second;
 
-                    std::format_to(std::back_inserter(text), ",{}",
-                        weighted ? value.activity_time / last_data_.residence_time
-                                 : value.activity_fraction / samples);
+                    if (weighted)
+                        std::format_to(std::back_inserter(text), ",{}",
+                            value.activity_time / last_data_.residence_time);
+                    else
+                        std::format_to(std::back_inserter(text), ",{}",
+                            value.activity_fraction / samples);
                 }
                 return text;
             };

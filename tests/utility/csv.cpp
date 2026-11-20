@@ -3,6 +3,8 @@
 #include <boost/ut.hpp>
 #include <chrono>
 #include <filesystem>
+#include <format>
+#include <system_error>
 #include <stdexcept>
 #include <string>
 #include <vector>
