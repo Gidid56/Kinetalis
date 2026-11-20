@@ -10,14 +10,14 @@ using enum file::Type;
 
 using namespace output;
 
-bool control::StepLimit::stop_requested() const
+bool control::StepLimit::stop_requested(kmc::Simulation const& simulation) const
 {
-    return simulation_ and simulation_->step() >= limit_;
+    return simulation.step() >= limit_;
 }
 
-bool control::DurationLimit::stop_requested() const
+bool control::DurationLimit::stop_requested(kmc::Simulation const& simulation) const
 {
-    return simulation_ and simulation_->run_duration() >= limit_;
+    return simulation.run_duration() >= limit_;
 }
 
 void output::Config::write_init(kmc::Simulation const& kmc)

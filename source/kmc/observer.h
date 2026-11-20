@@ -82,7 +82,7 @@ public:
 
     virtual void observe_processed(event::Record const&) { }
 
-    virtual bool stop_requested() const { return false; }
+    virtual bool stop_requested(Simulation const&) const { return false; }
 
     // Opt-out metadata only; all callbacks remain enabled for existing observers.
     virtual Subscription subscriptions() const { return Subscription::all; }

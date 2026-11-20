@@ -288,7 +288,7 @@ namespace
 
         std::string_view name() const override { return "kmc-integration-test"; }
         bool requires_class_counts() const override { return true; }
-        bool stop_requested() const override { return last_step_ >= target_; }
+        bool stop_requested(Simulation const&) const override { return last_step_ >= target_; }
 
         void observe_started(Simulation const& simulation) override
         {
@@ -380,7 +380,7 @@ namespace
         explicit StopWithoutStepping(bool track_counts) : track_counts_{ track_counts } { }
 
         bool requires_class_counts() const override { return track_counts_; }
-        bool stop_requested() const override { return true; }
+        bool stop_requested(Simulation const&) const override { return true; }
         std::string_view name() const override { return "stop-without-stepping"; }
 
     private:
@@ -391,7 +391,7 @@ namespace
     {
     public:
         std::string_view name() const override { return "first-accepted-event"; }
-        bool stop_requested() const override { return accepted_; }
+        bool stop_requested(Simulation const&) const override { return accepted_; }
 
         void observe_processed(event::Record const& record) override
         {
@@ -429,6 +429,23 @@ namespace
     }
 
     ut::suite<"kmc.simulation"> simulation_tests = [] {
+        "stopping predicates use the supplied simulation without retaining a pointer"_test = [] {
+            auto setup{ make_setup() };
+            TestSimulation first{ setup };
+            TestSimulation second{ setup };
+
+            AnalysisPlan plan;
+            plan.add<control::StepLimit>(1);
+
+            ut::expect(not plan.stop_requested(first));
+            ut::expect(not plan.stop_requested(second));
+
+            ut::expect(first.run(plan) == simulation::Status::analysed);
+            ut::expect(ut::eq(first.step(), Step{ 1 }));
+            ut::expect(plan.stop_requested(first));
+            ut::expect(not plan.stop_requested(second));
+        };
+
         "kinetic-class initialization is independent of its rate"_test = [] {
             KineticClass uninitialized{};
             ut::expect(not uninitialized.is_initialized());
@@ -929,7 +946,7 @@ namespace
 
             public:
                 // If the disabled observer is polled, it would terminate the run.
-                bool stop_requested() const override { return not active_; }
+                bool stop_requested(Simulation const&) const override { return not active_; }
                 void observe_selected(event::Record const&) override { ++selected_; }
                 void observe_processed(event::Record const&) override { ++processed_; }
                 void observe_started(Simulation const&) override { ++started_; }

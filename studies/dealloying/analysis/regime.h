@@ -63,7 +63,7 @@ public:
         return (reached_conditions_ & conditions) != Condition::none;
     }
 
-    bool stop_requested() const override { return has_reached(stop_conditions_); }
+    bool stop_requested(kmc::Simulation const&) const override { return has_reached(stop_conditions_); }
     Subscription subscriptions() const override
     {
         return Writer::subscriptions() | Subscription::selected |

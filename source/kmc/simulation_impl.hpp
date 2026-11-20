@@ -32,7 +32,7 @@ namespace kmc
 
         status_ = simulation::Status::running;
 
-        while (not analysis_plan.stop_requested())
+        while (not analysis_plan.stop_requested(*this))
         {
             if (token.stop_requested())
                 return status_ = simulation::Status::paused;

@@ -54,10 +54,10 @@ public:
         });
     }
 
-    [[nodiscard]] bool stop_requested() const
+    [[nodiscard]] bool stop_requested(Simulation const& simulation) const
     {
-        return std::ranges::any_of(subscribers(Subscription::stopping), [](auto const* observer) {
-            return observer->stop_requested();
+        return std::ranges::any_of(subscribers(Subscription::stopping), [&](auto const* observer) {
+            return observer->stop_requested(simulation);
         });
     }
 

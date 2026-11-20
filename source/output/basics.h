@@ -6,17 +6,14 @@ class control::StepLimit : public kmc::Observer
 public:
     explicit StepLimit(kmc::Step limit) : limit_{ limit } { }
 
-    bool stop_requested() const override;
+    bool stop_requested(kmc::Simulation const&) const override;
     Subscription subscriptions() const override { return Subscription::stopping; }
 
 private:
     std::string_view name() const override { return "step_limit"; }
     std::string settings() const override { return std::format("limit = {}", limit_); }
 
-    void observe_started(kmc::Simulation const& simulation) override { simulation_ = &simulation; }
-
     kmc::Step limit_{};
-    kmc::Simulation const* simulation_{};
 };
 
 class control::DurationLimit : public kmc::Observer
@@ -24,7 +21,7 @@ class control::DurationLimit : public kmc::Observer
 public:
     explicit DurationLimit(Duration limit) : limit_{ limit } { }
 
-    bool stop_requested() const override;
+    bool stop_requested(kmc::Simulation const&) const override;
     Subscription subscriptions() const override { return Subscription::stopping; }
 
     void set_cap(Duration limit) { limit_ = limit; }
@@ -33,10 +30,7 @@ private:
     std::string_view name() const override { return "duration_limit"; }
     std::string settings() const override { return std::format("limit = {}", limit_); }
 
-    void observe_started(kmc::Simulation const& simulation) override { simulation_ = &simulation; }
-
     Duration limit_{};
-    kmc::Simulation const* simulation_{};
 };
 
 class output::Config : public output::Writer
