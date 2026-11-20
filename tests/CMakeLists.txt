@@ -29,7 +29,6 @@ kinetalis_add_test_suite(lattice
     lattice/site.cpp
 )
 kinetalis_add_test_suite(utility
-    utility/csv.cpp
     utility/file.cpp
 )
 add_subdirectory(chemistry)

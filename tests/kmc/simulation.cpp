@@ -14,6 +14,7 @@
 #include "dealloying/kinetics/descriptor_format.h"
 #include "output/event_flux.h"
 #include "output/surface.h"
+#include "utility/csv.h"
 
 #include <algorithm>
 #include <array>

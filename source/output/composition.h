@@ -1,5 +1,8 @@
 #pragma once
 #include "writer.h"
+#include "lattice/types.h"
+
+#include <map>
 
 class output::Composition : public output::Writer
 {
