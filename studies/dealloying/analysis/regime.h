@@ -21,7 +21,8 @@ public:
     explicit Regime(std::filesystem::path const& root = {})
         : Writer{ root },
           phases_{ root },
-          surface_{ root }
+          surface_{ root },
+          event_flux_{ root }
     {}
 
     auto& set_save_lattice(bool enabled)
