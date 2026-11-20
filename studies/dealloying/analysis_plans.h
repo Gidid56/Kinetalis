@@ -3,6 +3,7 @@
 #include "dealloying/analysis/regime.h"
 #include "kmc/analysis_plan.h"
 #include "output/basics.h"
+#include "output/composition.h"
 #include "output/rates.h"
 #include "dealloying/kinetics/descriptor_format.h"
 #include "output/phases.h"

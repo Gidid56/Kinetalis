@@ -3,6 +3,8 @@
 #include "dealloying/kinetics/linear_bond_breaking.h"
 #include "dealloying/kinetics/composition_dependent.h"
 #include "output/basics.h"
+#include "output/composition.h"
+#include "dealloying/analysis/regime.h"
 #include "physics/equations/kinetics.h"
 #include "kmc/analysis_plan.h"
 #include "lattice/lattice.h"
@@ -883,6 +885,34 @@ namespace
             ut::expect(simulation.run(plan) == simulation::Status::exhausted);
             ut::expect(ut::eq(simulation.step(), Step{}));
             ut::expect(ut::eq(simulation.rejection_fraction(), 0.0));
+        };
+
+        "regime arrest detection enables kinetic-class counts on demand"_test = [] {
+            using Regime = studies::dealloying::analysis::Regime;
+
+            AnalysisPlan plain;
+            auto& plain_regime{ plain.add<Regime>() };
+            ut::expect(not plain.requires_class_counts());
+            plain_regime.set_marker_conditions(Regime::Condition::porous);
+            ut::expect(not plain.requires_class_counts());
+
+            AnalysisPlan marker_only;
+            marker_only.add<Regime>().set_marker_conditions(Regime::Condition::arrested);
+            ut::expect(marker_only.requires_class_counts());
+
+            AnalysisPlan stopping;
+            auto& regime{ stopping.add<Regime>() };
+            regime.set_stop_conditions(Regime::Condition::arrested)
+                .set_threshold(Regime::Condition::arrested, 0.0);
+            stopping.add<control::StepLimit>(5);
+            ut::expect(stopping.requires_class_counts());
+
+            auto setup{ make_setup() };
+            TestSimulation simulation{ setup };
+            ut::expect(not simulation.class_counts_enabled());
+            ut::expect(simulation.run(stopping) == simulation::Status::analysed);
+            ut::expect(simulation.class_counts_enabled());
+            expect_reference_state(simulation, setup.model.processes(), simulation.step());
         };
 
         "class populations are enabled on demand and rebuilt when resuming"_test = [] {

@@ -77,6 +77,10 @@ public:
 
 private:
     std::string_view name() const override { return "regime"; }
+    bool requires_class_counts() const override
+    {
+        return (marker_conditions_ & Condition::arrested) != Condition::none;
+    }
     std::string settings() const override;
 
     void capture_init(kmc::Simulation const&) override;

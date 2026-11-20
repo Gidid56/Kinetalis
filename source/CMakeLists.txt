@@ -14,6 +14,7 @@ target_sources(
 
         output/writer.cpp
         output/basics.cpp
+        output/composition.cpp
         output/phases.cpp
         output/surface.cpp
         output/event_flux.cpp
