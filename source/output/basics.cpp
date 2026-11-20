@@ -72,11 +72,6 @@ void output::Lattice::write_final(kmc::Simulation const& kmc)
         file::write<xyz>(writer_path() / "final", kmc.lattice().to_xyz_file(true));
 }
 
-std::string output::Composition::settings() const
-{
-    return "elements = dynamically encountered";
-}
-
 void output::Composition::capture_init(kmc::Simulation const& kmc)
 {
     element_counts_.clear();
@@ -128,14 +123,4 @@ void output::Composition::write_init(kmc::Simulation const& kmc)
         return text;
     };
     csv_.initialize(writer_path(), std::move(header), std::move(row));
-}
-
-void output::Composition::write_snapshot(kmc::Simulation const&)
-{
-    csv_.append(columns_.size());
-}
-
-void output::Composition::write_final(kmc::Simulation const&)
-{
-    csv_.finalize();
 }
