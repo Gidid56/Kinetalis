@@ -56,6 +56,8 @@ private:
 
     void write_init(kmc::Simulation const&) override;
     void write_snapshot(kmc::Simulation const&) override;
+    void write_final(kmc::Simulation const&) override;
+    utility::csv::Writer csv_;
 };
 
 class output::Time : public output::Writer
@@ -68,6 +70,8 @@ private:
 
     void write_init(kmc::Simulation const&) override;
     void write_snapshot(kmc::Simulation const&) override;
+    void write_final(kmc::Simulation const&) override;
+    utility::csv::Writer csv_;
 };
 
 class output::Lattice : public output::Writer
