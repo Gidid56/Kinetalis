@@ -164,23 +164,23 @@ namespace output
 
                 for (auto const& [element, coordination] : columns_)
                 {
-                        Accumulation value{};
-                        if (auto it{ last_data_.sites.find(SiteKey{ element, coordination }) };
-                            it != last_data_.sites.end())
-                            value = it->second;
+                    Accumulation value{};
+                    if (auto it{ last_data_.sites.find(SiteKey{ element, coordination }) };
+                        it != last_data_.sites.end())
+                        value = it->second;
 
-                        switch (kind)
-                        {
-                            case 0: std::format_to(std::back_inserter(text), ",{}",
-                                value.count / samples); break;
-                            case 1: std::format_to(std::back_inserter(text), ",{}",
-                                value.population_fraction / samples); break;
-                            case 2: std::format_to(std::back_inserter(text), ",{}",
-                                value.count_time / last_data_.residence_time); break;
-                            default: std::format_to(std::back_inserter(text), ",{}",
-                                value.population_time / last_data_.residence_time); break;
-                        }
+                    switch (kind)
+                    {
+                        case 0: std::format_to(std::back_inserter(text), ",{}",
+                            value.count / samples); break;
+                        case 1: std::format_to(std::back_inserter(text), ",{}",
+                            value.population_fraction / samples); break;
+                        case 2: std::format_to(std::back_inserter(text), ",{}",
+                            value.count_time / last_data_.residence_time); break;
+                        default: std::format_to(std::back_inserter(text), ",{}",
+                            value.population_time / last_data_.residence_time); break;
                     }
+                }
                 return text;
             };
 

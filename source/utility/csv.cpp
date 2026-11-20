@@ -64,16 +64,13 @@ void csv::Writer::finalize()
     };
 
     std::vector<Change> changes;
-    std::string final_header;
-
-    for (auto const& fields : Table{}.read(path("schema")).data())
-    {
+    Table schema;
+    schema.read(path("schema"));
+    for (auto const& fields : schema.data())
         changes.push_back({ std::stoull(fields[0]), std::stoull(fields[1]) });
-        final_header = fields[2];
-    }
 
     // Labels can become available without changing the number of kinetic classes.
-    final_header = header_();
+    auto const final_header{ header_() };
 
     auto const final_columns{ changes.empty() ? std::size_t{} : changes.back().columns };
     auto completed_path{ path() };
