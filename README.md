@@ -75,7 +75,7 @@ Rebuild and run `kinetalis_batch`. The campaign is selected **at compile time**,
 | `critical_potential_temperature()` | Study the temperature dependence of the critical potential |
 | `pore_surface_morphology()` | Record pore evolution for morphological analysis |
 
-Use `--concurrency N` to run up to `N` independent samples simultaneously (default: 16), `--results-dir PATH` to select the output location, or `--help` to see the options. Some predefined studies contain many simulations and are not intended as quick smoke tests.
+Use `--concurrency N` to run up to `N` independent samples simultaneously (default: 16), `--results-dir PATH` to select the output location (relative paths are resolved under `HOME`), or `--help` to see the options. Some predefined studies contain many simulations and are not intended as quick smoke tests.
 
 ### Results and reproducibility
 
@@ -91,6 +91,8 @@ Each campaign run creates a new directory under `results/` by default. Key files
 | `setups/` | Per-sample model, lattice, seed, and measurement files |
 
 The batch runner derives separate random seeds for each replicate, independently of worker scheduling. For scientific reproducibility, retain the output together with the **exact source revision** and the campaign definition. The sampling and classification criteria can be inspected in [`studies/dealloying/analysis_plans.h`](studies/dealloying/analysis_plans.h).
+
+The built-in composition and surface-population observers use predefined column orders. With statically keyed kinetics (the default `LinearBondBreaking` model), kinetic-activity CSVs include the full class range from the outset, including zero-valued classes. Dynamically keyed kinetic models may produce run-dependent class columns; verify schema compatibility before aggregating such outputs.
 
 The optional critical-potential fitting script, [`tools/fit_critical_potential.py`](tools/fit_critical_potential.py), runs separately from the C++ application and requires Python with NumPy, pandas, and `firthmodels`. Supply your own `regimes.csv` in the working directory when running it; the script writes `critical_potential_fits.csv` there. Analysis CSV and Excel files under `tools/` are local inputs or outputs and are not tracked in Git.
 
@@ -108,14 +110,14 @@ cmake --build --preset build-windows-tests-debug
 ctest --preset test-windows-tests-debug
 ~~~
 
-The `kinetalis_tests` target **builds all eight test executables** without running them: seven individual modules (`chemistry`, `kmc`, `lattice`, `math`, `models`, `physics`, and `simulation`) and `test_all.exe`. In Visual Studio, select `test_all.exe` as the **Startup Item** and run it to execute every suite. The test sources are compiled once and shared between the module executables and `test_all.exe`.
+The `kinetalis_tests` target **builds nine test executables** without running them: eight individual modules (`chemistry`, `kinetics`, `kmc`, `lattice`, `math`, `physics`, `simulation`, and `utility`) and `test_all.exe`. In Visual Studio, select `test_all.exe` as the **Startup Item** and run it to execute every suite. The test sources are compiled once and shared between the module executables and `test_all.exe`.
 
 ~~~powershell
 cmake --build build/windows-tests-debug --target test_all
 .\build\windows-tests-debug\Debug\bin\test_all.exe
 ~~~
 
-`ctest --preset test-windows-tests-debug` also runs all tests, reporting results separately for each of the seven modules.
+`ctest --preset test-windows-tests-debug` also runs all tests, reporting results separately for each of the eight modules.
 
 For optional checks, select `windows-tests-analysis` (clang-tidy enabled) or
 `windows-tests-no-pch` (precompiled headers disabled). Both have matching
@@ -140,10 +142,7 @@ The No-PCH configuration remains available locally but is not part of CI.
 
 ### Performance benchmarks
 
-The standalone [`kinetalis_benchmarks`](benchmarks/) executable measures
-lattice construction, total simulation initialization, and KMC execution
-separately. It is independent of CTest. On Windows, select
-**Windows | Benchmark | Release** or run:
+The standalone [`kinetalis_benchmarks`](benchmarks/) executable measures lattice construction, total simulation initialization, and KMC execution separately. It is independent of CTest. On Windows, select **Windows | Benchmark | Release** or run:
 
 ~~~powershell
 cmake --preset windows-benchmark-release
@@ -151,24 +150,7 @@ cmake --build --preset build-windows-benchmark-release
 .\build\windows-benchmark-release\Release\bin\kinetalis_benchmarks.exe
 ~~~
 
-The default Ag–Au dealloying workload uses a fixed seed, **100,000 accepted
-steps per run**, five measured runs per size, and a single untimed warm-up of
-1,000 steps in a 5 nm box. Results below are **mean ± sample standard deviation**
-on a **13th Gen Intel Core i7-13700KF** (16 cores / 24 logical processors,
-3.40 GHz base clock), using a Release build:
-
-| FCC box | Sites | Lattice construction (s) | Total initialization (s) | KMC execution (s) | ns/accepted step |
-| ---: | ---: | ---: | ---: | ---: | ---: |
-| 5 nm | 8,788 | 0.0066 ± 0.0003 | 0.0069 ± 0.0002 | 0.0874 ± 0.0006 | **874.4 ± 6.3** |
-| 10 nm | 62,500 | 0.0435 ± 0.0008 | 0.0458 ± 0.0009 | 0.0878 ± 0.0008 | **878.1 ± 7.8** |
-| 20 nm | 500,000 | 0.3356 ± 0.0013 | 0.3553 ± 0.0020 | 0.0900 ± 0.0006 | **900.2 ± 5.8** |
-
-Lattice construction is included in total initialization time. The KMC
-measurement is **per accepted step**, so it includes the cost of rejected
-event selections. These measurements characterize a particular physical
-workload rather than pure event-selector complexity. See
-[benchmarks/README.md](benchmarks/README.md) for the full setup, hardware
-details, and interpretation.
+The default Ag–Au workload uses a fixed seed, 100,000 accepted steps per measured run, and five runs per box size. Timing includes rejected event selections but is reported per *accepted* step. For reference measurements, hardware details, limitations, and guidance on reproducing results, see [benchmarks/README.md](benchmarks/README.md). Historical timings should not be treated as a performance guarantee for the current revision.
 
 ### Interactive viewer
 
@@ -216,7 +198,7 @@ policy. Review scripts before executing them.
 
 ## Framework overview
 
-Kinetalis separates **which events can occur and how fast** from **how events are sampled, executed, and measured**. The KMC core is generic; the dealloying study provides concrete processs, a kinetic model, and simulation setups.
+Kinetalis separates **which events can occur and how fast** from **how events are sampled, executed, and measured**. The KMC core is generic; the dealloying study provides concrete processes, a kinetic model, and simulation setups.
 
 | Component | Responsibility |
 | --- | --- |
@@ -235,7 +217,7 @@ An [`kmc::Process`](source/kmc/process.h) is a C++ concept, not a runtime base c
 
 A kinetic model constructs an event `Descriptor` from the event type and its local environment, then maps it to a `RateClassKey`. The physical rate law consumes the descriptor, not the key. The kinetics object owns its cached class rates and event types; the simulation owns event-slot keys and optional class-population counts. Key zero denotes an inactive slot. A hierarchical [rate-sum tree](source/kmc/rate_tree.h) stores the summed rates of source sites for efficient event selection. The simulation resolves the selected slot into a location, evaluates any postselection rejection, and advances physical time for **both accepted and rejected selections**. Only accepted selections modify the lattice, increment the accepted-step counter, and trigger local rate updates.
 
-The KMC scheduler uses static dispatch for the concrete kinetic model and processs. Its non-templated `kmc::Simulation` interface allows observers and the viewer to operate without knowing the model type. Mathematical utilities, [dimension-aware physical quantities](source/physics/), and [chemical data](source/chemistry/) are shared across studies.
+The KMC scheduler uses static dispatch for the concrete kinetic model and processes. Its non-templated `kmc::Simulation` interface allows observers and the viewer to operate without knowing the model type. Mathematical utilities, [dimension-aware physical quantities](source/physics/), and [chemical data](source/chemistry/) are shared across studies.
 
 Physical quantity domain annotations (such as nonnegative or unit interval) are **not checked implicitly** during construction, conversion, assignment, or arithmetic. These operations are nonthrowing by default. At input and invariant boundaries, explicitly call `value.validate()` or `physics::ensure_non_negative(value)` / `physics::ensure_unit_interval(value)`; explicit validation throws `std::domain_error` for out-of-range values. Dimensional and reference constraints remain enforced at compile time.
 

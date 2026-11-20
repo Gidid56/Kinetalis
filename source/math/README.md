@@ -14,24 +14,12 @@ Suites:
 - `math.interop.std`: built-in arithmetic, STL ranges/spans and `std::complex`.
 - `math.interop.physics`: dimensional compatibility with `physics::Quantity`.
 
-## Current production issues exposed by the suite
+## Matrix range semantics
 
-### 1. Matrix range-size semantics
-
-`Matrix::begin()/end()` iterate rows, but `Matrix::size()` returns `N * M`. This
-means `Matrix` satisfies `std::ranges::sized_range` syntactically while violating
-the range invariant that `size()` matches the iterator distance. In particular,
-constructing `std::span{matrix}` can use the scalar element count for a row range.
-
-This requires an API decision rather than a typo fix. The clean STL-compatible
-choice is for `size()` to return the number of rows and for a separate
-`element_count()`/`scalar_size()` function to return `N * M`.
-
-After the `std::size_t` canonicalization, the three stale-name fixes, the generic
-zero comparison and the `round_to<0>` fix, the supplied test sources were
-syntax-checked and executed against GCC 14 using a minimal Boost.UT-compatible
-test harness. All enabled expectations passed.
-
+`Matrix<N, M, T>::begin()` and `end()` iterate over the `N` rows.
+`size()` returns `N`, consistent with `std::ranges::size()` and
+`std::span{matrix}`; `elements()` reports the total number of scalar
+elements, `N * M`. These contracts are covered by the matrix tests.
 
 ## Compatibility findings
 
