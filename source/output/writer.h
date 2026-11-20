@@ -24,7 +24,6 @@ public:
     [[nodiscard]] auto writer_path() const { return root_ / name(); }
     [[nodiscard]] auto& last_snapshot() const { return last_snapshot_; }
 
-protected:
     virtual void capture_init(kmc::Simulation const&) { }
     virtual void capture_snapshot(kmc::Simulation const&) { }
     virtual void capture_final(kmc::Simulation const&) { }
