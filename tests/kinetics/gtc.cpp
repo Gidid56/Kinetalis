@@ -209,8 +209,10 @@ namespace
             ut::expect(output::DescriptorFormat<kinetics::GTC::Descriptor>::row(refined).find(
                 "nTS=3.1") != std::string::npos);
 
+            kinetics::PowerLawBondEnergy reference;
+            reference.set_temperature(model.temperature()).set_potential(model.potential());
             expect_rate(model.rate({ event::Type::dissolution, Ag, 9, std::nullopt }),
-                kinetics::PowerLawBondEnergy{}.rate({ event::Type::dissolution, Ag, 9 }));
+                reference.rate({ event::Type::dissolution, Ag, 9 }));
         };
 
         "classify does not yet invent a path-specific saddle"_test = [] {
