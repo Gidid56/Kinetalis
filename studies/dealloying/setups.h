@@ -114,8 +114,8 @@ namespace studies::dealloying::setups
 
         auto& kinetics{ setup.model.kinetics() };
         kinetics.set_potential(potential).set_temperature(temperature);
-        if (modulation)
-            kinetics.set_modulation(*modulation);
+        //if (modulation)
+        //    kinetics.set_modulation(*modulation);
         setup.name = std::format("T = {:K};x_Au = {};E = {:V}", temperature, x0, potential);
         if (modulation)
             setup.name += std::format("{}_{}_{} = {}", enum_name(modulation->descriptor.event),

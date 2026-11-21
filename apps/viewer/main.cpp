@@ -12,8 +12,8 @@ int run_viewer()
     Viewer viewer;
 
     viewer.createSimulation(
-        setups::pore_dealloying(CampaignType::passivation, 10, 20_mV, 300_K),
-        analysis_plans::basic
+        setups::pore_dealloying(CampaignType::passivation, 10, 100_mV, 300_K),
+        analysis_plans::statistics
         );
 
     return viewer.

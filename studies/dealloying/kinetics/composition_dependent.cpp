@@ -87,14 +87,13 @@ CompositionDependent::CompositionDependent()
 }
 
 CompositionDependent::Descriptor CompositionDependent::classify(
-    event::Type type, event::Location const& location, lattice::Lattice const& lattice) const
+    event::Type type,
+    event::Location const& location,
+    lattice::Lattice const&) const
 {
     auto const& source{ location.source() };
-    Descriptor desc{ type, source.element(), source.coordination(), {} };
-    for (auto const* neighbor : lattice.neighbors(source))
-        if (neighbor->is_occupied())
-            ++desc.element_neighbors[lattice::elementKey(neighbor->element())];
-    return desc;
+
+    return { type, source.element(), source.coordination(), source.element_neighbors() };
 }
 
 RateClassKey CompositionDependent::key(Descriptor const& desc)
