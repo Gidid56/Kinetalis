@@ -1,5 +1,8 @@
 #pragma once
 #include "power_law_bond_energy.h"
+#include "gtc_environment.h"
+#include <cstdint>
+#include <memory>
 #include <map>
 #include <optional>
 #include <vector>
@@ -7,8 +10,9 @@
 namespace studies::dealloying::kinetics
 {
     // Power-law binding energies, with an extensible transition-state descriptor.
-    // Until complete paths and saddle selection are implemented, the KMC classifier
-    // uses the power-law baseline (n_TS=2); no geometry-dependent rates are claimed.
+    // Diffusion depends on the canonical 18-site occupancy mask. The FCC
+    // one-/two-segment geometry is precomputed and cached by occupancy mask.
+    // Missing admissible paths currently use the n_TS=2 power-law fallback.
     class GTC : public PowerLawBondEnergy
     {
     public:
@@ -21,6 +25,8 @@ namespace studies::dealloying::kinetics
             lattice::Coordination coordination{};
             // Present only after a saddle has been explicitly characterized.
             std::optional<double> transition_state_coordination{};
+            // Canonical 18-bit FCC spectator occupation; zero for dissolution.
+            std::uint32_t environment{};
             auto operator<=>(Descriptor const&) const = default;
         };
 
@@ -35,5 +41,6 @@ namespace studies::dealloying::kinetics
     private:
         std::map<Descriptor, kmc::RateClassKey> keys_;
         std::vector<Descriptor> descriptors_{Descriptor{}};
+        mutable std::shared_ptr<gtc::FccEnvironment const> environment_;
     };
 }

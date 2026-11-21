@@ -11,6 +11,8 @@ target_sources(
         dealloying/analysis/electrochemistry.cpp
         dealloying/kinetics/gtc.cpp
         dealloying/kinetics/gtc_geometry.cpp
+        dealloying/kinetics/gtc_environment.cpp
+        dealloying/kinetics/gtc_path_cache.cpp
         dealloying/analysis/regime.cpp
 )
 

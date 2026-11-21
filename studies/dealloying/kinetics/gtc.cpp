@@ -1,20 +1,31 @@
 #include "pch.h"
 #include "gtc.h"
+#include "gtc_path_cache.h"
+#include <memory>
 
 using namespace kmc;
 using namespace studies::dealloying::kinetics;
 
 GTC::Descriptor GTC::classify(
-    event::Type type, event::Location const& location, lattice::Lattice const&) const
+    event::Type type, event::Location const& location, lattice::Lattice const& lattice) const
 {
-    if (type == event::Type::diffusion and location.size() != 2)
-        throw std::invalid_argument{"GTC diffusion requires source and target."};
-
-    // TODO: retain complete geometrical paths, evaluate saddle coordination
-    // along each path, select the admissible lowest-barrier path, and define
-    // a stable environment descriptor suitable for the KMC rate cache.
     auto const& source{location.source()};
-    return {type, source.element(), source.coordination(), std::nullopt};
+    Descriptor result{type, source.element(), source.coordination(), std::nullopt, 0};
+
+    if (type == event::Type::diffusion)
+    {
+        if (location.size() != 2)
+            throw std::invalid_argument{"GTC diffusion requires source and target."};
+
+        // Lattice-independent canonical bit meanings; the expensive direction
+        // to neighbor-list mapping is established only once per lattice.
+        if (not environment_ or not environment_->belongs_to(lattice))
+            environment_ = std::make_shared<gtc::FccEnvironment>(lattice);
+
+        result.environment = environment_->classify(source, *location.sites()[1]);
+    }
+
+    return result;
 }
 
 RateClassKey GTC::key(Descriptor const& desc)
@@ -42,11 +53,18 @@ Rate GTC::rate(Descriptor const& desc) const
         desc.event, desc.element, desc.coordination
     };
 
-    if (desc.event != event::Type::diffusion or
-        not desc.transition_state_coordination)
+    if (desc.event != event::Type::diffusion)
         return PowerLawBondEnergy::rate(baseline);
 
-    const double n_TS{*desc.transition_state_coordination};
+    // An explicitly supplied saddle overrides the geometric lookup.
+    // Otherwise classify() supplies the complete canonical 18-bit mask.
+    const auto saddle{desc.transition_state_coordination
+        ? desc.transition_state_coordination
+        : gtc::saddle_coordination(desc.environment)};
+    if (not saddle)
+        return PowerLawBondEnergy::rate(baseline);
+
+    const double n_TS{*saddle};
     if (not std::isfinite(n_TS) or n_TS < 0.0)
         throw std::invalid_argument{"GTC saddle coordination must be finite and nonnegative."};
 
@@ -61,7 +79,9 @@ Rate GTC::rate(Descriptor const& desc) const
 std::string GTC::output_text() const
 {
     return std::format(
-        "Model = GTC (framework; geometry-dependent rates NOT enabled)\n"
-        "Transition-state inference = unresolved; fallback n_TS = {}\n{}",
+        "Model = GTC (FCC NN-shell transition-state geometry)\n"
+        "Geometry = canonical 18-bit occupancy; direct and 2-segment arcs\n"
+        "Transition-state coordination = best path bottleneck (64 samples per arc)\n"
+        "No admissible path = power-law fallback n_TS = {}\n{}",
         diffusion_transition_state_coordination, PowerLawBondEnergy::output_text());
 }
