@@ -6,6 +6,8 @@
 #include "model.h"
 #include "simulation/engine.h"
 
+#include <stdexcept>
+
 namespace studies::dealloying::setups
 {
     using namespace lattice;
@@ -35,6 +37,54 @@ namespace studies::dealloying::setups
             lattice.set_label("bulk with vacancy");
             lattice.fill(rng, composition);
             lattice.center_site().set_element(lattice, none);
+        });
+        return lattice;
+    }
+
+    // A freestanding Ag-Au film supported by a pure Au base layer, with an
+    // unoccupied region above it. Adapted from the archived slab construction.
+    //
+    // Only x and y are periodic. The nominal box dimensions are rounded up
+    // to whole supercell periods by Lattice::scale_shape(), so the layer
+    // positions are calculated from the actual resulting box height.
+    static inline Lattice thin_film(
+        chemistry::Composition::Quantity x0 = 10,
+        Length side = 60_nm,
+        Length box_height = 90_nm,
+        Length substrate_thickness = 7.5_nm,
+        Indices surface_orientation = Indices::unit_z())
+    {
+        if (x0 > 100)
+            throw std::invalid_argument{ "Thin-film Au content must be between 0 and 100." };
+        if (side <= 0_nm or box_height <= 0_nm or substrate_thickness <= 0_nm or
+            2 * substrate_thickness >= box_height)
+            throw std::invalid_argument{
+                "Thin-film dimensions must be positive, with two surface layers "
+                "fitting inside the box height." };
+
+        using enum chemistry::Element;
+        using enum math::Axis;
+
+        UnitCell unit_cell{
+            UnitCell::conventional<Bravais::cF>(chemistry::Atom{ Au })
+        };
+        Lattice lattice{ unit_cell, surface_orientation };
+        lattice.scale_shape(Parameters{ side, side, box_height });
+        lattice.set_periodic_boundaries(x | y);
+        lattice.construct_sites();
+        lattice.construct_neighbor_list();
+
+        lattice.set_fill_function([x0, substrate_thickness](
+            Lattice& lattice, simulation::Engine& rng) {
+            chemistry::Composition alloy{ { Ag, 100 - x0 }, { Au, x0 } };
+            lattice.set_label("Ag-Au thin film on Au substrate");
+            lattice.fill(rng, alloy);
+
+            // At +/-half_height each sheet extends one substrate thickness
+            // into the simulation box, reproducing the archived layout.
+            const auto half_height{ lattice.shape().parameters().z() / 2 };
+            lattice.fill(none, shape::sheet(2 * substrate_thickness).move_by(z, half_height));
+            lattice.fill(Au, shape::sheet(2 * substrate_thickness).move_by(z, -half_height));
         });
         return lattice;
     }
@@ -122,6 +172,33 @@ namespace studies::dealloying::setups
             modulation->descriptor.element, static_cast<unsigned>(modulation->descriptor.coordination),
             modulation->ratio);
 
+        return setup;
+    }
+
+    static inline Setup thin_film_dealloying(
+        chemistry::Composition::Quantity x0 = 10,
+        ElectricPotential overpotential = 0_V,
+        kmc::Temperature temperature = 300_K,
+        Length side = 60_nm,
+        Length box_height = 90_nm,
+        Length substrate_thickness = 7.5_nm,
+        Indices surface_orientation = Indices::unit_z())
+    {
+        Setup setup;
+        setup.make_lattice = [=] {
+            return thin_film(x0, side, box_height, substrate_thickness, surface_orientation);
+        };
+
+        // Same potential convention as pore_dealloying. The reference critical
+        // potentials are calibrated for bulk pores, not for thin-film geometry.
+        const auto potential{ critical_potential(x0, temperature) + overpotential };
+        setup.model.kinetics().set_potential(potential).set_temperature(temperature);
+        setup.name = std::format(
+            "thin film; x_Au = {}; side = {:nm}; box height = {:nm}; "
+            "Au substrate = {:nm}; orientation = ({},{},{}); T = {:K}; E = {:V}",
+            x0, side, box_height, substrate_thickness,
+            surface_orientation.x(), surface_orientation.y(), surface_orientation.z(),
+            temperature, potential);
         return setup;
     }
 
