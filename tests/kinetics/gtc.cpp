@@ -140,8 +140,12 @@ namespace
             bool found{};
             for (std::size_t i{};i<common.size();++i)
                 for (std::size_t j{i+1};j<common.size();++j)
+                    for (std::size_t k{j+1};k<common.size();++k)
                 {
-                    std::uint32_t const mask{(1u<<common[i])|(1u<<common[j])};
+                    // A third occupied common neighbor contributes to the
+                    // Gaussian energy while another pair supports the arc.
+                    std::uint32_t const mask{
+                        (1u<<common[i])|(1u<<common[j])|(1u<<common[k])};
                     auto const saddle{kinetics::gtc::saddle_coordination(mask)};
                     if (not saddle or std::abs(*saddle-2.0)<1e-3)
                         continue;
