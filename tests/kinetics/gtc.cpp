@@ -132,6 +132,32 @@ namespace
             }));
         };
 
+        "cached admissible path affects the kinetic diffusion rate"_test = [] {
+            kinetics::GTC model;
+            model.set_temperature(300_K).set_potential(0.85_V);
+
+            constexpr std::array<unsigned,4> common{6,7,10,11};
+            bool found{};
+            for (std::size_t i{};i<common.size();++i)
+                for (std::size_t j{i+1};j<common.size();++j)
+                {
+                    std::uint32_t const mask{(1u<<common[i])|(1u<<common[j])};
+                    auto const saddle{kinetics::gtc::saddle_coordination(mask)};
+                    if (not saddle or std::abs(*saddle-2.0)<1e-3)
+                        continue;
+
+                    kinetics::GTC::Descriptor with_path{
+                        event::Type::diffusion,Au,6,std::nullopt,mask};
+                    kinetics::GTC::Descriptor baseline{
+                        event::Type::diffusion,Au,6,2.0,mask};
+                    ut::expect(model.rate(with_path) != model.rate(baseline));
+                    ut::expect(model.key(with_path) != model.key(baseline));
+                    found=true;
+                    break;
+                }
+            ut::expect(found);
+        };
+
         "Gaussian support weight uses the distance descriptor of Eq. 1.44"_test = [] {
             using kinetics::gtc::distance_weight;
             ut::expect(std::abs(distance_weight(1_nm, 1_nm) - 1.0) < 1e-12);

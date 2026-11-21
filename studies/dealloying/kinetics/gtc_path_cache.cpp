@@ -5,6 +5,7 @@
 #include <array>
 #include <bit>
 #include <cmath>
+#include <compare>
 #include <cstdint>
 #include <limits>
 #include <mutex>
