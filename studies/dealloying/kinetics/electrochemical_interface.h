@@ -39,7 +39,7 @@ namespace studies::dealloying::kinetics
         auto& set_constants(this auto& self, Constants constants)
         {
             ensure_range(constants);
-            self.constants_ = constants;
+            self.ElectrochemicalInterface::constants_ = constants;
             return self;
         }
 

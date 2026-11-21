@@ -70,6 +70,25 @@ namespace
                 physics::equations::kinetics::tst_rate(0_eV, 300_K));
         };
 
+        "electrochemical constants setter targets the electrochemical base"_test = [] {
+            kinetics::PowerLawBondEnergy power_law;
+            auto parameters{ power_law.ElectrochemicalInterface::constants() };
+            parameters.solvation_energy = 0.80_eV;
+            power_law.set_constants(parameters);
+
+            ut::expect(
+                power_law.ElectrochemicalInterface::constants().solvation_energy == 0.80_eV);
+            ut::expect(power_law.constants().bond_energy == 0.15_eV)
+                << "LinearBondBreaking's separate constants must not be overwritten";
+
+            kinetics::LinearBondBreaking linear;
+            auto linear_parameters{ linear.ElectrochemicalInterface::constants() };
+            linear_parameters.solvation_energy = 0.90_eV;
+            linear.set_constants(linear_parameters);
+            ut::expect(
+                linear.ElectrochemicalInterface::constants().solvation_energy == 0.90_eV);
+        };
+
         "Ag9 dissolution matches the original model at equal E and T"_test = [] {
             kinetics::LinearBondBreaking old_model;
             kinetics::PowerLawBondEnergy new_model;
