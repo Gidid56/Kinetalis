@@ -96,15 +96,19 @@ Rate PowerLawBondEnergy::rate(Descriptor const& desc) const
         desc.event, desc.element, lattice_energy_barrier(desc), modulation_ratio(desc));
 }
 
-std::string PowerLawBondEnergy::output_text() const
+std::string PowerLawBondEnergy::binding_parameters_text()
 {
-    std::string text{ std::format(
-        "Model = Power law bond energy\nDiffusion TS coordination = {}\n",
-        diffusion_transition_state_coordination) };
+    std::string text;
     for (auto const element : lattice::active_elements)
         std::format_to(std::back_inserter(text), "{}: coefficient = {:meV}; exponent = {}\n",
             element, power_law_bond_energy::dimer_bond_energy(element),
             power_law_bond_energy::coordination_exponent(element));
+    return text;
+}
 
-    return text + ElectrochemicalInterface::output_text();
+std::string PowerLawBondEnergy::output_text() const
+{
+    return std::format("Model = Power law bond energy\nDiffusion TS coordination = {}\n{}{}",
+        diffusion_transition_state_coordination, binding_parameters_text(),
+        ElectrochemicalInterface::output_text());
 }

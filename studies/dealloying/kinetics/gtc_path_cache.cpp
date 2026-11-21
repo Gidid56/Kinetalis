@@ -37,6 +37,7 @@ namespace studies::dealloying::kinetics::gtc
         constexpr double d_nn{std::numbers::sqrt2};
         constexpr double tolerance{1e-7};
         constexpr double width{1.0/6.0};
+        // At 1.5 d_nn the Gaussian weight is exp(-9), about 1.2e-4.
         constexpr double cutoff{1.5*d_nn};
         constexpr unsigned samples_per_arc{64};
         constexpr std::array<Point,12> directions{{

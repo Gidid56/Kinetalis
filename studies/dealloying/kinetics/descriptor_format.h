@@ -4,6 +4,7 @@
 #include "linear_bond_breaking.h"
 #include "output/types.h"
 
+#include <algorithm>
 #include <format>
 #include <iterator>
 #include <ranges>
@@ -47,9 +48,17 @@ namespace output
         {
             if (descriptor.event != kmc::event::Type::diffusion)
                 return {};
-            if (descriptor.transition_state_coordination)
-                return std::format("nTS={:.6g}", *descriptor.transition_state_coordination);
-            return "nTS=baseline";
+            // The occupancy mask is part of the kinetic class. Without it,
+            // different GTC classes produce indistinguishable CSV rows/labels.
+            const double saddle{descriptor.transition_state_coordination
+                ? std::min(*descriptor.transition_state_coordination,
+                    static_cast<double>(studies::dealloying::kinetics::gtc::final_coordination(
+                        descriptor.environment)))
+                : studies::dealloying::kinetics::gtc::saddle_coordination(
+                    descriptor.environment)};
+            return std::format("mask=0x{:05X};nTS={:.6g}{}",
+                descriptor.environment, saddle,
+                descriptor.transition_state_coordination ? ";override" : "");
         }
 
         static std::string label(Descriptor const& descriptor)

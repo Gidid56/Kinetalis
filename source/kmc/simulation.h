@@ -53,6 +53,9 @@ public:
     auto& model(this auto& self) noexcept { return self.model_; }
     auto& rate_tree() const { return rate_tree_; }
     auto const& slot_class_keys() const noexcept { return slot_class_keys_; }
+    // Class populations modified by the most recent accepted event.
+    // Keys may repeat; consumers should process the final population once.
+    auto const& changed_class_keys() const noexcept { return changed_class_keys_; }
 
 private:
     struct Selection
@@ -88,6 +91,7 @@ private:
     std::unique_ptr<rate_tree::Interface> rate_tree_;
     Rates site_rates_;
     RateClassKeys slot_class_keys_;
+    std::vector<RateClassKey> changed_class_keys_;
     std::vector<rate_tree::BlockUpdate> block_updates_;
     std::vector<lattice::Site*> affected_sites_;
 };

@@ -11,7 +11,7 @@ namespace studies::dealloying::kinetics
 {
     // Power-law binding energies with a geometry-dependent diffusion saddle.
     // FCC paths and Gaussian weights are precomputed and cached by the canonical
-    // 18-site occupancy mask. No-path fallback to n_TS=2 remains provisional.
+    // 18-site occupancy mask. No-path fallback uses the direct-hop midpoint.
     class GTC : public PowerLawBondEnergy
     {
     public:

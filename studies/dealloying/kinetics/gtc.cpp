@@ -82,6 +82,7 @@ std::string GTC::output_text() const
         "Transition-state energy = max(path energy, final lattice-site energy)\n"
         "Transition-state coordination = best path bottleneck (64 samples per arc)\n"
         "No admissible arc = midpoint of the direct hop\n"
-        "{}",
-        PowerLawBondEnergy::output_text());
+        "Spectator cutoff = 1.5 d_nn (Gaussian tail below exp(-9))\n"
+        "{}{}",
+        binding_parameters_text(), ElectrochemicalInterface::output_text());
 }

@@ -13,6 +13,7 @@ namespace studies::dealloying::kinetics
         std::string output_text() const;
 
     protected:
+        static std::string binding_parameters_text();
         static Energy binding_energy(chemistry::Element, double coordination);
     };
 }
