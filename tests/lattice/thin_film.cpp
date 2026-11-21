@@ -27,7 +27,7 @@ namespace
 
         auto film{ setups::thin_film(25, side, box_height, substrate, orientation) };
         ut::expect(film.periodic_boundaries() == (math::Axis::x | math::Axis::y));
-        ut::expect(film.shape().parameters().z() >= box_height);
+        ut::expect(film.shape().parameters().z() >= lattice::Distance{ box_height });
 
         simulation::Engine rng{ test_seed };
         film.apply_fill_function(rng);
