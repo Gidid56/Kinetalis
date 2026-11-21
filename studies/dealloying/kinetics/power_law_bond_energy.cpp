@@ -1,5 +1,10 @@
 #include "pch.h"
 #include "power_law_bond_energy.h"
+#include "physics/constants.h"
+
+#include <algorithm>
+#include <cmath>
+#include <iterator>
 
 using namespace kmc;
 using chemistry::Element;
@@ -50,11 +55,45 @@ namespace studies::dealloying::kinetics::power_law_bond_energy
 }
 
 
+PowerLawBondEnergy::PowerLawBondEnergy()
+{
+    // Preserve the v0.6.1 Ag9 dissolution rate at the same potential and
+    // temperature. The diffusion transition state does not enter this calibration.
+    using physics::constant::symbols::e;
+    constexpr lattice::Coordination reference_coordination{ 9 };
+
+    auto parameters{ ElectrochemicalInterface::constants() };
+    const Energy old_barrier{ reference_coordination * 0.15_eV };
+    const Energy new_barrier{ lattice_energy_barrier(
+        { event::Type::dissolution, Element::Ag, reference_coordination }) };
+
+    parameters.reference_potential +=
+        (old_barrier - new_barrier) / (parameters.charge_transfer_coefficient * e);
+    set_constants(parameters);
+    set_potential(parameters.reference_potential);
+}
+
 Energy PowerLawBondEnergy::lattice_energy_barrier(Descriptor const& desc) const
 {
-    return power_law_bond_energy::dimer_bond_energy(desc.element) *
-           std::pow(static_cast<double>(desc.coordination),
-                    power_law_bond_energy::coordination_exponent(desc.element));
+    const auto coefficient{ power_law_bond_energy::dimer_bond_energy(desc.element) };
+    const auto exponent{ power_law_bond_energy::coordination_exponent(desc.element) };
+    const Energy binding_energy{
+        coefficient * std::pow(static_cast<double>(desc.coordination), exponent)
+    };
+
+    if (desc.event == event::Type::diffusion)
+    {
+        // Approximate every diffusion transition state by coordination two,
+        // independent of element and hopping geometry (no GTC correction).
+        const Energy transition_state_binding{
+            coefficient * std::pow(diffusion_transition_state_coordination, exponent)
+        };
+        return std::max<Energy>(0_eV, binding_energy - transition_state_binding);
+    }
+
+    // Dissolution transfers the atom to a lattice-free reference (n_TS = 0).
+    // The electrochemical barrier shift is applied by ElectrochemicalInterface.
+    return binding_energy;
 }
 
 Rate PowerLawBondEnergy::rate(Descriptor const& desc) const
@@ -65,6 +104,13 @@ Rate PowerLawBondEnergy::rate(Descriptor const& desc) const
 
 std::string PowerLawBondEnergy::output_text() const
 {
-    return std::format("Model = Power law bond energy\n{}",
-        ElectrochemicalInterface::output_text());
+    std::string text{ std::format(
+        "Model = Power law bond energy\nDiffusion TS coordination = {}\n",
+        diffusion_transition_state_coordination) };
+    for (auto const element : lattice::active_elements)
+        std::format_to(std::back_inserter(text), "{}: coefficient = {:meV}; exponent = {}\n",
+            element, power_law_bond_energy::dimer_bond_energy(element),
+            power_law_bond_energy::coordination_exponent(element));
+
+    return text + ElectrochemicalInterface::output_text();
 }
