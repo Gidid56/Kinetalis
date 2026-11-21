@@ -24,7 +24,7 @@ namespace lattice
         //chemistry::Element::Cu,
     };
 
-    inline constexpr bool element_specific_neighbors{ true }, use_layers{ false };
+    inline constexpr bool element_specific_neighbors{ false }, use_layers{ false };
 }
 
 namespace lattice

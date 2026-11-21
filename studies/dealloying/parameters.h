@@ -2,6 +2,7 @@
 
 enum class CampaignType
 {
+    debugging,
     passivation,
     bifurcation,
     dealloying,
@@ -13,6 +14,7 @@ static constexpr Length min_box_size(CampaignType campaign_type)
 
     switch (campaign_type)
     {
+        case CampaignType::debugging: return 0.25 * default_box_size;
         case CampaignType::passivation: return 0.75 * default_box_size;
         case CampaignType::bifurcation: return 1.0 * default_box_size;
         case CampaignType::dealloying: return 1.5 * default_box_size;
