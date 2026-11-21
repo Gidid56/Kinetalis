@@ -3,6 +3,8 @@
 #include "lattice/lattice.h"
 #include "physics/constants.h"
 
+#include <algorithm>
+
 using namespace kmc;
 using chemistry::Element;
 using namespace studies::dealloying::kinetics;
@@ -89,11 +91,19 @@ CompositionDependent::CompositionDependent()
 CompositionDependent::Descriptor CompositionDependent::classify(
     event::Type type,
     event::Location const& location,
-    lattice::Lattice const&) const
+    lattice::Lattice const& lattice) const
 {
     auto const& source{ location.source() };
+    Descriptor desc{ type, source.element(), source.coordination(), {} };
 
-    return { type, source.element(), source.coordination(), source.element_neighbors() };
+    if constexpr (lattice::element_specific_neighbors)
+        std::ranges::copy(source.element_neighbors(), desc.element_neighbors.begin());
+    else
+        for (auto const* neighbor : lattice.neighbors(source))
+            if (neighbor->is_occupied())
+                ++desc.element_neighbors[lattice::elementKey(neighbor->element())];
+
+    return desc;
 }
 
 RateClassKey CompositionDependent::key(Descriptor const& desc)

@@ -122,6 +122,12 @@ namespace
                 kmc::event::Type::diffusion, location, lattice) };
             auto const original_coordination{ source.coordination() };
 
+            // Must also pass when lattice::element_specific_neighbors is disabled:
+            // classification then reconstructs the same counts on demand.
+            ut::expect(first_composition.element_neighbors[lattice::elementKey(Ag)] == 0);
+            ut::expect(first_composition.element_neighbors[lattice::elementKey(Au)] ==
+                original_coordination);
+
             neighbor->set_element(lattice, Ag);
             ut::expect(source.coordination() == original_coordination);
 
@@ -130,6 +136,9 @@ namespace
             auto const second_linear{ linear.classify(
                 kmc::event::Type::diffusion, location, lattice) };
 
+            ut::expect(second_composition.element_neighbors[lattice::elementKey(Ag)] == 1);
+            ut::expect(second_composition.element_neighbors[lattice::elementKey(Au)] ==
+                original_coordination - 1);
             ut::expect(first_composition != second_composition)
                 << "composition descriptor distinguishes changed neighbor chemistry";
             ut::expect(first_composition.event == kmc::event::Type::diffusion);
