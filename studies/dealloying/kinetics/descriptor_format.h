@@ -1,6 +1,7 @@
 #pragma once
 #include "composition_dependent.h"
 #include "gtc.h"
+#include "gtc_path_cache.h"
 #include "linear_bond_breaking.h"
 #include "output/types.h"
 
