@@ -63,14 +63,13 @@ namespace studies::dealloying::setups
                 "fitting inside the box height." };
 
         using enum chemistry::Element;
-        using enum math::Axis;
 
         UnitCell unit_cell{
             UnitCell::conventional<Bravais::cF>(chemistry::Atom{ Au })
         };
         Lattice lattice{ unit_cell, surface_orientation };
         lattice.scale_shape(Parameters{ side, side, box_height });
-        lattice.set_periodic_boundaries(x | y);
+        lattice.set_periodic_boundaries(math::Axis::x | math::Axis::y);
         lattice.construct_sites();
         lattice.construct_neighbor_list();
 
@@ -83,8 +82,8 @@ namespace studies::dealloying::setups
             // At +/-half_height each sheet extends one substrate thickness
             // into the simulation box, reproducing the archived layout.
             const auto half_height{ lattice.shape().parameters().z() / 2 };
-            lattice.fill(none, shape::sheet(2 * substrate_thickness).move_by(z, half_height));
-            lattice.fill(Au, shape::sheet(2 * substrate_thickness).move_by(z, -half_height));
+            lattice.fill(none, shape::sheet(2 * substrate_thickness).move_by(math::Axis::z, half_height));
+            lattice.fill(Au, shape::sheet(2 * substrate_thickness).move_by(math::Axis::z, -half_height));
         });
         return lattice;
     }
