@@ -132,6 +132,14 @@ namespace
             // Even with a positive midpoint weight, E_final is the maximum.
             ut::expect(kinetics::gtc::final_coordination(1u<<9) == 0u);
             ut::expect(saddle_coordination(1u<<9) == 0.0);
+
+            // Bits 6 and 7 form a direct one-segment arc supported by two
+            // shared FCC neighbors. Its effective coordination and final
+            // lattice coordination are both two, providing an exact reference.
+            const std::uint32_t direct_arc{(1u<<6)|(1u<<7)};
+            ut::expect(kinetics::gtc::final_coordination(direct_arc) == 2u);
+            ut::expect(std::abs(saddle_coordination(direct_arc)-2.0) < 1e-5);
+
             // At least one pair among the four common FCC neighbors must
             // support an admissible one-segment path.
             constexpr std::array<unsigned,4> common{6,7,10,11};
