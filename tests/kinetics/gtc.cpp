@@ -1,0 +1,98 @@
+#include "dealloying/kinetics/gtc.h"
+#include "dealloying/kinetics/gtc_geometry.h"
+#include "dealloying/kinetics/descriptor_format.h"
+#include "lattice/lattice.h"
+
+#include <boost/ut.hpp>
+#include <cmath>
+#include <limits>
+#include <stdexcept>
+#include <string>
+
+namespace ut = boost::ut;
+using namespace boost::ut::literals;
+using namespace physics::unit::literals;
+
+namespace
+{
+    using namespace kmc;
+    namespace kinetics = studies::dealloying::kinetics;
+    using enum chemistry::Element;
+
+    void expect_rate(Rate actual, Rate expected)
+    {
+        ut::expect(std::abs(actual.value() / expected.value() - 1.0) < 1e-12);
+    }
+
+    ut::suite<"kinetics.gtc"> gtc_tests = [] {
+        "GTC falls back explicitly to power-law rates until saddle selection exists"_test = [] {
+            kinetics::GTC model;
+            kinetics::PowerLawBondEnergy baseline;
+            static_assert(kinetics::GTC::invalidation_hops == 2);
+            model.set_temperature(300_K).set_potential(0.85_V);
+            baseline.set_temperature(300_K).set_potential(0.85_V);
+            for (auto element : { Ag, Au })
+                for (lattice::Coordination n : { 3, 6, 9 })
+                    for (auto event : { event::Type::diffusion, event::Type::dissolution })
+                        expect_rate(model.rate({ event, element, n, std::nullopt }),
+                            baseline.rate({ event, element, n }));
+            ut::expect(model.output_text().find("NOT enabled") != std::string::npos);
+        };
+
+        "an explicitly specified saddle changes the diffusion rate only"_test = [] {
+            kinetics::GTC model;
+            model.set_temperature(300_K).set_potential(0.85_V);
+            kinetics::GTC::Descriptor baseline{ event::Type::diffusion, Au, 6, std::nullopt };
+            auto refined{baseline};
+            refined.transition_state_coordination = 3.1;
+            ut::expect(model.rate(refined) > model.rate(baseline));
+            ut::expect(model.key(refined) != model.key(baseline));
+            ut::expect(model.number_keys() == std::size_t{3});
+            ut::expect(model.descriptor(model.key(refined)) == refined);
+            ut::expect(output::DescriptorFormat<kinetics::GTC::Descriptor>::row(refined).find(
+                "nTS=3.1") != std::string::npos);
+
+            expect_rate(model.rate({ event::Type::dissolution, Ag, 9, std::nullopt }),
+                kinetics::PowerLawBondEnergy{}.rate({ event::Type::dissolution, Ag, 9 }));
+        };
+
+        "classify does not yet invent a path-specific saddle"_test = [] {
+            auto cell{lattice::UnitCell::conventional<lattice::Bravais::cF>(400_pm)
+                .fill(chemistry::Atom{Au})};
+            lattice::Lattice lattice{cell};
+            lattice.scale_shape(lattice::Parameters::all(1600_pm));
+            using enum math::Axis;
+            lattice.set_periodic_boundaries(x | y | z);
+            lattice.construct_sites();
+            lattice.construct_neighbor_list();
+            auto& source{lattice.sites().front()};
+            auto* target{*lattice.neighbors(source).begin()};
+            target->set_element(lattice, chemistry::Element::none);
+
+            kinetics::GTC model;
+            const auto desc{model.classify(event::Type::diffusion,
+                event::Location{&source, target}, lattice)};
+            ut::expect(desc.event == event::Type::diffusion);
+            ut::expect(desc.element == Au);
+            ut::expect(desc.coordination == source.coordination());
+            ut::expect(not desc.transition_state_coordination.has_value());
+        };
+
+        "Gaussian support weight uses the distance descriptor of Eq. 1.44"_test = [] {
+            using kinetics::gtc::distance_weight;
+            ut::expect(std::abs(distance_weight(1_nm, 1_nm) - 1.0) < 1e-12);
+            ut::expect(std::abs(distance_weight(1_nm + 1_nm / 6, 1_nm) -
+                std::exp(-1.0)) < 1e-12);
+            ut::expect(ut::throws<std::invalid_argument>([] {
+                (void)distance_weight(1_nm, 1_nm, 0.0);
+            }));
+        };
+
+        "nonfinite saddle coordinate is rejected before caching"_test = [] {
+            kinetics::GTC model;
+            kinetics::GTC::Descriptor desc{event::Type::diffusion, Au, 6,
+                std::numeric_limits<double>::quiet_NaN()};
+            ut::expect(ut::throws<std::invalid_argument>([&] {(void)model.key(desc);}));
+        };
+    };
+}

@@ -9,7 +9,8 @@ target_sources(
         dealloying/kinetics/composition_dependent.cpp
         dealloying/kinetics/power_law_bond_energy.cpp
         dealloying/analysis/electrochemistry.cpp
-        dealloying/gtc.cpp
+        dealloying/kinetics/gtc.cpp
+        dealloying/kinetics/gtc_geometry.cpp
         dealloying/analysis/regime.cpp
 )
 

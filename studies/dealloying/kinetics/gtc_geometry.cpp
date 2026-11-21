@@ -1,12 +1,29 @@
 #include "pch.h"
-#include "gtc.h"
+#include "gtc_geometry.h"
 
 #include "lattice/lattice.h"
 #include "lattice/site.h"
 
 using namespace lattice;
 
-std::vector<Position> studies::dealloying::gtc::transition_states(std::array<Site*, 2> const& cluster, Lattice const& lattice)
+double studies::dealloying::kinetics::gtc::distance_weight(Distance separation, Distance d_nn, double width)
+{
+    if (not (width > 0.0) or not std::isfinite(width) or not (d_nn > Distance{}))
+        throw std::invalid_argument{"GTC weight requires positive width and d_nn."};
+    const double scaled{(separation - d_nn) / (width * d_nn)};
+    return std::exp(-scaled * scaled);
+}
+
+double studies::dealloying::kinetics::gtc::effective_coordination(Position const& position,
+    std::span<Position const> supports, Distance d_nn, double width)
+{
+    double result{};
+    for (auto const& support : supports)
+        result += distance_weight(Distance{(position - support).norm()}, d_nn, width);
+    return result;
+}
+
+std::vector<Position> studies::dealloying::kinetics::gtc::candidate_positions(std::array<Site*, 2> const& cluster, Lattice const& lattice)
 {
     /*
 		Temporary dynamic construction of minimal GTC path proposals.

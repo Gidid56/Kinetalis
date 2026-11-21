@@ -11,5 +11,8 @@ namespace studies::dealloying::kinetics
         Energy lattice_energy_barrier(Descriptor const&) const;
         kmc::Rate rate(Descriptor const&) const;
         std::string output_text() const;
+
+    protected:
+        static Energy binding_energy(chemistry::Element, double coordination);
     };
 }

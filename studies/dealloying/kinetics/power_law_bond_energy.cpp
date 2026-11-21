@@ -73,27 +73,21 @@ PowerLawBondEnergy::PowerLawBondEnergy()
     set_potential(parameters.reference_potential);
 }
 
+Energy PowerLawBondEnergy::binding_energy(Element element, double coordination)
+{
+    return power_law_bond_energy::dimer_bond_energy(element) *
+           std::pow(coordination, power_law_bond_energy::coordination_exponent(element));
+}
+
 Energy PowerLawBondEnergy::lattice_energy_barrier(Descriptor const& desc) const
 {
-    const auto coefficient{ power_law_bond_energy::dimer_bond_energy(desc.element) };
-    const auto exponent{ power_law_bond_energy::coordination_exponent(desc.element) };
-    const Energy binding_energy{
-        coefficient * std::pow(static_cast<double>(desc.coordination), exponent)
-    };
-
+    const Energy initial{ binding_energy(desc.element, static_cast<double>(desc.coordination)) };
     if (desc.event == event::Type::diffusion)
-    {
-        // Approximate every diffusion transition state by coordination two,
-        // independent of element and hopping geometry (no GTC correction).
-        const Energy transition_state_binding{
-            coefficient * std::pow(diffusion_transition_state_coordination, exponent)
-        };
-        return std::max<Energy>(0_eV, binding_energy - transition_state_binding);
-    }
+        return std::max<Energy>(0_eV,
+            initial - binding_energy(desc.element, diffusion_transition_state_coordination));
 
-    // Dissolution transfers the atom to a lattice-free reference (n_TS = 0).
-    // The electrochemical barrier shift is applied by ElectrochemicalInterface.
-    return binding_energy;
+    // Dissolution has a lattice-free transition state (n_TS = 0).
+    return initial;
 }
 
 Rate PowerLawBondEnergy::rate(Descriptor const& desc) const
