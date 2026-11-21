@@ -181,10 +181,28 @@ namespace studies::dealloying::kinetics::gtc
         struct Templates
         {
             std::vector<Path> paths;
+            Weights direct_midpoint_weights{};
+            Mask final_neighbor_mask{};
 
             Templates()
             {
                 auto const spectator{make_spectators()};
+
+                // Fallback transition state: midpoint of the direct hop.
+                // The target-site neighbors exclude the now-vacant source.
+                const Point midpoint{(initial+final)/2.0};
+                for (unsigned i{}; i<spectator.size(); ++i)
+                {
+                    if (std::ranges::find(directions, spectator[i]-final) != directions.end())
+                        final_neighbor_mask |= Mask{1}<<i;
+
+                    const double separation{norm(midpoint-spectator[i])};
+                    if (separation<=cutoff)
+                    {
+                        const double t{(separation/d_nn-1.0)/width};
+                        direct_midpoint_weights[i]=static_cast<float>(std::exp(-t*t));
+                    }
+                }
                 std::vector<unsigned> common, source, target;
                 for (unsigned i{};i<spectator.size();++i)
                 {
@@ -280,11 +298,21 @@ namespace studies::dealloying::kinetics::gtc
         struct Cache
         {
             Templates geometry;
-            std::vector<double> values{
-                std::size_t{1}<<18,std::numeric_limits<double>::quiet_NaN()};
+            // Explicit count/value construction prevents the brace-init
+            // initializer_list overload (which would create only two entries).
+            std::vector<double> values = std::vector<double>(
+                std::size_t{1}<<18, std::numeric_limits<double>::quiet_NaN());
             std::mutex mutex;
 
-            std::optional<double> lookup(Mask mask)
+            static double coordination(Weights const& weights, Mask mask)
+            {
+                double value{};
+                for (Mask bits{mask}; bits; bits &= bits-1)
+                    value += weights[std::countr_zero(bits)];
+                return value;
+            }
+
+            double lookup(Mask mask)
             {
                 if (mask & ~full_mask)
                     throw std::invalid_argument{"GTC occupancy mask exceeds 18 bits."};
@@ -293,7 +321,7 @@ namespace studies::dealloying::kinetics::gtc
                 double& result{values[mask]};
                 if (std::isnan(result))
                 {
-                    result=-1.0; // No admissible path.
+                    double best{-1.0}; // No admissible circular path yet.
                     for (auto const& path:geometry.paths)
                     {
                         if ((mask & path.required)!=path.required or
@@ -303,27 +331,49 @@ namespace studies::dealloying::kinetics::gtc
                         double bottleneck{std::numeric_limits<double>::infinity()};
                         for (auto const& weights:path.samples)
                         {
-                            double coordination{};
-                            for (Mask bits{mask};bits;bits &= bits-1)
-                                coordination+=weights[std::countr_zero(bits)];
-
-                            bottleneck=std::min(bottleneck,coordination);
-                            if (bottleneck<=result)
+                            bottleneck=std::min(bottleneck,coordination(weights,mask));
+                            if (bottleneck<=best)
                                 break;
                         }
-                        result=std::max(result,bottleneck);
+                        best=std::max(best,bottleneck);
                     }
+
+                    // If no supported arc exists, approximate the straight
+                    // trajectory by the midpoint coordination.
+                    if (best<0.0)
+                        best=coordination(geometry.direct_midpoint_weights,mask);
+
+                    // The final lattice site's binding energy can exceed the
+                    // entire path's maximum. Since epsilon=-C*n^a, the
+                    // highest energy corresponds to the LOWEST coordination.
+                    const double n_final{static_cast<double>(
+                        std::popcount(mask & geometry.final_neighbor_mask))};
+                    result=std::min(best,n_final);
                 }
-                if (result<0.0)
-                    return std::nullopt;
                 return result;
             }
         };
     }
 
-    std::optional<double> saddle_coordination(std::uint32_t occupancy)
+    double saddle_coordination(std::uint32_t occupancy)
     {
         static Cache cache;
         return cache.lookup(occupancy);
+    }
+
+    unsigned final_coordination(std::uint32_t occupancy)
+    {
+        if (occupancy & ~full_mask)
+            throw std::invalid_argument{"GTC occupancy mask exceeds 18 bits."};
+
+        static const Mask neighbors{[] {
+            Mask mask{};
+            const auto positions{make_spectators()};
+            for (unsigned i{}; i<positions.size(); ++i)
+                if (std::ranges::find(directions, positions[i]-final) != directions.end())
+                    mask |= Mask{1}<<i;
+            return mask;
+        }()};
+        return std::popcount(occupancy & neighbors);
     }
 }

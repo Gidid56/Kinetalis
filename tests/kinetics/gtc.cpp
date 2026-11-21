@@ -27,7 +27,7 @@ namespace
     }
 
     ut::suite<"kinetics.gtc"> gtc_tests = [] {
-        "GTC preserves power-law rates for descriptors without an admissible path"_test = [] {
+        "dissolution retains power-law rates and an empty environment uses a direct midpoint"_test = [] {
             kinetics::GTC model;
             kinetics::PowerLawBondEnergy baseline;
             static_assert(kinetics::GTC::invalidation_hops == 2);
@@ -35,16 +35,23 @@ namespace
             baseline.set_temperature(300_K).set_potential(0.85_V);
             for (auto element : { Ag, Au })
                 for (lattice::Coordination n : { 3, 6, 9 })
-                    for (auto event : { event::Type::diffusion, event::Type::dissolution })
-                        expect_rate(model.rate({ event, element, n, std::nullopt }),
-                            baseline.rate({ event, element, n }));
-            ut::expect(model.output_text().find("NOT enabled") != std::string::npos);
+                {
+                    expect_rate(model.rate({ event::Type::dissolution, element, n, std::nullopt }),
+                        baseline.rate({ event::Type::dissolution, element, n }));
+                    // With no occupied spectator, neither a support arc nor
+                    // final-site bonding is available: n_TS=0, not the n=2
+                    // PowerLaw fallback.
+                    ut::expect(model.rate({ event::Type::diffusion, element, n, std::nullopt }) <
+                        baseline.rate({ event::Type::diffusion, element, n }));
+                }
+            ut::expect(model.output_text().find("direct hop") != std::string::npos);
         };
 
         "an explicitly specified saddle changes the diffusion rate only"_test = [] {
             kinetics::GTC model;
             model.set_temperature(300_K).set_potential(0.85_V);
-            kinetics::GTC::Descriptor baseline{ event::Type::diffusion, Au, 6, std::nullopt };
+            kinetics::GTC::Descriptor baseline{ event::Type::diffusion, Au, 6, 2.0,
+                kinetics::gtc::FccEnvironment::full_mask };
             auto refined{baseline};
             refined.transition_state_coordination = 3.1;
             ut::expect(model.rate(refined) > model.rate(baseline));
@@ -109,7 +116,22 @@ namespace
 
         "path cache requires occupied supports and reuses the same mask"_test = [] {
             using kinetics::gtc::saddle_coordination;
-            ut::expect(not saddle_coordination(0).has_value());
+            ut::expect(saddle_coordination(0) == 0.0);
+            ut::expect(kinetics::gtc::final_coordination(0) == 0u);
+
+            // Bit 14 is a target-only neighbor in the fixed lexicographic
+            // FCC layout. A single support cannot form an admissible arc.
+            // The straight-hop midpoint has a finite Gaussian weight.
+            const std::uint32_t target_only{1u<<14};
+            const double distance_ratio{std::sqrt(1.25)};
+            const double expected{std::exp(-std::pow(6.0*(distance_ratio-1.0),2))};
+            ut::expect(kinetics::gtc::final_coordination(target_only) == 1u);
+            ut::expect(std::abs(saddle_coordination(target_only)-expected) < 1e-6);
+
+            // Bit 9 is source-only, so the final site has zero bonds.
+            // Even with a positive midpoint weight, E_final is the maximum.
+            ut::expect(kinetics::gtc::final_coordination(1u<<9) == 0u);
+            ut::expect(saddle_coordination(1u<<9) == 0.0);
             // At least one pair among the four common FCC neighbors must
             // support an admissible one-segment path.
             constexpr std::array<unsigned,4> common{6,7,10,11};
@@ -119,10 +141,11 @@ namespace
                 {
                     auto const mask{(1u<<common[i])|(1u<<common[j])};
                     auto const saddle{saddle_coordination(mask)};
-                    if (saddle)
+                    if (saddle > 0.0)
                     {
                         ut::expect(saddle_coordination(mask) == saddle);
-                        ut::expect(*saddle >= 0.0);
+                        ut::expect(saddle <= static_cast<double>(
+                            kinetics::gtc::final_coordination(mask)));
                         found=true;
                     }
                 }
@@ -147,7 +170,7 @@ namespace
                     std::uint32_t const mask{
                         (1u<<common[i])|(1u<<common[j])|(1u<<common[k])};
                     auto const saddle{kinetics::gtc::saddle_coordination(mask)};
-                    if (not saddle or std::abs(*saddle-2.0)<1e-3)
+                    if (std::abs(saddle-2.0)<1e-3)
                         continue;
 
                     kinetics::GTC::Descriptor with_path{
@@ -160,6 +183,17 @@ namespace
                     break;
                 }
             ut::expect(found);
+        };
+
+        "explicit transition state is capped by the final lattice-site energy"_test = [] {
+            kinetics::GTC model;
+            model.set_temperature(300_K).set_potential(0.85_V);
+            const std::uint32_t target_only{1u<<14};
+            // Only one target neighbor remains: any larger path coordination
+            // must give the same rate as n_TS=1.
+            expect_rate(
+                model.rate({event::Type::diffusion,Au,6,100.0,target_only}),
+                model.rate({event::Type::diffusion,Au,6,1.0,target_only}));
         };
 
         "Gaussian support weight uses the distance descriptor of Eq. 1.44"_test = [] {

@@ -1,15 +1,14 @@
 #pragma once
 #include <cstdint>
-#include <optional>
 
 namespace studies::dealloying::kinetics::gtc
 {
-    // Returns the largest minimum effective coordination among admissible
-    // one- or two-segment FCC paths. Geometry and weights are precomputed
-    // once; 18-bit occupancy results are cached lazily.
-    //
-    // Only the union of source and destination NN shells contributes to
-    // the transition-state energy (first GTC approximation).
-    // No path: nullopt; the kinetics layer decides how to handle it.
-    std::optional<double> saddle_coordination(std::uint32_t occupancy);
+    // Effective coordination at the highest-energy point, including the
+    // final lattice site. Choose the arc with the largest bottleneck
+    // coordination; if no arc is admissible, use the direct-hop midpoint.
+    // Calculations use the 18 nearest-neighbor spectator sites, cached lazily.
+    double saddle_coordination(std::uint32_t occupancy);
+
+    // Target NN coordination AFTER source vacates; source is excluded.
+    unsigned final_coordination(std::uint32_t occupancy);
 }

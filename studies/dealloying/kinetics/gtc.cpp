@@ -56,15 +56,13 @@ Rate GTC::rate(Descriptor const& desc) const
     if (desc.event != event::Type::diffusion)
         return PowerLawBondEnergy::rate(baseline);
 
-    // An explicitly supplied saddle overrides the geometric lookup.
-    // Otherwise classify() supplies the complete canonical 18-bit mask.
-    const auto saddle{desc.transition_state_coordination
-        ? desc.transition_state_coordination
+    // A supplied path saddle overrides the geometric path calculation,
+    // but never the final-site energy. The cached result already includes
+    // the final-site bound for automatically classified hops.
+    const double n_TS{desc.transition_state_coordination
+        ? std::min(*desc.transition_state_coordination,
+            static_cast<double>(gtc::final_coordination(desc.environment)))
         : gtc::saddle_coordination(desc.environment)};
-    if (not saddle)
-        return PowerLawBondEnergy::rate(baseline);
-
-    const double n_TS{*saddle};
     if (not std::isfinite(n_TS) or n_TS < 0.0)
         throw std::invalid_argument{"GTC saddle coordination must be finite and nonnegative."};
 
@@ -81,7 +79,9 @@ std::string GTC::output_text() const
     return std::format(
         "Model = GTC (FCC NN-shell transition-state geometry)\n"
         "Geometry = canonical 18-bit occupancy; direct and 2-segment arcs\n"
+        "Transition-state energy = max(path energy, final lattice-site energy)\n"
         "Transition-state coordination = best path bottleneck (64 samples per arc)\n"
-        "No admissible path = power-law fallback n_TS = {}\n{}",
-        diffusion_transition_state_coordination, PowerLawBondEnergy::output_text());
+        "No admissible arc = midpoint of the direct hop\n"
+        "{}",
+        PowerLawBondEnergy::output_text());
 }
