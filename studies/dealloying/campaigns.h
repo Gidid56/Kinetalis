@@ -3,6 +3,7 @@
 #include "dealloying/analysis_plans.h"
 #include "dealloying/setups.h"
 #include "model.h"
+#include "dealloying/postprocess/amplitude_profiles.h"
 
 namespace studies::dealloying::postprocess
 {
@@ -22,6 +23,12 @@ namespace studies::dealloying::postprocess
     {
         batch::campaign::merge(campaignPath, "surface_excess");
         batch::campaign::summarize(campaignPath, "surface_excess");
+    }
+
+    void find_amplitude_profiles(std::filesystem::path const& campaignPath)
+    {
+        find_regime_outcome(campaignPath);
+        generate_amplitude_profiles(campaignPath, 0.01);
     }
 }
 
@@ -102,7 +109,7 @@ namespace studies::dealloying::campaigns
                 { -40_mV, -20_mV, -10_mV },
                 { 7, 10, 15, 20, 30 }),
             .analysis_plan = analysis_plans::amplitude_profiles,
-            .postprocessor = postprocess::find_regime_outcome,
+            .postprocessor = postprocess::find_amplitude_profiles,
         };
     }
 
