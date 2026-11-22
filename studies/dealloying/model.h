@@ -11,7 +11,7 @@
 namespace studies::dealloying
 {
     using Processes = kmc::Processes<process::Dissolution, process::Diffusion>;
-    using Model = kmc::Model<kinetics::GTC, Processes>;
+    using Model = kmc::Model<kinetics::LinearBondBreaking, Processes>;
     using Setup = kmc::Setup<Model>;
     using Campaign = batch::Campaign<Model>;
 }

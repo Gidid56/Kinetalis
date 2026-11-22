@@ -21,7 +21,7 @@ int run_viewer()
     //        2.5_nm,     // Au substrate / vacuum thickness
     //        { 1, 1, 1 } // Surface orientation
     //        ),
-        setups::pore_dealloying(CampaignType::debugging, 10, 600_mV, 300_K),
+        setups::pore_dealloying(CampaignType::debugging, 10, 60_mV, 300_K),
         analysis_plans::basic
         );
 
