@@ -2,7 +2,7 @@ name: Kinetalis CI
 
 on:
   push:
-    branches: [main, 'test/**', 'perf/**']
+    branches: [main, 'test/**', 'perf/**', 'analysis/**']
   pull_request:
   workflow_dispatch:
 

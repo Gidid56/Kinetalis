@@ -6,7 +6,7 @@
 
 #include "lattice/lattice.h"
 #include "dealloying/process.h"
-#include "dealloying/gtc.h"
+#include "dealloying/kinetics/gtc_geometry.h"
 #include "viewer/bridge.h"
 
 using namespace viewer::scene;
@@ -195,7 +195,7 @@ void Atoms::rebuildHolograms()
 
     // Transition-state holograms first.
     for_each_diffusion_cluster([&](std::array<lattice::Site*, 2> const& cluster) {
-        for (auto const& position : studies::dealloying::gtc::transition_states(cluster, lattice_))
+        for (auto const& position : studies::dealloying::kinetics::gtc::candidate_positions(cluster, lattice_))
             points_.emplace_back(position, scene::Point::State::Transition);
     });
 

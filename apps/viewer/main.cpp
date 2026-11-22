@@ -12,7 +12,16 @@ int run_viewer()
     Viewer viewer;
 
     viewer.createSimulation(
-        setups::pore_dealloying(CampaignType::passivation, 10, 20_mV, 300_K),
+    //    setups::thin_film_dealloying(
+    //        25,         // 10 at.% Au
+    //        500_mV,     // Overpotential
+    //        300_K,      // Temperature
+    //        20_nm,      // Lateral dimensions
+    //        30_nm,      // Total box height
+    //        2.5_nm,     // Au substrate / vacuum thickness
+    //        { 1, 1, 1 } // Surface orientation
+    //        ),
+        setups::pore_dealloying(CampaignType::debugging, 10, 600_mV, 300_K),
         analysis_plans::basic
         );
 

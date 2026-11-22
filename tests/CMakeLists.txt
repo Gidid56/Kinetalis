@@ -27,6 +27,7 @@ kinetalis_add_test_suite(lattice
     lattice/geometry.cpp
     lattice/ordering.cpp
     lattice/site.cpp
+    lattice/thin_film.cpp
 )
 kinetalis_add_test_suite(utility
     utility/file.cpp

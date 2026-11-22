@@ -8,6 +8,7 @@
 #include "dealloying/kinetics/descriptor_format.h"
 #include "output/phases.h"
 #include "output/kinetic_activity.h"
+#include "output/grouped_kinetic_activity.h"
 #include "output/site_population.h"
 #include "dealloying/kinetics/linear_bond_breaking.h"
 #include "dealloying/model.h"
@@ -88,7 +89,9 @@ namespace studies::dealloying::analysis_plans
         //plan.add<output::Lattice>(path).set_save_bulk(false).set_resolution(
         //    { .min_snapshot_step = 10, .snapshot_scale_factor = 1.01 });
 
-        plan.add<output::KineticActivity<Model>>(path);
+        // Keep full GTC rate classes, but report their exact, grouped activity
+        // without iterating all encountered environments at every KMC event.
+        plan.add<output::GroupedKineticActivity<Model>>(path);
         plan.add<output::SitePopulation>(path);
         //plan.add<output::KineticStatistics<Model>>(path).set_resolution(
         //    { .min_snapshot_step = 1000, .snapshot_scale_factor = 1.2 });

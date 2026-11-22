@@ -104,6 +104,7 @@ namespace kmc
     {
         affected_sites_.clear();
         block_updates_.clear();
+        changed_class_keys_.clear();
 
         for (auto* site : record.sites())
             collect_affected_sites<ModelT::KineticsType::invalidation_hops>(*site);
@@ -243,9 +244,15 @@ namespace kmc
         if (class_counts_enabled_)
         {
             if (old_key != RateClassKey{})
+            {
                 --class_counts_[old_key];
+                changed_class_keys_.push_back(old_key);
+            }
             if (new_key != RateClassKey{})
+            {
                 ++class_counts_[new_key];
+                changed_class_keys_.push_back(new_key);
+            }
         }
 
         old_key = new_key;
