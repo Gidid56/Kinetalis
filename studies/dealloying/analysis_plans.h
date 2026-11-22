@@ -70,10 +70,21 @@ namespace studies::dealloying::analysis_plans
             .set_threshold(porous, 0.8)     // φ_pristine
             .set_threshold(arrested, 1e-6)  // Γ_dis / Γ_dis,max (historical maximum of snapshot-averaged flux)
 
-            .set_stop_conditions(bifurcated | passivated)
             //.set_lookback_period(coarsening, 0.1)
             //.set_stop_conditions(coarsening)
             ;
+
+        return plan;
+    }
+
+    inline kmc::AnalysisPlan amplitude_profiles(std::filesystem::path const& path)
+    {
+        auto plan = regime_outcome(path);
+
+        using enum analysis::Regime::Condition;
+
+        plan.get<analysis::Regime>()
+            .set_stop_conditions(passivated | porous);
 
         return plan;
     }

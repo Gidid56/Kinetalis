@@ -91,6 +91,21 @@ namespace studies::dealloying::campaigns
         };
     }
 
+    inline Campaign subcritical_amplitude_profiles()
+    {
+        return {
+            .name = "subcritical amplitude profiles",
+            .seed = seeds.at(8),
+            .replicate_count = 20,
+            .setups = generate_setups(
+                CampaignType::passivation,
+                { -40_mV, -20_mV, -10_mV },
+                { 7, 10, 15, 20, 30 }),
+            .analysis_plan = analysis_plans::amplitude_profiles,
+            .postprocessor = postprocess::find_regime_outcome,
+        };
+    }
+
     inline Campaign passivation_study()
     {
         return {
